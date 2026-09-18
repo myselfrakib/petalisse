@@ -1,0 +1,63 @@
+@import url('https://fonts.googleapis.com/css2?family=Alex+Brush&family=Caveat:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,600;1,700&family=Inter:wght@400;500;600;700&family=Parisienne&display=swap');
+
+@import 'tailwindcss';
+
+@theme {
+  --color-maroon: #6B1A2A;
+  --color-maroon-dark: #50131F;
+  --color-rose: #E7BEC9;
+  --color-pink-soft: #F9D5E5;
+  --color-cream: #FDFBF7;
+  --color-cream-dark: #FAF5F0;
+  --color-periwinkle: #AEC6E4;
+  --color-ink: #23212B;
+  --color-muted: #8B827D;
+  --color-paper: #FDFBF7;
+
+  --font-parisienne: 'Parisienne', cursive;
+  --font-script: 'Parisienne', 'Alex Brush', cursive;
+  --font-cormorant: 'Cormorant Garamond', Georgia, serif;
+  --font-handwritten: 'Caveat', 'Homemade Apple', cursive;
+  --font-display: 'Cormorant Garamond', 'Playfair Display', Georgia, serif;
+  --font-body: 'Cormorant Garamond', 'EB Garamond', Georgia, serif;
+  --font-sans: 'Inter', system-ui, sans-serif;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+* {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+*::-webkit-scrollbar {
+  display: none;
+}
+
+.gingham-bg {
+  background-color: #ffffff;
+  background-image:
+    repeating-linear-gradient(
+      0deg,
+      rgba(174, 198, 228, 0.52) 0,
+      rgba(174, 198, 228, 0.52) 50%,
+      transparent 50%,
+      transparent 100%
+    ),
+    repeating-linear-gradient(
+      90deg,
+      rgba(174, 198, 228, 0.52) 0,
+      rgba(174, 198, 228, 0.52) 50%,
+      transparent 50%,
+      transparent 100%
+    );
+  background-size: 40px 40px;
+}
+
+.paper-card {
+  background-color: #F5F0E4;
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3CfeBlend in='SourceGraphic' mode='multiply' result='blend'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='0.06'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+}

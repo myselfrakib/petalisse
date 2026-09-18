@@ -1,0 +1,10 @@
+{
+  "description": "Discover Petalisse, a charming online shop for handmade accessories, featuring beaded jewelry and more, with a special relaunch offer and a heartfelt brand story.",
+  "robots": {
+    "index": false
+  },
+  "accessibility": {
+    "addBypassLinks": false,
+    "ignoreReducedMotion": false
+  }
+}
