@@ -1,6 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router';
 import { useCart } from '../context/CartContext';
+import { useAuth } from '../context/AuthContext';
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { db } from '../lib/firebase';
 
 const imgGinghamBg = '/figma-assets/772e8e7b4c0d39ad6752261452ccca607e718dc3.png';
 const imgCircleX = '/figma-assets/020e894ad6dbaa5c1e3c88736940d78054819b79.svg';
@@ -17,16 +20,29 @@ const imgCircleX1 = '/figma-assets/bcd9a84b032010459db4a52a7f22c54922a3c2d4.svg'
 
 export default function Cart() {
   const { items, remove, update, total, count, clear } = useCart();
+  const { currentUser, userProfile } = useAuth();
   const [promoCode, setPromoCode] = useState('PETALISSE10');
   const [promoApplied, setPromoApplied] = useState(true);
   const [promoMessage, setPromoMessage] = useState('10% off applied!');
   const [orderPlaced, setOrderPlaced] = useState(false);
+  const [isSubmittingOrder, setIsSubmittingOrder] = useState(false);
 
   // Form fields matching Figma design
   const [fullName, setFullName] = useState('Clara Avery');
   const [address, setAddress] = useState('123 Cozy Lane');
   const [city, setCity] = useState('Floral Town');
   const [phone, setPhone] = useState('(555) 019-2831');
+
+  useEffect(() => {
+    if (currentUser) {
+      if (userProfile?.name || currentUser.displayName) {
+        setFullName(userProfile?.name || currentUser.displayName || '');
+      }
+      if (userProfile?.phone) {
+        setPhone(userProfile.phone);
+      }
+    }
+  }, [currentUser, userProfile]);
 
   // Discount calculation
   const discountAmount = promoApplied ? total * 0.1 : 0;
@@ -44,8 +60,28 @@ export default function Cart() {
     setPromoMessage('10% discount applied!');
   };
 
-  const handlePlaceOrder = () => {
-    setOrderPlaced(true);
+  const handlePlaceOrder = async () => {
+    setIsSubmittingOrder(true);
+    try {
+      await addDoc(collection(db, 'orders'), {
+        userId: currentUser?.uid || null,
+        userEmail: currentUser?.email || 'guest@petalisse.com',
+        customerName: fullName,
+        shippingAddress: `${address}, ${city}`,
+        phone,
+        items,
+        subtotal: total,
+        discount: discountAmount,
+        total: finalTotal,
+        status: 'pending',
+        createdAt: serverTimestamp(),
+      });
+    } catch (e) {
+      console.warn('Could not save order to Firestore:', e);
+    } finally {
+      setIsSubmittingOrder(false);
+      setOrderPlaced(true);
+    }
   };
 
   const handleResetOrder = () => {
@@ -411,16 +447,19 @@ export default function Cart() {
         <div className="flex flex-col gap-3 items-center w-full">
           <button
             onClick={handlePlaceOrder}
-            disabled={items.length === 0}
-            className={`w-full py-4 rounded-full font-cormorant font-bold text-base uppercase tracking-wider text-white transition-all duration-200 cursor-pointer ${
-              items.length === 0
+            disabled={items.length === 0 || isSubmittingOrder}
+            className={`w-full py-4 rounded-full font-cormorant font-bold text-base uppercase tracking-wider text-white transition-all duration-200 cursor-pointer flex items-center justify-center gap-2 ${
+              items.length === 0 || isSubmittingOrder
                 ? 'bg-[#8b827d]/50 cursor-not-allowed'
                 : 'bg-[#6b1a2a] hover:bg-[#50131f] active:scale-98 drop-shadow-[0px_4px_5px_rgba(107,26,42,0.25)]'
             }`}
             data-node-id="9:138"
             data-name="place-order-button"
           >
-            Place Order
+            {isSubmittingOrder ? (
+              <span className="inline-block w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+            ) : null}
+            <span>{isSubmittingOrder ? 'Processing Order...' : 'Place Order'}</span>
           </button>
 
           {/* Trust Badges */}

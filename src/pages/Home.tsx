@@ -1,6 +1,6 @@
 import { Link } from 'react-router';
 import { useCart } from '../context/CartContext';
-import { products } from '../data/products';
+import { useContent } from '../context/ContentContext';
 
 const imgPetalisseHomepage = '/figma-assets/772e8e7b4c0d39ad6752261452ccca607e718dc3.png';
 const imgRectangle = '/figma-assets/2416c5a3da640dcea42f85f7a71067eac0c58ca9.png';
@@ -16,37 +16,11 @@ const imgCircleX2 = '/figma-assets/bcd9a84b032010459db4a52a7f22c54922a3c2d4.svg'
 
 export default function Home() {
   const { add } = useCart();
+  const { products, siteContent } = useContent();
 
-  // Selected bestsellers matching the Figma design
-  const bestsellers = [
-    products.find((p) => p.id === 'rose-garden-charm') || {
-      id: 'rose-garden-charm',
-      name: 'Rose Garden Charm',
-      price: 12,
-      img: '/figma-assets/a53065cbd3c94f32f92edb4e749a2fac1e370cbe.png',
-      alt: 'Rose Garden Charm',
-      category: 'Mobile Charms',
-      description: 'Delicate glass rosebuds with matching periwinkle and soft cream beads.',
-    },
-    products.find((p) => p.id === 'daisy-chain-bag-charm') || {
-      id: 'daisy-chain-bag-charm',
-      name: 'Daisy Chain Bag Charm',
-      price: 15,
-      img: '/figma-assets/c985c36ff39bdb6b9a8d2827b0a9f08ad612b3b1.png',
-      alt: 'Daisy Chain Bag Charm',
-      category: 'Bag Charms',
-      description: 'Intricately woven clay daisy chain adorned with a silky satin ribbon.',
-    },
-    products.find((p) => p.id === 'surprise-mystery-jar') || {
-      id: 'surprise-mystery-jar',
-      name: 'Surprise Mystery Jar',
-      price: 18,
-      img: '/figma-assets/0d22810fc669233e88307889744dc5d3861f800e.png',
-      alt: 'Surprise Mystery Jar',
-      category: 'Mystery Jars',
-      description: 'A whimsical jar containing limited edition charms and tiny sculpted clay sweets.',
-    },
-  ];
+  // Selected bestsellers from active dynamic products
+  const bestsellers = products.slice(0, 3);
+
 
   return (
     <div
@@ -137,7 +111,7 @@ export default function Home() {
             className="font-parisienne text-[#8b827d] text-2xl sm:text-[22px] leading-snug"
             data-node-id="2:139"
           >
-            Made slowly. Loved endlessly.
+            {siteContent.heroTagline || 'Made slowly. Loved endlessly.'}
           </p>
 
           {/* Shop Now Button */}
@@ -307,9 +281,22 @@ export default function Home() {
                     >
                       {product.name}
                     </Link>
-                    <span className="font-sans font-bold text-[#6b1a2a] text-[15px] shrink-0">
-                      ₹{product.price}
-                    </span>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      {product.discountedPrice !== undefined ? (
+                        <>
+                          <span className="font-sans font-bold text-[#6b1a2a] text-[15px]">
+                            ₹{product.discountedPrice}
+                          </span>
+                          <del className="font-sans text-[#8b827d] text-xs">
+                            ₹{product.price}
+                          </del>
+                        </>
+                      ) : (
+                        <span className="font-sans font-bold text-[#6b1a2a] text-[15px]">
+                          ₹{product.price}
+                        </span>
+                      )}
+                    </div>
                   </div>
                   <p className="font-cormorant text-[#8b827d] text-[13px] leading-snug line-clamp-2">
                     {product.description}
@@ -342,13 +329,13 @@ export default function Home() {
             className="font-cormorant font-semibold text-[#6b1a2a] text-lg leading-snug"
             data-node-id="2:189"
           >
-            Your little handmade corner, with more love in every piece.
+            {siteContent.aboutTitle || 'Your little handmade corner, with more love in every piece.'}
           </h3>
           <p
             className="font-cormorant text-[#6b1a2a]/80 text-[13px] leading-relaxed"
             data-node-id="2:190"
           >
-            Each charm and jar is patiently sculpted, beaded, and tied in our cozy home studio to bring sweet magic to your daily life.
+            {siteContent.aboutDescription || 'Each charm and jar is patiently sculpted, beaded, and tied in our cozy home studio to bring sweet magic to your daily life.'}
           </p>
         </section>
 

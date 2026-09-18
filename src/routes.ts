@@ -5,6 +5,7 @@ import Shop from './pages/Shop';
 import Product from './pages/Product';
 import Cart from './pages/Cart';
 import Profile from './pages/Profile';
+import { AdminPage } from './pages/Admin';
 
 export const router = createBrowserRouter([
   {
@@ -16,6 +17,7 @@ export const router = createBrowserRouter([
       { path: 'product/:id', Component: Product },
       { path: 'cart', Component: Cart },
       { path: 'profile', Component: Profile },
+      { path: 'admin', Component: AdminPage },
     ],
   },
 ]);

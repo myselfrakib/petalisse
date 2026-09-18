@@ -1,7 +1,8 @@
 import { useState, useMemo } from 'react';
 import { Link, useSearchParams } from 'react-router';
-import { products } from '../data/products';
 import { useCart } from '../context/CartContext';
+import { useContent } from '../context/ContentContext';
+import { Product } from '../types';
 
 const imgGinghamBg = '/figma-assets/772e8e7b4c0d39ad6752261452ccca607e718dc3.png';
 const imgCircleX = '/figma-assets/7b642d06d625e4424c2227fba19b230bf5e9e625.svg';
@@ -15,6 +16,7 @@ const SHOP_CATEGORIES = ['All', 'Mobile Charms', 'Bag Charms', 'Mystery Jars'];
 export default function Shop() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { add, count } = useCart();
+  const { products } = useContent();
   const [addedId, setAddedId] = useState<string | null>(null);
   const [favorites, setFavorites] = useState<Record<string, boolean>>({});
   const [displayCount, setDisplayCount] = useState<number>(10);
@@ -24,7 +26,7 @@ export default function Shop() {
   const filtered = useMemo(() => {
     if (activeCategory === 'All') return products;
     return products.filter((p) => p.category === activeCategory);
-  }, [activeCategory]);
+  }, [activeCategory, products]);
 
   const displayedProducts = filtered.slice(0, displayCount);
 
@@ -232,9 +234,22 @@ export default function Shop() {
                     >
                       {product.name}
                     </Link>
-                    <span className="font-sans font-bold text-[#6b1a2a] text-[14px] sm:text-[15px] shrink-0">
-                      ₹{product.price}
-                    </span>
+                    <div className="flex items-center gap-1 shrink-0">
+                      {product.discountedPrice !== undefined ? (
+                        <>
+                          <span className="font-sans font-bold text-[#6b1a2a] text-[14px] sm:text-[15px]">
+                            ₹{product.discountedPrice}
+                          </span>
+                          <del className="font-sans text-[#8b827d] text-[11px]">
+                            ₹{product.price}
+                          </del>
+                        </>
+                      ) : (
+                        <span className="font-sans font-bold text-[#6b1a2a] text-[14px] sm:text-[15px] shrink-0">
+                          ₹{product.price}
+                        </span>
+                      )}
+                    </div>
                   </div>
 
                   <p className="font-cormorant text-[#8b827d] text-[12px] leading-[1.3] line-clamp-2 h-[31px]">

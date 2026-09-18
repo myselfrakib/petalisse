@@ -10,6 +10,7 @@
     "format": "oxfmt"
   },
   "dependencies": {
+    "firebase": "^12.19.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-router": "^8.4.0"

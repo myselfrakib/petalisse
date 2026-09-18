@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useParams, Link, useNavigate } from 'react-router';
-import { products } from '../data/products';
 import { useCart } from '../context/CartContext';
+import { useContent } from '../context/ContentContext';
 
 const imgGinghamBg = '/figma-assets/772e8e7b4c0d39ad6752261452ccca607e718dc3.png';
 const imgCircleX = '/figma-assets/020e894ad6dbaa5c1e3c88736940d78054819b79.svg';
@@ -19,10 +19,11 @@ export default function Product() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { add } = useCart();
+  const { products } = useContent();
 
   const product = useMemo(() => {
     return products.find((p) => p.id === id) || products[0];
-  }, [id]);
+  }, [id, products]);
 
   // Gallery thumbnails
   const gallery = useMemo(() => {
@@ -283,25 +284,35 @@ export default function Product() {
             data-node-id="9:226"
             data-name="price-row"
           >
-            <span
-              className="font-sans font-bold text-[#6b1a2a] text-[28px] leading-none"
-              data-node-id="9:227"
-            >
-              ₹999
-            </span>
-            <span
-              className="font-sans text-[#8b827d] text-base line-through"
-              data-node-id="9:228"
-            >
-              ₹1,299
-            </span>
-            <span
-              className="bg-[#f9d5e5] px-2 py-1 rounded-[6px] font-cormorant font-bold text-[#6b1a2a] text-xs leading-none"
-              data-node-id="9:229"
-              data-name="save-badge"
-            >
-              Save 23%
-            </span>
+            {product.discountedPrice !== undefined ? (
+              <>
+                <span
+                  className="font-sans font-bold text-[#6b1a2a] text-[28px] leading-none"
+                  data-node-id="9:227"
+                >
+                  ₹{product.discountedPrice}
+                </span>
+                <span
+                  className="font-sans text-[#8b827d] text-base line-through"
+                  data-node-id="9:228"
+                >
+                  ₹{product.price}
+                </span>
+                <span
+                  className="bg-[#f9d5e5] px-2 py-1 rounded-[6px] font-cormorant font-bold text-[#6b1a2a] text-xs leading-none"
+                  data-node-id="9:229"
+                >
+                  Save ₹{(product.price - product.discountedPrice).toFixed(0)}
+                </span>
+              </>
+            ) : (
+              <span
+                className="font-sans font-bold text-[#6b1a2a] text-[28px] leading-none"
+                data-node-id="9:227"
+              >
+                ₹{product.price}
+              </span>
+            )}
           </div>
         </section>
 
