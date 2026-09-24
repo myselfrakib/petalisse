@@ -441,7 +441,14 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
           }
         },
         (error) => {
-          console.warn('Orders snapshot warning:', error);
+          if (error?.code === 'permission-denied') {
+            try {
+              const cached = localStorage.getItem('petalisse_orders');
+              if (cached) setOrders(JSON.parse(cached));
+            } catch {}
+          } else {
+            console.warn('Orders snapshot warning:', error);
+          }
         }
       );
     } catch (e) {

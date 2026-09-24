@@ -20,7 +20,7 @@ const imgMusic = '/figma-assets/76abb4ffe21c8d67bea7f7daf70db2330cc66a88.svg';
 export default function Cart() {
   const { items, remove, update, total, count, clear } = useCart();
   const { currentUser, userProfile } = useAuth();
-  const { createOrder } = useContent();
+  const { createOrder, orders } = useContent();
   const [promoCode, setPromoCode] = useState('PETALISSE10');
   const [promoApplied, setPromoApplied] = useState(true);
   const [promoMessage, setPromoMessage] = useState('10% off applied!');
