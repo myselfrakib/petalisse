@@ -320,17 +320,19 @@ export default function Cart() {
 
   return (
     <div
-      className="min-h-screen w-full flex flex-col items-center justify-start py-5 px-4 sm:px-6 pb-28 relative bg-repeat"
+      className="min-h-screen w-full flex flex-col items-center justify-start py-5 px-4 sm:px-6 pb-28 relative bg-[#fdfbf7]"
       style={{
-        backgroundImage: `url("${imgGinghamBg}")`,
-        backgroundSize: '153.6px 153.6px',
+        backgroundColor: '#fdfbf7',
       }}
       data-node-id="9:4"
       data-name="petalisse-checkout"
     >
       {/* Central Paper Panel */}
       <main
-        className="w-full max-w-[430px] bg-[#fdfbf7] rounded-[24px] shadow-[0px_8px_28px_rgba(44,62,80,0.14)] px-4 sm:px-5 py-6 relative flex flex-col gap-6 items-stretch overflow-visible border border-[rgba(107,26,42,0.06)]"
+        className="w-full max-w-[430px] rounded-[24px] shadow-[0px_8px_28px_rgba(44,62,80,0.14)] px-4 sm:px-5 py-6 relative flex flex-col gap-6 items-stretch overflow-visible border border-[rgba(107,26,42,0.06)] bg-[#84c9f13a]"
+        style={{
+          backgroundColor: '#84c9f13a',
+        }}
         data-node-id="9:5"
         data-name="paper-center-panel"
       >

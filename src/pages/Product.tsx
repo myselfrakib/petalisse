@@ -76,8 +76,8 @@ export default function Product() {
 
   if (!product) {
     return (
-      <div className="min-h-screen w-full flex flex-col items-center justify-center p-6 text-center bg-[#FAF5F0]">
-        <div className="max-w-md bg-white p-8 rounded-3xl border border-[#6b1a2a]/10 shadow-sm flex flex-col items-center gap-3">
+      <div className="min-h-screen w-full flex flex-col items-center justify-center p-6 text-center bg-[#fdfbf7]" style={{ backgroundColor: '#fdfbf7' }}>
+        <div className="max-w-md bg-[#84c9f13a] p-8 rounded-3xl border border-[#6b1a2a]/10 shadow-sm flex flex-col items-center gap-3" style={{ backgroundColor: '#84c9f13a' }}>
           <span className="font-parisienne text-4xl text-[#6b1a2a]">Petalisse</span>
           <h2 className="font-cormorant font-bold text-xl text-[#2C2724]">Product Not Found</h2>
           <p className="font-cormorant text-[#8b827d] text-sm">
@@ -96,17 +96,19 @@ export default function Product() {
 
   return (
     <div
-      className="min-h-screen w-full flex flex-col items-center justify-start py-5 px-4 sm:px-6 pb-28 relative bg-repeat"
+      className="min-h-screen w-full flex flex-col items-center justify-start py-5 px-4 sm:px-6 pb-28 relative bg-[#fdfbf7]"
       style={{
-        backgroundImage: `url("${imgGinghamBg}")`,
-        backgroundSize: '153.6px 153.6px',
+        backgroundColor: '#fdfbf7',
       }}
       data-node-id="9:179"
       data-name="petalisse-product-detail"
     >
       {/* Central Paper Panel */}
       <main
-        className="w-full max-w-[430px] bg-[#fdfbf7] rounded-[24px] shadow-[0px_8px_28px_rgba(44,62,80,0.14)] px-4 sm:px-5 py-6 relative flex flex-col gap-8 items-stretch overflow-visible border border-[rgba(107,26,42,0.06)]"
+        className="w-full max-w-[430px] rounded-[24px] shadow-[0px_8px_28px_rgba(44,62,80,0.14)] px-4 sm:px-5 py-6 relative flex flex-col gap-8 items-stretch overflow-visible border border-[rgba(107,26,42,0.06)] bg-[#84c9f13a]"
+        style={{
+          backgroundColor: '#84c9f13a',
+        }}
         data-node-id="9:180"
         data-name="paper-center-panel"
       >
