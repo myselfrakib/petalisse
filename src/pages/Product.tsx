@@ -254,8 +254,8 @@ export default function Product() {
           data-name="product-info-section"
         >
           <h2
-            className="font-sans font-semibold text-[#6b1a2a] text-2xl sm:text-3xl leading-snug text-left tracking-tight"
-            style={{ fontFamily: "'Inter', sans-serif" }}
+            className="font-alex text-[#6b1a2a] text-3xl sm:text-4xl md:text-5xl leading-tight text-left"
+            style={{ fontFamily: "'Alex Brush', cursive" }}
             data-node-id="9:217"
           >
             {product.name}
@@ -518,7 +518,8 @@ export default function Product() {
           data-name="related-products-section"
         >
           <h3
-            className="font-parisienne text-[#6b1a2a] text-[32px] text-center w-full"
+            className="font-alex text-[#6b1a2a] text-[36px] sm:text-[42px] text-center w-full"
+            style={{ fontFamily: "'Alex Brush', cursive" }}
             data-node-id="9:261"
           >
             You May Also Like
@@ -546,8 +547,8 @@ export default function Product() {
                 </div>
                 <div className="flex flex-col gap-0.5 text-left">
                   <p
-                    className="font-sans font-semibold text-[#6b1a2a] text-[13px] truncate group-hover:underline"
-                    style={{ fontFamily: "'Inter', sans-serif" }}
+                    className="font-alex text-[#6b1a2a] text-[17px] truncate group-hover:underline leading-tight"
+                    style={{ fontFamily: "'Alex Brush', cursive" }}
                   >
                     {item.name}
                   </p>
