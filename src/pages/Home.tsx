@@ -445,7 +445,8 @@ export default function Home() {
               SMALL DETAILS. BIG PERSONALITY.
             </p>
             <p
-              className="font-parisienne text-[#8b827d] text-2xl"
+              className="font-meow text-[#8b827d] text-3xl"
+              style={{ fontFamily: "'Meow Script', cursive" }}
               data-node-id="2:197"
             >
               - Petalisse -
