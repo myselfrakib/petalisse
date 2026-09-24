@@ -14,7 +14,6 @@ import {
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, storage } from '../lib/firebase';
 import { Product, SiteContent, Order } from '../types';
-import { products as initialProducts } from '../data/products';
 
 const DEFAULT_SITE_CONTENT: SiteContent = {
   announcementText: 'Free Shipping on All Orders Over $50 | Handmade with Love',
@@ -154,6 +153,16 @@ try {
   console.warn('BroadcastChannel not initialized:', e);
 }
 
+// List of legacy demo product IDs to strictly exclude
+const DEMO_PRODUCT_IDS = new Set([
+  'rose-garden-charm',
+  'lavender-dreams',
+  'daisy-chain-bag-charm',
+  'velvet-bow-charm',
+  'surprise-mystery-jar',
+  'pearl-blossom-charm',
+]);
+
 // Helper to track permanently deleted product IDs
 const getDeletedProductIds = (): Set<string> => {
   try {
@@ -164,7 +173,7 @@ const getDeletedProductIds = (): Set<string> => {
 };
 
 export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  // 1. Initial State from localStorage or defaults
+  // 1. Initial State from localStorage (strictly live products only, no demo items)
   const [products, setProducts] = useState<Product[]>(() => {
     const deleted = getDeletedProductIds();
     try {
@@ -172,13 +181,13 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
       if (saved !== null) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed)) {
-          return parsed.filter((p) => !deleted.has(p.id));
+          return parsed.filter((p) => !DEMO_PRODUCT_IDS.has(p.id) && !deleted.has(p.id));
         }
       }
     } catch (e) {
       console.warn('Error reading saved products:', e);
     }
-    return initialProducts.filter((p) => !deleted.has(p.id));
+    return [];
   });
 
   const [siteContent, setSiteContent] = useState<SiteContent>(() => {
@@ -259,7 +268,10 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
     const handleStorageEvent = (e: StorageEvent) => {
       if (e.key === 'petalisse_products' && e.newValue) {
         try {
-          setProducts(JSON.parse(e.newValue));
+          const parsed = JSON.parse(e.newValue);
+          if (Array.isArray(parsed)) {
+            setProducts(parsed.filter((p) => !DEMO_PRODUCT_IDS.has(p.id)));
+          }
         } catch {}
       } else if (e.key === 'petalisse_site_content' && e.newValue) {
         try {
@@ -282,7 +294,7 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
     };
   }, []);
 
-  // 2. Subscribe to Products in Firestore (with graceful fallback)
+  // 2. Subscribe to Products in Firestore (ONLY live products, strictly no demo items)
   useEffect(() => {
     let unsub = () => {};
     try {
@@ -290,9 +302,11 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
       unsub = onSnapshot(
         q,
         (snapshot) => {
+          const list: Product[] = [];
           if (!snapshot.empty) {
-            const list: Product[] = [];
             snapshot.forEach((docSnap) => {
+              if (DEMO_PRODUCT_IDS.has(docSnap.id)) return;
+
               const data = docSnap.data();
               list.push({
                 id: docSnap.id,
@@ -308,24 +322,14 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
                 createdAt: data.createdAt,
               });
             });
-
-            // Filter out any explicitly deleted IDs
-            const deleted = getDeletedProductIds();
-            const validRemote = list.filter((p) => !deleted.has(p.id));
-            const firestoreIds = new Set(validRemote.map((p) => p.id));
-
-            setProducts((prev) => {
-              // Keep initial products that haven't been deleted or replaced
-              const remainingDefaults = initialProducts.filter(
-                (ip) => !firestoreIds.has(ip.id) && !deleted.has(ip.id) && prev.some((p) => p.id === ip.id)
-              );
-              const merged = [...validRemote, ...remainingDefaults];
-              try {
-                localStorage.setItem('petalisse_products', JSON.stringify(merged));
-              } catch {}
-              return merged;
-            });
           }
+
+          const deleted = getDeletedProductIds();
+          const valid = list.filter((p) => !deleted.has(p.id));
+          setProducts(valid);
+          try {
+            localStorage.setItem('petalisse_products', JSON.stringify(valid));
+          } catch {}
           setLoading(false);
         },
         (error) => {
@@ -522,17 +526,16 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
   };
 
   const seedInitialProductsToFirestore = async () => {
-    for (const p of initialProducts) {
-      const { id, ...rest } = p;
+    // Purge any legacy demo products from Firestore & local state
+    for (const demoId of DEMO_PRODUCT_IDS) {
       try {
-        await setDoc(doc(db, 'products', id), {
-          ...rest,
-          createdAt: serverTimestamp(),
-        }, { merge: true });
+        await deleteDoc(doc(db, 'products', demoId));
       } catch (e) {
-        console.warn(`Could not seed product ${id}:`, e);
+        console.warn(`Could not delete demo product ${demoId}:`, e);
       }
     }
+    const cleanList = products.filter((p) => !DEMO_PRODUCT_IDS.has(p.id));
+    syncProducts(cleanList);
   };
 
   // Order Actions

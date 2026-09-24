@@ -20,18 +20,18 @@ export default function Product() {
   const { products } = useContent();
 
   const product = useMemo(() => {
-    return products.find((p) => p.id === id) || products[0];
+    return products.find((p) => p.id === id);
   }, [id, products]);
 
   // Gallery thumbnails
   const gallery = useMemo(() => {
-    const defaultGallery = [
+    if (!product) return [];
+    return [
       product.img,
       '/figma-assets/aac1d8d4d024ee6d6c049df2d059dfd80fda2226.png',
       '/figma-assets/c985c36ff39bdb6b9a8d2827b0a9f08ad612b3b1.png',
       '/figma-assets/e8a9f4c7977ea3291af5fdf421b0c3f7801f21ed.png',
     ];
-    return defaultGallery;
   }, [product]);
 
   const [activeImageIndex, setActiveImageIndex] = useState(0);
@@ -40,26 +40,48 @@ export default function Product() {
   const [addedNotice, setAddedNotice] = useState(false);
 
   const relatedProducts = useMemo(() => {
+    if (!product) return [];
     const others = products.filter((p) => p.id !== product.id);
-    const list = others.length > 0 ? others : products;
-    return list.slice(0, 4).map((p) => ({
+    return others.slice(0, 4).map((p) => ({
       id: p.id,
       name: p.name,
       price: `₹${p.discountedPrice ?? p.price}`,
       img: p.img,
     }));
-  }, [products, product.id]);
+  }, [products, product]);
 
   const handleAddToCart = () => {
+    if (!product) return;
     add(product, qty);
     setAddedNotice(true);
     setTimeout(() => setAddedNotice(false), 2000);
   };
 
   const handleBuyNow = () => {
+    if (!product) return;
     add(product, qty);
     navigate('/cart');
   };
+
+  if (!product) {
+    return (
+      <div className="min-h-screen w-full flex flex-col items-center justify-center p-6 text-center bg-[#FAF5F0]">
+        <div className="max-w-md bg-white p-8 rounded-3xl border border-[#6b1a2a]/10 shadow-sm flex flex-col items-center gap-3">
+          <span className="font-parisienne text-4xl text-[#6b1a2a]">Petalisse</span>
+          <h2 className="font-cormorant font-bold text-xl text-[#2C2724]">Product Not Found</h2>
+          <p className="font-cormorant text-[#8b827d] text-sm">
+            This piece may have been updated or removed from the catalog.
+          </p>
+          <Link
+            to="/shop"
+            className="mt-2 px-6 py-2 rounded-full bg-[#6b1a2a] text-white font-cormorant font-bold text-xs uppercase tracking-wider hover:bg-[#50131f] transition"
+          >
+            Explore Active Catalog &rarr;
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div

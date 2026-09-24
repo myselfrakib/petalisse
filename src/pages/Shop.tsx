@@ -139,11 +139,12 @@ export default function Shop() {
         </div>
 
         {/* ── PRODUCT GRID (2 COLUMNS) ── */}
-        <div
-          className="grid grid-cols-2 gap-3.5 w-full"
-          data-node-id="2:248"
-          data-name="product-grid"
-        >
+        {displayedProducts.length > 0 ? (
+          <div
+            className="grid grid-cols-2 gap-3.5 w-full"
+            data-node-id="2:248"
+            data-name="product-grid"
+          >
           {displayedProducts.map((product) => {
             const isFav = !!favorites[product.id];
             const isAdded = addedId === product.id;
@@ -235,6 +236,24 @@ export default function Shop() {
             );
           })}
         </div>
+        ) : (
+          <div className="bg-white border border-[rgba(107,26,42,0.08)] rounded-2xl p-8 text-center shadow-xs w-full flex flex-col items-center">
+            <span className="font-parisienne text-3xl text-[#6b1a2a] block mb-1">
+              Boutique Collection
+            </span>
+            <p className="font-cormorant text-[#8b827d] text-xs max-w-xs mb-3">
+              {activeCategory === 'All'
+                ? 'No live products yet. Create your first handcrafted charm in the Admin Panel to see it appear here immediately!'
+                : `No live products in "${activeCategory}" yet. Add products to this category from the Admin Panel.`}
+            </p>
+            <Link
+              to="/admin"
+              className="px-5 py-2 rounded-full bg-[#6b1a2a] text-white font-cormorant font-bold text-xs uppercase tracking-wider hover:bg-[#50131f] transition shadow-xs"
+            >
+              + Add Product in Admin
+            </Link>
+          </div>
+        )}
 
         {/* ── LOAD MORE BUTTON ── */}
         {displayedProducts.length < filtered.length && (

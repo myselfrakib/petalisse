@@ -1,5 +1,5 @@
-import { createContext, useContext, useState, type ReactNode } from 'react';
-import { products, type Product } from '../data/products';
+import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
+import type { Product } from '../types';
 
 export interface CartItem {
   product: Product;
@@ -19,17 +19,23 @@ interface CartContextValue {
 const CartContext = createContext<CartContextValue | null>(null);
 
 export function CartProvider({ children }: { children: ReactNode }) {
-  // Default cart items matching Figma node 9:4 (subtotal ₹57, count 4)
+  // Start with empty cart or persistent items added by real user
   const [items, setItems] = useState<CartItem[]>(() => {
-    const p1 = products.find((p) => p.id === 'rose-garden-charm') || products[0];
-    const p2 = products.find((p) => p.id === 'daisy-chain-bag-charm') || products[2];
-    const p3 = products.find((p) => p.id === 'surprise-mystery-jar') || products[4];
-    return [
-      { product: p1, quantity: 2 },
-      { product: p2, quantity: 1 },
-      { product: p3, quantity: 1 },
-    ];
+    try {
+      const saved = localStorage.getItem('petalisse_cart_items');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) return parsed;
+      }
+    } catch {}
+    return [];
   });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('petalisse_cart_items', JSON.stringify(items));
+    } catch {}
+  }, [items]);
 
   const add = (product: Product, qty = 1) => {
     setItems((prev) => {
@@ -53,9 +59,17 @@ export function CartProvider({ children }: { children: ReactNode }) {
     setItems((prev) => prev.map((i) => (i.product.id === id ? { ...i, quantity: qty } : i)));
   };
 
-  const clear = () => setItems([]);
+  const clear = () => {
+    setItems([]);
+    try {
+      localStorage.removeItem('petalisse_cart_items');
+    } catch {}
+  };
 
-  const total = items.reduce((sum, i) => sum + i.product.price * i.quantity, 0);
+  const total = items.reduce(
+    (sum, i) => sum + (i.product.discountedPrice !== undefined ? i.product.discountedPrice : i.product.price) * i.quantity,
+    0
+  );
   const count = items.reduce((sum, i) => sum + i.quantity, 0);
 
   return (

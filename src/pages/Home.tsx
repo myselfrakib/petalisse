@@ -207,63 +207,80 @@ export default function Home() {
           </div>
 
           <div className="flex flex-col gap-3 w-full" data-node-id="2:164" data-name="bestseller-list">
-            {bestsellers.map((product) => (
-              <div
-                key={product.id}
-                className="bg-white border border-[rgba(107,26,42,0.08)] rounded-2xl p-3 flex gap-3 items-center shadow-xs hover:shadow-md transition-all group relative"
-                data-name="bestseller-item"
-              >
-                <Link
-                  to={`/product/${product.id}`}
-                  className="size-20 rounded-lg overflow-hidden shrink-0 border border-[rgba(107,26,42,0.06)]"
+            {bestsellers.length > 0 ? (
+              bestsellers.map((product) => (
+                <div
+                  key={product.id}
+                  className="bg-white border border-[rgba(107,26,42,0.08)] rounded-2xl p-3 flex gap-3 items-center shadow-xs hover:shadow-md transition-all group relative"
+                  data-name="bestseller-item"
                 >
-                  <img
-                    alt={product.name}
-                    className="size-full object-cover group-hover:scale-105 transition-transform duration-300"
-                    src={product.img}
-                  />
-                </Link>
+                  <Link
+                    to={`/product/${product.id}`}
+                    className="size-20 rounded-lg overflow-hidden shrink-0 border border-[rgba(107,26,42,0.06)]"
+                  >
+                    <img
+                      alt={product.name}
+                      className="size-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      src={product.img}
+                    />
+                  </Link>
 
-                <div className="flex flex-col gap-1 flex-1 min-w-0">
-                  <div className="flex items-baseline justify-between gap-2">
-                    <Link
-                      to={`/product/${product.id}`}
-                      className="font-cormorant font-bold text-[#6b1a2a] text-base truncate hover:underline"
-                    >
-                      {product.name}
-                    </Link>
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      {product.discountedPrice !== undefined ? (
-                        <>
+                  <div className="flex flex-col gap-1 flex-1 min-w-0">
+                    <div className="flex items-baseline justify-between gap-2">
+                      <Link
+                        to={`/product/${product.id}`}
+                        className="font-cormorant font-bold text-[#6b1a2a] text-base truncate hover:underline"
+                      >
+                        {product.name}
+                      </Link>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        {product.discountedPrice !== undefined ? (
+                          <>
+                            <span className="font-sans font-bold text-[#6b1a2a] text-[15px]">
+                              ₹{product.discountedPrice}
+                            </span>
+                            <del className="font-sans text-[#8b827d] text-xs">
+                              ₹{product.price}
+                            </del>
+                          </>
+                        ) : (
                           <span className="font-sans font-bold text-[#6b1a2a] text-[15px]">
-                            ₹{product.discountedPrice}
-                          </span>
-                          <del className="font-sans text-[#8b827d] text-xs">
                             ₹{product.price}
-                          </del>
-                        </>
-                      ) : (
-                        <span className="font-sans font-bold text-[#6b1a2a] text-[15px]">
-                          ₹{product.price}
-                        </span>
-                      )}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <p className="font-cormorant text-[#8b827d] text-[13px] leading-snug line-clamp-2">
+                      {product.description}
+                    </p>
+                    <div className="mt-1 flex items-center justify-end">
+                      <button
+                        onClick={() => add(product)}
+                        className="text-[11px] font-cormorant font-bold tracking-wider uppercase text-[#6b1a2a] bg-[#f9d5e5]/50 hover:bg-[#f9d5e5] px-2.5 py-0.5 rounded-full transition-colors cursor-pointer"
+                        title="Add to cart"
+                      >
+                        + Add
+                      </button>
                     </div>
                   </div>
-                  <p className="font-cormorant text-[#8b827d] text-[13px] leading-snug line-clamp-2">
-                    {product.description}
-                  </p>
-                  <div className="mt-1 flex items-center justify-end">
-                    <button
-                      onClick={() => add(product)}
-                      className="text-[11px] font-cormorant font-bold tracking-wider uppercase text-[#6b1a2a] bg-[#f9d5e5]/50 hover:bg-[#f9d5e5] px-2.5 py-0.5 rounded-full transition-colors"
-                      title="Add to cart"
-                    >
-                      + Add
-                    </button>
-                  </div>
                 </div>
+              ))
+            ) : (
+              <div className="bg-white border border-[rgba(107,26,42,0.08)] rounded-2xl p-6 text-center shadow-xs">
+                <span className="font-parisienne text-2xl text-[#6b1a2a] block mb-1">
+                  Artisan Studio
+                </span>
+                <p className="font-cormorant text-[#8b827d] text-xs">
+                  Showing live boutique inventory. Add your handcrafted charms in the Admin Panel to feature them here!
+                </p>
+                <Link
+                  to="/admin"
+                  className="inline-block mt-3 px-4 py-1.5 rounded-full bg-[#6b1a2a]/10 hover:bg-[#6b1a2a]/20 text-[#6b1a2a] font-cormorant font-bold text-xs uppercase tracking-wider transition"
+                >
+                  Admin Console &rarr;
+                </Link>
               </div>
-            ))}
+            )}
           </div>
         </section>
 
