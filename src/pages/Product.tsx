@@ -253,7 +253,8 @@ export default function Product() {
           data-name="product-info-section"
         >
           <h2
-            className="font-parisienne text-[#6b1a2a] text-4xl leading-tight text-left"
+            className="font-sans font-semibold text-[#6b1a2a] text-2xl sm:text-3xl leading-snug text-left tracking-tight"
+            style={{ fontFamily: "'Inter', sans-serif" }}
             data-node-id="9:217"
           >
             {product.name}
@@ -543,7 +544,10 @@ export default function Product() {
                   />
                 </div>
                 <div className="flex flex-col gap-0.5 text-left">
-                  <p className="font-cormorant font-bold text-[#6b1a2a] text-[13px] truncate group-hover:underline">
+                  <p
+                    className="font-sans font-semibold text-[#6b1a2a] text-[13px] truncate group-hover:underline"
+                    style={{ fontFamily: "'Inter', sans-serif" }}
+                  >
                     {item.name}
                   </p>
                   <p className="font-sans font-bold text-[#6b1a2a] text-[12px]">

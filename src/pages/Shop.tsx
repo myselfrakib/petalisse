@@ -250,7 +250,8 @@ export default function Shop() {
                   <div className="flex items-baseline justify-between gap-1">
                     <Link
                       to={`/product/${product.id}`}
-                      className="font-cormorant font-bold text-[#6b1a2a] text-[15px] sm:text-[16px] truncate hover:underline flex-1"
+                      className="font-sans font-semibold text-[#6b1a2a] text-[14px] sm:text-[15px] truncate hover:underline flex-1"
+                      style={{ fontFamily: "'Inter', sans-serif" }}
                       title={product.name}
                     >
                       {product.name}
