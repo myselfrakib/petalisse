@@ -4,7 +4,6 @@ import { useCart } from '../context/CartContext';
 import { useContent } from '../context/ContentContext';
 
 const imgGinghamBg = '/figma-assets/772e8e7b4c0d39ad6752261452ccca607e718dc3.png';
-const imgCircleX = '/figma-assets/020e894ad6dbaa5c1e3c88736940d78054819b79.svg';
 const imgChevronLeft = '/figma-assets/de70edd513d91ef52fc2c1fa9af3cbf0656b675a.svg';
 const imgHeartOff = '/figma-assets/a4218a712707605dca77ea94d626a12e7752a2f9.svg';
 const imgStar = '/figma-assets/e5661ff90a08d0ef498b4a8e0cbcf128d63d8c4e.svg';
@@ -13,7 +12,6 @@ const imgLine = '/figma-assets/e9e84de87b7ae2588d34219b769e2fb5daf39c0e.svg';
 const imgRibbonBowVector = '/figma-assets/0626f56c437e6b6a4a08e8852fff1b424c74934c.svg';
 const imgInstagram = '/figma-assets/8d964f5cb081cbd1713fd967e91ab8637a48771b.svg';
 const imgMusic = '/figma-assets/bad5b028c25c88ade4fa563979c8b804247d22b8.svg';
-const imgCircleX1 = '/figma-assets/308ef628d1b5e18cac6185631e5e1b57d6dfdf25.svg';
 
 export default function Product() {
   const { id } = useParams<{ id: string }>();
@@ -41,33 +39,16 @@ export default function Product() {
   const [isWishlisted, setIsWishlisted] = useState(false);
   const [addedNotice, setAddedNotice] = useState(false);
 
-  // Related products from Figma design
-  const relatedProducts = [
-    {
-      id: 'lavender-dreams',
-      name: 'Lavender Dreams',
-      price: '₹1,149',
-      img: '/figma-assets/aac1d8d4d024ee6d6c049df2d059dfd80fda2226.png',
-    },
-    {
-      id: 'daisy-chain-bag-charm',
-      name: 'Daisy Chain',
-      price: '₹1,249',
-      img: '/figma-assets/c985c36ff39bdb6b9a8d2827b0a9f08ad612b3b1.png',
-    },
-    {
-      id: 'velvet-bow-charm',
-      name: 'Velvet Bow',
-      price: '₹1,099',
-      img: '/figma-assets/e8a9f4c7977ea3291af5fdf421b0c3f7801f21ed.png',
-    },
-    {
-      id: 'pearl-blossom-charm',
-      name: 'Pearl Blossom',
-      price: '₹1,349',
-      img: '/figma-assets/87b1093b8bc8eafb7fbcb5d50ec202299799a5b5.png',
-    },
-  ];
+  const relatedProducts = useMemo(() => {
+    const others = products.filter((p) => p.id !== product.id);
+    const list = others.length > 0 ? others : products;
+    return list.slice(0, 4).map((p) => ({
+      id: p.id,
+      name: p.name,
+      price: `₹${p.discountedPrice ?? p.price}`,
+      img: p.img,
+    }));
+  }, [products, product.id]);
 
   const handleAddToCart = () => {
     add(product, qty);
@@ -96,42 +77,6 @@ export default function Product() {
         data-node-id="9:180"
         data-name="paper-center-panel"
       >
-        {/* Flourish: Top Left */}
-        <div
-          className="absolute -top-1.5 -left-1.5 opacity-85 size-6 pointer-events-none z-10"
-          data-node-id="9:181"
-          data-name="flourish-top-left"
-        >
-          <img alt="" className="size-full block" src={imgCircleX} />
-        </div>
-
-        {/* Flourish: Top Right */}
-        <div
-          className="absolute -top-1.5 -right-1.5 opacity-85 size-6 rotate-90 pointer-events-none z-10"
-          data-node-id="9:184"
-          data-name="flourish-top-right"
-        >
-          <img alt="" className="size-full block" src={imgCircleX} />
-        </div>
-
-        {/* Flourish: Bottom Left */}
-        <div
-          className="absolute -bottom-1.5 -left-1.5 opacity-85 size-6 rotate-180 pointer-events-none z-10"
-          data-node-id="9:187"
-          data-name="flourish-bottom-left"
-        >
-          <img alt="" className="size-full block" src={imgCircleX} />
-        </div>
-
-        {/* Flourish: Bottom Right */}
-        <div
-          className="absolute -bottom-1.5 -right-1.5 opacity-85 size-6 -rotate-90 pointer-events-none z-10"
-          data-node-id="9:190"
-          data-name="flourish-bottom-right"
-        >
-          <img alt="" className="size-full block" src={imgCircleX} />
-        </div>
-
         {/* ── TOP NAVBAR ── */}
         <header
           className="border-b border-[#6b1a2a]/10 pb-3 flex items-center justify-between w-full"
@@ -547,7 +492,9 @@ export default function Product() {
               className="bg-[#f9d5e5] rounded-full size-9 flex items-center justify-center hover:scale-110 transition-transform"
               aria-label="Pinterest"
             >
-              <img alt="Pinterest" className="size-4 block" src={imgCircleX1} />
+              <svg className="size-4 fill-[#6b1a2a]" viewBox="0 0 24 24">
+                <path d="M12 0C5.373 0 0 5.373 0 12c0 5.084 3.163 9.426 7.627 11.174-.105-.949-.2-2.405.042-3.441.218-.937 1.407-5.965 1.407-5.965s-.359-.719-.359-1.782c0-1.668.967-2.914 2.171-2.914 1.023 0 1.518.769 1.518 1.69 0 1.029-.655 2.568-.994 3.995-.283 1.194.599 2.169 1.777 2.169 2.133 0 3.772-2.249 3.772-5.495 0-2.873-2.064-4.882-5.012-4.882-3.414 0-5.418 2.561-5.418 5.207 0 1.031.397 2.138.893 2.738.098.119.112.224.083.345-.09.375-.291 1.199-.334 1.365-.053.225-.172.271-.401.165-1.495-.69-2.433-2.878-2.433-4.646 0-3.776 2.748-7.252 7.92-7.252 4.158 0 7.392 2.967 7.392 6.923 0 4.135-2.607 7.462-6.233 7.462-1.214 0-2.354-.629-2.758-1.379l-.749 2.848c-.269 1.045-1.004 2.352-1.498 3.146 1.123.345 2.306.535 3.546.535 6.627 0 12-5.373 12-12 0-6.627-5.373-12-12-12z" />
+              </svg>
             </a>
           </div>
 

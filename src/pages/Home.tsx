@@ -6,13 +6,9 @@ const imgPetalisseHomepage = '/figma-assets/772e8e7b4c0d39ad6752261452ccca607e71
 const imgRectangle = '/figma-assets/2416c5a3da640dcea42f85f7a71067eac0c58ca9.png';
 const imgRectangle1 = '/figma-assets/2b39a24648f5a21e9e527dfe97992fd042715209.png';
 const imgRectangle2 = '/figma-assets/1908ddbd2af05246c15d1de98d9563a4801070c0.png';
-const imgCircleX = '/figma-assets/7b642d06d625e4424c2227fba19b230bf5e9e625.svg';
 const imgRose = '/figma-assets/6651ea04a82113b00c24d2d807dd1e8a69558b14.svg';
-const imgRibbonDecor = '/figma-assets/83e3dbead479064a1491bf2ee2e2870b124ffba7.svg';
 const imgLine = '/figma-assets/cc59bfc996c199663b36f3ef980785829799417a.svg';
-const imgCircleX1 = '/figma-assets/30497267791ed37c1ad211ab632d1b7ec2782774.svg';
 const imgInstagram = '/figma-assets/61242fa42cf1591147b709b00c26b1201880564e.svg';
-const imgCircleX2 = '/figma-assets/bcd9a84b032010459db4a52a7f22c54922a3c2d4.svg';
 
 export default function Home() {
   const { add } = useCart();
@@ -38,42 +34,6 @@ export default function Home() {
         data-node-id="2:122"
         data-name="paper-center-panel"
       >
-        {/* Flourish: Top Left */}
-        <div
-          className="absolute -top-1.5 -left-1.5 opacity-85 size-6 pointer-events-none z-10"
-          data-node-id="2:123"
-          data-name="flourish-top-left"
-        >
-          <img alt="" className="size-full block" src={imgCircleX} />
-        </div>
-
-        {/* Flourish: Top Right */}
-        <div
-          className="absolute -top-1.5 -right-1.5 opacity-85 size-6 rotate-90 pointer-events-none z-10"
-          data-node-id="2:126"
-          data-name="flourish-top-right"
-        >
-          <img alt="" className="size-full block" src={imgCircleX} />
-        </div>
-
-        {/* Flourish: Bottom Left */}
-        <div
-          className="absolute -bottom-1.5 -left-1.5 opacity-85 size-6 rotate-180 pointer-events-none z-10"
-          data-node-id="2:209"
-          data-name="flourish-bottom-left"
-        >
-          <img alt="" className="size-full block" src={imgCircleX} />
-        </div>
-
-        {/* Flourish: Bottom Right */}
-        <div
-          className="absolute -bottom-1.5 -right-1.5 opacity-85 size-6 -rotate-90 pointer-events-none z-10"
-          data-node-id="2:212"
-          data-name="flourish-bottom-right"
-        >
-          <img alt="" className="size-full block" src={imgCircleX} />
-        </div>
-
         {/* ── HERO SECTION ── */}
         <section
           className="flex flex-col items-center gap-3 pt-2 pb-1 text-center relative"
@@ -97,21 +57,12 @@ export default function Home() {
             Petalisse
           </h1>
 
-          {/* Ribbon Decor */}
-          <div
-            className="h-4 w-[120px] my-0.5 relative flex items-center justify-center"
-            data-node-id="2:134"
-            data-name="ribbon-decor"
-          >
-            <img alt="" className="h-full w-auto max-w-none block" src={imgRibbonDecor} />
-          </div>
-
           {/* Tagline */}
           <p
-            className="font-parisienne text-[#8b827d] text-2xl sm:text-[22px] leading-snug"
+            className="font-handsome text-[#8b827d] text-2xl sm:text-[23px] leading-snug tracking-wide"
             data-node-id="2:139"
           >
-            {siteContent.heroTagline || 'Made slowly. Loved endlessly.'}
+            {siteContent.heroTagline || 'Made slowly, loved endlessly'}
           </p>
 
           {/* Shop Now Button */}
@@ -316,15 +267,68 @@ export default function Home() {
           </div>
         </section>
 
-        {/* ── ABOUT SECTION (PINK CARD) ── */}
+        {/* ── PROMO BANNER SECTION (LIVE CMS) ── */}
+        {(siteContent.promoBannerText || siteContent.promoBannerUrl) && (
+          <section className="relative overflow-hidden rounded-[20px] border border-[#6b1a2a]/10 bg-gradient-to-br from-[#FAF0ED] to-[#FDF5F2] p-5 shadow-xs">
+            {siteContent.promoBannerUrl && (
+              <div className="w-full h-36 rounded-xl overflow-hidden mb-3 border border-[#6b1a2a]/10">
+                <img
+                  src={siteContent.promoBannerUrl}
+                  alt={siteContent.promoBannerText || 'Promo Banner'}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+            )}
+            <div className="flex flex-col gap-1.5 text-center">
+              <span className="font-cormorant font-bold text-[#6b1a2a] text-lg uppercase tracking-wider">
+                {siteContent.promoBannerText || 'Crafted for the Dreamers & Collectors'}
+              </span>
+              <p className="font-cormorant text-[#8b827d] text-xs leading-relaxed">
+                {siteContent.promoBannerSubtext || 'Each charm carries its own gentle story, sculpted by hand with delicate intention and finished with artisanal ribbon.'}
+              </p>
+              <div className="mt-2 flex justify-center">
+                <Link
+                  to="/shop"
+                  className="inline-flex items-center text-[11px] font-cormorant font-bold tracking-widest uppercase text-white bg-[#6b1a2a] px-4 py-1.5 rounded-full hover:bg-[#50131f] transition-all"
+                >
+                  Explore Collection &rarr;
+                </Link>
+              </div>
+            </div>
+          </section>
+        )}
+
+        {/* ── CRAFTSMANSHIP SPOTLIGHT (LIVE CMS) ── */}
+        <section className="flex flex-col gap-3 w-full bg-[#FAF5F0] rounded-[20px] p-5 border border-[#6b1a2a]/10">
+          <div className="text-center">
+            <h3 className="font-parisienne text-[#6b1a2a] text-3xl">
+              {siteContent.craftsmanshipTitle || 'Artisanal Care in Every Petal'}
+            </h3>
+            <p className="font-cormorant text-[#8b827d] text-xs mt-1 leading-relaxed">
+              {siteContent.craftsmanshipText || 'Every bead is hand-knotted, every bow hand-tied, and every clay blossom sculpted one petal at a time in our sunlit boutique atelier.'}
+            </p>
+          </div>
+          {siteContent.fabricItems && siteContent.fabricItems.length > 0 && (
+            <div className="grid grid-cols-3 gap-2 mt-2">
+              {siteContent.fabricItems.map((item, idx) => (
+                <div key={idx} className="bg-white rounded-xl p-2 text-center border border-[#6b1a2a]/10 flex flex-col items-center">
+                  <div className="w-10 h-10 rounded-full overflow-hidden mb-1.5 border border-[#6b1a2a]/10 bg-[#FAF5F0]">
+                    <img src={item.img} alt={item.title} className="w-full h-full object-cover" />
+                  </div>
+                  <span className="font-cormorant font-bold text-[#6b1a2a] text-[11px] leading-tight line-clamp-1">{item.title}</span>
+                  <span className="font-cormorant text-[#8b827d] text-[10px] leading-tight line-clamp-2 mt-0.5">{item.desc}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+
+        {/* ── ABOUT SECTION (BLUE CARD) ── */}
         <section
-          className="bg-[#f9d5e5] border border-[rgba(107,26,42,0.1)] rounded-[20px] p-6 flex flex-col gap-3 items-center text-center"
+          className="bg-[#e6f0fa] border border-[#aec6e4]/60 rounded-[20px] p-6 flex flex-col gap-3 items-center text-center"
           data-node-id="2:186"
           data-name="about-section"
         >
-          <div className="size-5 shrink-0 opacity-80" data-node-id="2:187" data-name="circle-x">
-            <img alt="" className="size-full block" src={imgCircleX1} />
-          </div>
           <h3
             className="font-cormorant font-semibold text-[#6b1a2a] text-lg leading-snug"
             data-node-id="2:189"
@@ -404,7 +408,9 @@ export default function Home() {
               data-name="social-icon-pinterest"
               aria-label="Pinterest"
             >
-              <img alt="Pinterest" className="size-4 block" src={imgCircleX2} />
+              <svg className="size-4 fill-[#6b1a2a]" viewBox="0 0 24 24">
+                <path d="M12 0C5.373 0 0 5.373 0 12c0 5.084 3.163 9.426 7.627 11.174-.105-.949-.2-2.405.042-3.441.218-.937 1.407-5.965 1.407-5.965s-.359-.719-.359-1.782c0-1.668.967-2.914 2.171-2.914 1.023 0 1.518.769 1.518 1.69 0 1.029-.655 2.568-.994 3.995-.283 1.194.599 2.169 1.777 2.169 2.133 0 3.772-2.249 3.772-5.495 0-2.873-2.064-4.882-5.012-4.882-3.414 0-5.418 2.561-5.418 5.207 0 1.031.397 2.138.893 2.738.098.119.112.224.083.345-.09.375-.291 1.199-.334 1.365-.053.225-.172.271-.401.165-1.495-.69-2.433-2.878-2.433-4.646 0-3.776 2.748-7.252 7.92-7.252 4.158 0 7.392 2.967 7.392 6.923 0 4.135-2.607 7.462-6.233 7.462-1.214 0-2.354-.629-2.758-1.379l-.749 2.848c-.269 1.045-1.004 2.352-1.498 3.146 1.123.345 2.306.535 3.546.535 6.627 0 12-5.373 12-12 0-6.627-5.373-12-12-12z" />
+              </svg>
             </a>
             <a
               href="https://tiktok.com"
@@ -414,7 +420,9 @@ export default function Home() {
               data-name="social-icon-tiktok"
               aria-label="TikTok"
             >
-              <img alt="TikTok" className="size-4 block" src={imgCircleX2} />
+              <svg className="size-4 fill-[#6b1a2a]" viewBox="0 0 24 24">
+                <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64c.298-.002.595.042.88.13V9.4a6.33 6.33 0 0 0-.88-.06A6.34 6.34 0 0 0 3.14 15.7a6.34 6.34 0 0 0 10.86 4.43 6.27 6.27 0 0 0 1.9-4.48V8.75a8.16 8.16 0 0 0 4.79 1.54V6.85a4.85 4.85 0 0 1-1.1-.16z" />
+              </svg>
             </a>
           </div>
 

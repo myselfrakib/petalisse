@@ -5,7 +5,6 @@ import { useContent } from '../context/ContentContext';
 import { Product } from '../types';
 
 const imgGinghamBg = '/figma-assets/772e8e7b4c0d39ad6752261452ccca607e718dc3.png';
-const imgCircleX = '/figma-assets/7b642d06d625e4424c2227fba19b230bf5e9e625.svg';
 const imgChevronLeft = '/figma-assets/de70edd513d91ef52fc2c1fa9af3cbf0656b675a.svg';
 const imgShoppingBag = '/figma-assets/8aab77e6404936a9df121d7028258a27c83ee8b7.svg';
 const imgHeart = '/figma-assets/31e27e08eda6d57eca61746b58532f5771b76653.svg';
@@ -78,42 +77,6 @@ export default function Shop() {
         data-node-id="2:217"
         data-name="paper-center-panel"
       >
-        {/* Flourish: Top Left */}
-        <div
-          className="absolute -top-1.5 -left-1.5 opacity-85 size-6 pointer-events-none z-10"
-          data-node-id="2:218"
-          data-name="flourish-top-left"
-        >
-          <img alt="" className="size-full block" src={imgCircleX} />
-        </div>
-
-        {/* Flourish: Top Right */}
-        <div
-          className="absolute -top-1.5 -right-1.5 opacity-85 size-6 rotate-90 pointer-events-none z-10"
-          data-node-id="2:221"
-          data-name="flourish-top-right"
-        >
-          <img alt="" className="size-full block" src={imgCircleX} />
-        </div>
-
-        {/* Flourish: Bottom Left */}
-        <div
-          className="absolute -bottom-1.5 -left-1.5 opacity-85 size-6 rotate-180 pointer-events-none z-10"
-          data-node-id="2:348"
-          data-name="flourish-bottom-left"
-        >
-          <img alt="" className="size-full block" src={imgCircleX} />
-        </div>
-
-        {/* Flourish: Bottom Right */}
-        <div
-          className="absolute -bottom-1.5 -right-1.5 opacity-85 size-6 -rotate-90 pointer-events-none z-10"
-          data-node-id="2:351"
-          data-name="flourish-bottom-right"
-        >
-          <img alt="" className="size-full block" src={imgCircleX} />
-        </div>
-
         {/* ── TOP NAVBAR ── */}
         <header
           className="border-b border-[#6b1a2a]/10 pb-3 flex items-center justify-between w-full"
@@ -289,7 +252,7 @@ export default function Shop() {
 
         {/* ── FABRIC PROMO BANNER ── */}
         <div
-          className="bg-[#f9d5e5] border-2 border-[#e28fa9] border-dashed rounded-[16px] px-4 py-3.5 flex gap-3 items-center justify-center text-[#6b1a2a] w-full"
+          className="bg-[#e6f0fa] border-2 border-[#aec6e4] border-dashed rounded-[16px] px-4 py-3.5 flex gap-3 items-center justify-center text-[#6b1a2a] w-full"
           data-node-id="2:327"
           data-name="fabric-promo-banner"
         >

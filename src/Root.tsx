@@ -95,15 +95,19 @@ export default function Root() {
               </button>
             )}
 
-            {/* Admin Link if Admin or in dev */}
-            {isAdmin && (
-              <Link
-                to="/admin"
-                className="px-2 py-0.5 rounded-md bg-[#8E5B59]/10 text-[#8E5B59] text-xs font-semibold uppercase tracking-wider hover:bg-[#8E5B59]/20 transition"
-              >
-                Admin Panel
-              </Link>
-            )}
+            {/* Admin Console Link */}
+            <Link
+              to="/admin"
+              className={`px-2.5 py-1 rounded-full text-xs font-semibold uppercase tracking-wider transition flex items-center gap-1.5 ${
+                isAdmin
+                  ? 'bg-[#8E5B59] text-white hover:bg-[#784A48] shadow-xs'
+                  : 'bg-[#8E5B59]/10 text-[#8E5B59] hover:bg-[#8E5B59]/20'
+              }`}
+              title="Open Admin Management Console"
+            >
+              <span>⚙️</span>
+              <span>{isAdmin ? 'Admin Console' : 'Admin'}</span>
+            </Link>
 
             {/* Cart Icon */}
             <Link

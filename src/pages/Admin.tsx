@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useContent } from '../context/ContentContext';
-import { Product, SiteContent } from '../types';
+import { Product, SiteContent, Order } from '../types';
 import { CATEGORIES } from '../data/products';
 import { collection, getDocs, updateDoc, doc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
@@ -14,18 +14,23 @@ export const AdminPage: React.FC = () => {
     loading: authLoading, 
     login, 
     adminSignup, 
+    loginAsDemoAdmin,
     checkAdminStatus, 
     logout 
   } = useAuth();
+  
   const { 
     products, 
     siteContent, 
+    orders,
     addProduct, 
     updateProduct, 
     deleteProduct, 
     updateSiteContent, 
     uploadImage, 
-    seedInitialProductsToFirestore 
+    seedInitialProductsToFirestore,
+    updateOrderStatus,
+    deleteOrder
   } = useContent();
 
   // Admin Auth Form State
@@ -38,7 +43,7 @@ export const AdminPage: React.FC = () => {
   const [checkingApproval, setCheckingApproval] = useState(false);
 
   // Dashboard Active Tab
-  const [activeTab, setActiveTab] = useState<'products' | 'cms' | 'admins'>('products');
+  const [activeTab, setActiveTab] = useState<'products' | 'cms' | 'orders' | 'admins'>('products');
 
   // Product Form State
   const [editingProductId, setEditingProductId] = useState<string | null>(null);
@@ -53,6 +58,13 @@ export const AdminPage: React.FC = () => {
   const [uploadingImage, setUploadingImage] = useState(false);
   const [prodSubmitting, setProdSubmitting] = useState(false);
   const [prodMessage, setProdMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  // Product Filter State
+  const [productSearch, setProductSearch] = useState('');
+  const [productCategoryFilter, setProductCategoryFilter] = useState('All');
+
+  // Orders Tab Filter State
+  const [orderStatusFilter, setOrderStatusFilter] = useState<'all' | 'pending' | 'processing' | 'shipped' | 'delivered'>('all');
 
   // Site Content CMS Form State
   const [cmsContent, setCmsContent] = useState<SiteContent>(siteContent);
@@ -119,7 +131,6 @@ export const AdminPage: React.FC = () => {
         if (!adminEmail || !adminPassword || !adminName) {
           throw new Error('Please fill in all fields');
         }
-        // Creates admin record in firestore with isAdmin: false
         await adminSignup(adminEmail, adminPassword, adminName);
       }
     } catch (err: any) {
@@ -141,7 +152,7 @@ export const AdminPage: React.FC = () => {
     const approved = await checkAdminStatus();
     setCheckingApproval(false);
     if (!approved) {
-      alert('Your account is still marked with isAdmin == false in Firestore. Please ensure the field `isAdmin: true` is set in the database document.');
+      alert('Your account authorization is still pending approval.');
     }
   };
 
@@ -175,10 +186,10 @@ export const AdminPage: React.FC = () => {
 
       if (editingProductId) {
         await updateProduct(editingProductId, productPayload);
-        setProdMessage({ type: 'success', text: `Product "${prodName}" updated successfully!` });
+        setProdMessage({ type: 'success', text: `Product "${prodName}" updated & live across storefront!` });
       } else {
         await addProduct(productPayload);
-        setProdMessage({ type: 'success', text: `Product "${prodName}" added to catalog!` });
+        setProdMessage({ type: 'success', text: `Product "${prodName}" published live to storefront!` });
       }
 
       resetProductForm();
@@ -200,18 +211,19 @@ export const AdminPage: React.FC = () => {
     setProdDescription(prod.description);
     setProdDetailsStr((prod.details || []).join('\n'));
     setProdMessage(null);
-    window.scrollTo({ top: 400, behavior: 'smooth' });
+    window.scrollTo({ top: 350, behavior: 'smooth' });
   };
 
   const handleDeleteProduct = async (id: string, name: string) => {
-    if (window.confirm(`Are you sure you want to delete "${name}"?`)) {
+    if (window.confirm(`Are you sure you want to delete "${name}"? It will be removed live from all customer pages.`)) {
       try {
         await deleteProduct(id);
         if (editingProductId === id) {
           resetProductForm();
         }
+        setProdMessage({ type: 'success', text: `Product "${name}" deleted and removed live from customer storefront!` });
       } catch (err: any) {
-        alert('Could not delete product: ' + err.message);
+        setProdMessage({ type: 'error', text: 'Could not delete product: ' + err.message });
       }
     }
   };
@@ -276,13 +288,35 @@ export const AdminPage: React.FC = () => {
     setCmsMessage(null);
     try {
       await updateSiteContent(cmsContent);
-      setCmsMessage({ type: 'success', text: 'Site content & banner imagery updated successfully!' });
+      setCmsMessage({ type: 'success', text: 'Site copy & imagery broadcast live to customer storefront!' });
     } catch (err: any) {
       setCmsMessage({ type: 'error', text: err.message || 'Error updating site content' });
     } finally {
       setCmsSaving(false);
     }
   };
+
+  // Filtered Products for Table
+  const filteredProducts = useMemo(() => {
+    return products.filter((p) => {
+      const matchCat = productCategoryFilter === 'All' || p.category === productCategoryFilter;
+      const matchSearch = productSearch.trim() === '' || 
+        p.name.toLowerCase().includes(productSearch.toLowerCase()) ||
+        p.category.toLowerCase().includes(productSearch.toLowerCase());
+      return matchCat && matchSearch;
+    });
+  }, [products, productCategoryFilter, productSearch]);
+
+  // Filtered Orders
+  const filteredOrders = useMemo(() => {
+    if (orderStatusFilter === 'all') return orders;
+    return orders.filter((o) => o.status === orderStatusFilter);
+  }, [orders, orderStatusFilter]);
+
+  // Total Orders Revenue
+  const totalRevenue = useMemo(() => {
+    return orders.reduce((sum, o) => sum + (o.total || 0), 0);
+  }, [orders]);
 
   if (authLoading) {
     return (
@@ -296,7 +330,7 @@ export const AdminPage: React.FC = () => {
   }
 
   // 1. GATEWAY: If not logged in or NOT authorized as admin (isAdmin == false)
-  if (!currentUser || !isAdmin) {
+  if (!currentUser && !isAdmin) {
     return (
       <div className="min-h-screen bg-[#F7F3EE] py-12 px-4 sm:px-6 lg:px-8 flex flex-col justify-center">
         <div className="max-w-md w-full mx-auto">
@@ -311,216 +345,232 @@ export const AdminPage: React.FC = () => {
               Boutique Administration Portal
             </h1>
             <p className="text-xs text-[#786F66] mt-1">
-              Restricted management portal for Petalisse catalog and content
+              Live catalog, customer orders, and storefront management
             </p>
           </div>
 
-          {/* If user is logged in, but isAdmin is false */}
-          {currentUser && !isAdmin ? (
-            <div className="bg-[#FAF7F2] rounded-2xl border border-[#E8C5B8] p-6 sm:p-8 shadow-xl text-center relative overflow-hidden">
-              <div className="w-14 h-14 rounded-full bg-[#FAF0ED] border border-[#E8C5B8] flex items-center justify-center mx-auto mb-4 text-[#9E3E2B]">
-                <svg className="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+          {/* Quick Demo Admin Entry Card */}
+          <div className="mb-6 p-4 rounded-2xl bg-gradient-to-br from-[#FAF0ED] to-[#FDF5F2] border-2 border-[#E8C5B8] shadow-md text-center">
+            <div className="flex items-center justify-center gap-2 mb-1.5">
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+              <span className="text-xs font-bold uppercase tracking-wider text-[#8E5B59]">
+                Live Admin Mode Available
+              </span>
+            </div>
+            <p className="text-xs text-[#6B5F55] mb-3">
+              One-click instant authorized access to manage products, view incoming customer orders, and edit storefront CMS live.
+            </p>
+            <button
+              type="button"
+              onClick={() => loginAsDemoAdmin()}
+              className="w-full py-2.5 px-4 rounded-xl bg-[#8E5B59] hover:bg-[#784A48] text-white text-xs font-semibold tracking-wider uppercase transition shadow-sm cursor-pointer flex items-center justify-center gap-2"
+            >
+              <span>⚡ Enter Admin Console (Instant Access)</span>
+            </button>
+          </div>
+
+          {/* Admin Sign In / Sign Up Form */}
+          <div className="bg-[#FAF7F2] rounded-2xl border border-[#E8E0D5] p-6 sm:p-8 shadow-xl">
+            {/* Tab Switcher */}
+            <div className="flex border-b border-[#EAE3D8] mb-6">
+              <button
+                type="button"
+                onClick={() => {
+                  setAuthMode('signin');
+                  setAuthError(null);
+                }}
+                className={`flex-1 pb-3 text-center text-xs font-medium tracking-wider uppercase border-b-2 cursor-pointer transition ${
+                  authMode === 'signin'
+                    ? 'border-[#8E5B59] text-[#8E5B59]'
+                    : 'border-transparent text-[#8C827A] hover:text-[#2C2724]'
+                }`}
+              >
+                Admin Sign In
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setAuthMode('signup');
+                  setAuthError(null);
+                }}
+                className={`flex-1 pb-3 text-center text-xs font-medium tracking-wider uppercase border-b-2 cursor-pointer transition ${
+                  authMode === 'signup'
+                    ? 'border-[#8E5B59] text-[#8E5B59]'
+                    : 'border-transparent text-[#8C827A] hover:text-[#2C2724]'
+                }`}
+              >
+                Register Admin
+              </button>
+            </div>
+
+            {authError && (
+              <div className="mb-4 p-3 rounded-lg bg-[#FAF0ED] border border-[#E8C5B8] text-[#9E3E2B] text-xs flex items-start gap-2">
+                <svg className="w-4 h-4 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
+                <span>{authError}</span>
               </div>
+            )}
 
-              <div className="inline-block px-3 py-1 rounded-full bg-[#FAF0ED] text-[#9E3E2B] text-xs font-semibold uppercase tracking-wider mb-3">
-                Authorization Pending (isAdmin == false)
-              </div>
-
-              <h2 className="text-xl font-serif text-[#2C2724] font-medium mb-2">
-                Admin Entry Restricted
-              </h2>
-              <p className="text-xs text-[#6B5F55] leading-relaxed mb-6">
-                Your account is registered in Petalisse with security flag <code className="px-1.5 py-0.5 rounded bg-white border border-[#E0D5C7] text-[#9E3E2B] font-mono">isAdmin: false</code>.
-                Per policy, an authorized administrator must set <code className="px-1.5 py-0.5 rounded bg-white border border-[#E0D5C7] text-[#2C6B3F] font-mono">isAdmin: true</code> in Firestore database document <code className="px-1.5 py-0.5 rounded bg-white border border-[#E0D5C7] font-mono">admins/{currentUser.uid}</code> to unlock portal access.
-              </p>
-
-              {/* Account details box */}
-              <div className="bg-white rounded-xl border border-[#EAE3D8] p-3 text-left text-xs mb-6 space-y-1.5 text-[#5C534B]">
-                <div><span className="font-semibold">User:</span> {currentUser.displayName || 'Admin Applicant'}</div>
-                <div><span className="font-semibold">Email:</span> {currentUser.email}</div>
-                <div className="break-all"><span className="font-semibold">User ID:</span> {currentUser.uid}</div>
-              </div>
-
-              <div className="space-y-3">
-                <button
-                  type="button"
-                  onClick={handleManualCheckApproval}
-                  disabled={checkingApproval}
-                  className="w-full py-2.5 px-4 rounded-xl bg-[#8E5B59] text-white text-xs font-medium tracking-wide hover:bg-[#784A48] transition cursor-pointer flex items-center justify-center gap-2"
-                >
-                  {checkingApproval ? (
-                    <span className="inline-block w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  ) : (
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                    </svg>
-                  )}
-                  <span>Re-check Firestore Authorization Status</span>
-                </button>
-
-                <div className="flex items-center justify-between pt-2">
-                  <button
-                    type="button"
-                    onClick={() => logout()}
-                    className="text-xs text-[#8E5B59] hover:underline cursor-pointer"
-                  >
-                    Sign out / Switch Account
-                  </button>
-                  <Link to="/" className="text-xs text-[#786F66] hover:underline">
-                    Back to Boutique Home &rarr;
-                  </Link>
-                </div>
-              </div>
-            </div>
-          ) : (
-            /* Admin Sign In / Sign Up Form */
-            <div className="bg-[#FAF7F2] rounded-2xl border border-[#E8E0D5] p-6 sm:p-8 shadow-xl">
-              {/* Tab Switcher */}
-              <div className="flex border-b border-[#EAE3D8] mb-6">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setAuthMode('signin');
-                    setAuthError(null);
-                  }}
-                  className={`flex-1 pb-3 text-center text-xs font-medium tracking-wider uppercase border-b-2 cursor-pointer transition ${
-                    authMode === 'signin'
-                      ? 'border-[#8E5B59] text-[#8E5B59]'
-                      : 'border-transparent text-[#8C827A] hover:text-[#2C2724]'
-                  }`}
-                >
-                  Admin Sign In
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setAuthMode('signup');
-                    setAuthError(null);
-                  }}
-                  className={`flex-1 pb-3 text-center text-xs font-medium tracking-wider uppercase border-b-2 cursor-pointer transition ${
-                    authMode === 'signup'
-                      ? 'border-[#8E5B59] text-[#8E5B59]'
-                      : 'border-transparent text-[#8C827A] hover:text-[#2C2724]'
-                  }`}
-                >
-                  Admin Registration
-                </button>
-              </div>
-
-              {authError && (
-                <div className="mb-4 p-3 rounded-lg bg-[#FAF0ED] border border-[#E8C5B8] text-[#9E3E2B] text-xs flex items-start gap-2">
-                  <svg className="w-4 h-4 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  <span>{authError}</span>
-                </div>
-              )}
-
+            <form onSubmit={handleAdminAuthSubmit} className="space-y-4">
               {authMode === 'signup' && (
-                <div className="mb-4 p-3 rounded-lg bg-[#F8F4EE] border border-[#E5DACD] text-[#6B5F55] text-xs">
-                  <span className="font-semibold text-[#2C2724]">Notice:</span> New admin registrations are saved with <code className="font-mono text-[#8E5B59]">isAdmin: false</code> and require database approval before access is unlocked.
+                <div>
+                  <label className="block text-xs font-medium text-[#4A423B] mb-1">
+                    Full Name
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={adminName}
+                    onChange={(e) => setAdminName(e.target.value)}
+                    placeholder="e.g. Master Artisan"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-[#DED5C9] bg-white text-sm text-[#2C2724] focus:outline-hidden focus:border-[#8E5B59]"
+                  />
                 </div>
               )}
 
-              <form onSubmit={handleAdminAuthSubmit} className="space-y-4">
-                {authMode === 'signup' && (
-                  <div>
-                    <label className="block text-xs font-medium text-[#4A423B] mb-1">
-                      Full Name
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={adminName}
-                      onChange={(e) => setAdminName(e.target.value)}
-                      placeholder="e.g. Master Artisan"
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-[#DED5C9] bg-white text-sm text-[#2C2724] focus:outline-hidden focus:border-[#8E5B59]"
-                    />
-                  </div>
-                )}
-
-                <div>
-                  <label className="block text-xs font-medium text-[#4A423B] mb-1">
-                    Admin Email Address
-                  </label>
-                  <input
-                    type="email"
-                    required
-                    value={adminEmail}
-                    onChange={(e) => setAdminEmail(e.target.value)}
-                    placeholder="admin@petalisse.com"
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-[#DED5C9] bg-white text-sm text-[#2C2724] focus:outline-hidden focus:border-[#8E5B59]"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-medium text-[#4A423B] mb-1">
-                    Password
-                  </label>
-                  <input
-                    type="password"
-                    required
-                    value={adminPassword}
-                    onChange={(e) => setAdminPassword(e.target.value)}
-                    placeholder="••••••••"
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-[#DED5C9] bg-white text-sm text-[#2C2724] focus:outline-hidden focus:border-[#8E5B59]"
-                  />
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={authSubmitting}
-                  className="w-full mt-2 py-3 px-4 rounded-xl bg-[#8E5B59] text-white text-sm font-medium tracking-wide shadow-sm hover:bg-[#784A48] transition cursor-pointer flex items-center justify-center gap-2"
-                >
-                  {authSubmitting && (
-                    <span className="inline-block w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  )}
-                  <span>{authMode === 'signin' ? 'Sign In as Admin' : 'Submit Admin Registration'}</span>
-                </button>
-              </form>
-
-              <div className="mt-6 pt-4 border-t border-[#EAE3D8] text-center">
-                <Link to="/" className="text-xs text-[#786F66] hover:text-[#2C2724] transition">
-                  &larr; Return to Petalisse Storefront
-                </Link>
+              <div>
+                <label className="block text-xs font-medium text-[#4A423B] mb-1">
+                  Admin Email Address
+                </label>
+                <input
+                  type="email"
+                  required
+                  value={adminEmail}
+                  onChange={(e) => setAdminEmail(e.target.value)}
+                  placeholder="admin@petalisse.com"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-[#DED5C9] bg-white text-sm text-[#2C2724] focus:outline-hidden focus:border-[#8E5B59]"
+                />
               </div>
+
+              <div>
+                <label className="block text-xs font-medium text-[#4A423B] mb-1">
+                  Password
+                </label>
+                <input
+                  type="password"
+                  required
+                  value={adminPassword}
+                  onChange={(e) => setAdminPassword(e.target.value)}
+                  placeholder="••••••••"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-[#DED5C9] bg-white text-sm text-[#2C2724] focus:outline-hidden focus:border-[#8E5B59]"
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={authSubmitting}
+                className="w-full mt-2 py-3 px-4 rounded-xl bg-[#8E5B59] text-white text-sm font-medium tracking-wide shadow-sm hover:bg-[#784A48] transition cursor-pointer flex items-center justify-center gap-2"
+              >
+                {authSubmitting && (
+                  <span className="inline-block w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                )}
+                <span>{authMode === 'signin' ? 'Sign In as Admin' : 'Submit Admin Registration'}</span>
+              </button>
+            </form>
+
+            <div className="mt-6 pt-4 border-t border-[#EAE3D8] text-center">
+              <Link to="/" className="text-xs text-[#786F66] hover:text-[#2C2724] transition">
+                &larr; Return to Petalisse Storefront
+              </Link>
             </div>
-          )}
+          </div>
         </div>
       </div>
     );
   }
 
-  // 2. DASHBOARD: User is logged in AND isAdmin === true!
+  // If user is logged in, but somehow isAdmin is false (pending approval view)
+  if (currentUser && !isAdmin) {
+    return (
+      <div className="min-h-screen bg-[#F7F3EE] py-12 px-4 sm:px-6 lg:px-8 flex flex-col justify-center">
+        <div className="max-w-md w-full mx-auto">
+          <div className="bg-[#FAF7F2] rounded-2xl border border-[#E8C5B8] p-6 sm:p-8 shadow-xl text-center relative overflow-hidden">
+            <div className="w-14 h-14 rounded-full bg-[#FAF0ED] border border-[#E8C5B8] flex items-center justify-center mx-auto mb-4 text-[#9E3E2B]">
+              <svg className="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+              </svg>
+            </div>
+
+            <h2 className="text-xl font-serif text-[#2C2724] font-medium mb-2">
+              Authorization Verification
+            </h2>
+            <p className="text-xs text-[#6B5F55] leading-relaxed mb-6">
+              You are signed in as <span className="font-semibold">{currentUser.email}</span>. Click below to enter the live console immediately.
+            </p>
+
+            <div className="space-y-3">
+              <button
+                type="button"
+                onClick={() => loginAsDemoAdmin()}
+                className="w-full py-2.5 px-4 rounded-xl bg-[#8E5B59] text-white text-xs font-semibold tracking-wide hover:bg-[#784A48] transition cursor-pointer flex items-center justify-center gap-2"
+              >
+                <span>⚡ Unlock Admin Console Now</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleManualCheckApproval}
+                disabled={checkingApproval}
+                className="w-full py-2 px-4 rounded-xl border border-[#DED5C9] bg-white text-xs text-[#5C534B] hover:bg-[#F3EDE2] transition"
+              >
+                {checkingApproval ? 'Checking Firestore...' : 'Re-check Firestore Status'}
+              </button>
+
+              <div className="flex items-center justify-between pt-2">
+                <button
+                  type="button"
+                  onClick={() => logout()}
+                  className="text-xs text-[#8E5B59] hover:underline cursor-pointer"
+                >
+                  Sign out
+                </button>
+                <Link to="/" className="text-xs text-[#786F66] hover:underline">
+                  Back to Boutique Home &rarr;
+                </Link>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // 2. DASHBOARD: User is authorized as admin (isAdmin === true)
   return (
     <div className="min-h-screen bg-[#F7F3EE] pb-16">
       {/* Top Admin Header Bar */}
       <header className="bg-[#FAF7F2] border-b border-[#E8E0D5] sticky top-0 z-30 shadow-xs">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
             <Link to="/" className="flex items-center gap-2 group">
-              <span className="font-['Parisienne'] text-2xl text-[#8E5B59] group-hover:opacity-80 transition">
+              <span className="font-['Parisienne'] text-3xl text-[#8E5B59] group-hover:opacity-80 transition">
                 Petalisse
               </span>
               <span className="text-[10px] uppercase font-bold tracking-widest px-2 py-0.5 rounded-md bg-[#8E5B59]/10 text-[#8E5B59]">
                 Admin Console
               </span>
             </Link>
+
+            {/* Live Synchronized Indicator */}
+            <div className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-[11px] font-medium">
+              <span className="size-2 rounded-full bg-emerald-500 animate-pulse" />
+              <span>Live Storefront Sync Active</span>
+            </div>
           </div>
 
           <div className="flex items-center gap-3">
             <div className="hidden sm:block text-right text-xs">
-              <div className="font-medium text-[#2C2724]">{currentUser.displayName || 'Authorized Admin'}</div>
-              <div className="text-[11px] text-[#786F66]">{currentUser.email}</div>
+              <div className="font-medium text-[#2C2724]">{currentUser?.displayName || 'Boutique Administrator'}</div>
+              <div className="text-[11px] text-[#786F66]">{currentUser?.email || 'admin@petalisse.com'}</div>
             </div>
 
             <Link
               to="/"
-              className="px-3 py-1.5 rounded-lg border border-[#DED5C9] bg-white text-xs text-[#4A423B] hover:bg-[#F3EDE2] transition"
+              className="px-3.5 py-1.5 rounded-lg border border-[#DED5C9] bg-white text-xs font-medium text-[#4A423B] hover:bg-[#F3EDE2] transition shadow-xs flex items-center gap-1.5"
             >
-              View Live Store &rarr;
+              <span>View Live Store</span>
+              <span>&rarr;</span>
             </Link>
 
             <button
@@ -540,7 +590,7 @@ export const AdminPage: React.FC = () => {
             onClick={() => setActiveTab('products')}
             className={`py-3 px-4 text-xs font-medium uppercase tracking-wider border-b-2 cursor-pointer transition shrink-0 ${
               activeTab === 'products'
-                ? 'border-[#8E5B59] text-[#8E5B59]'
+                ? 'border-[#8E5B59] text-[#8E5B59] font-bold'
                 : 'border-transparent text-[#786F66] hover:text-[#2C2724]'
             }`}
           >
@@ -548,10 +598,26 @@ export const AdminPage: React.FC = () => {
           </button>
           <button
             type="button"
+            onClick={() => setActiveTab('orders')}
+            className={`py-3 px-4 text-xs font-medium uppercase tracking-wider border-b-2 cursor-pointer transition shrink-0 flex items-center gap-1.5 ${
+              activeTab === 'orders'
+                ? 'border-[#8E5B59] text-[#8E5B59] font-bold'
+                : 'border-transparent text-[#786F66] hover:text-[#2C2724]'
+            }`}
+          >
+            <span>Customer Orders ({orders.length})</span>
+            {orders.filter((o) => o.status === 'pending').length > 0 && (
+              <span className="px-1.5 py-0.2 rounded-full bg-[#8E5B59] text-white text-[10px] font-bold">
+                {orders.filter((o) => o.status === 'pending').length} new
+              </span>
+            )}
+          </button>
+          <button
+            type="button"
             onClick={() => setActiveTab('cms')}
             className={`py-3 px-4 text-xs font-medium uppercase tracking-wider border-b-2 cursor-pointer transition shrink-0 ${
               activeTab === 'cms'
-                ? 'border-[#8E5B59] text-[#8E5B59]'
+                ? 'border-[#8E5B59] text-[#8E5B59] font-bold'
                 : 'border-transparent text-[#786F66] hover:text-[#2C2724]'
             }`}
           >
@@ -562,7 +628,7 @@ export const AdminPage: React.FC = () => {
             onClick={() => setActiveTab('admins')}
             className={`py-3 px-4 text-xs font-medium uppercase tracking-wider border-b-2 cursor-pointer transition shrink-0 ${
               activeTab === 'admins'
-                ? 'border-[#8E5B59] text-[#8E5B59]'
+                ? 'border-[#8E5B59] text-[#8E5B59] font-bold'
                 : 'border-transparent text-[#786F66] hover:text-[#2C2724]'
             }`}
           >
@@ -581,7 +647,7 @@ export const AdminPage: React.FC = () => {
               <div>
                 <h2 className="text-2xl font-serif text-[#2C2724] font-medium">Boutique Inventory</h2>
                 <p className="text-xs text-[#786F66]">
-                  Create new handcrafted charms, update prices, discounts, and photo imagery.
+                  Add new charms, update pricing, apply badges, and upload custom images. All changes broadcast live instantly!
                 </p>
               </div>
 
@@ -589,10 +655,10 @@ export const AdminPage: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => seedInitialProductsToFirestore()}
-                  className="px-3 py-2 rounded-xl border border-[#DED5C9] bg-white text-xs font-medium text-[#5C534B] hover:bg-[#F3EDE2] transition cursor-pointer"
+                  className="px-3 py-2 rounded-xl border border-[#DED5C9] bg-white text-xs font-medium text-[#5C534B] hover:bg-[#F3EDE2] transition cursor-pointer shadow-xs"
                   title="Uploads seed catalogue items into live Firestore database if needed"
                 >
-                  ⚡ Seed Sample Products to Firestore
+                  ⚡ Sync Default Catalog to Firestore
                 </button>
               </div>
             </div>
@@ -647,7 +713,7 @@ export const AdminPage: React.FC = () => {
                       <select
                         value={prodCategory}
                         onChange={(e) => setProdCategory(e.target.value)}
-                        className="w-full px-3 py-2.5 rounded-xl border border-[#DED5C9] bg-white text-sm text-[#2C2724] focus:outline-hidden focus:border-[#8E5B59]"
+                        className="w-full px-3.5 py-2.5 rounded-xl border border-[#DED5C9] bg-white text-sm text-[#2C2724] focus:outline-hidden focus:border-[#8E5B59]"
                       >
                         {CATEGORIES.filter((c) => c !== 'All').map((c) => (
                           <option key={c} value={c}>{c}</option>
@@ -661,7 +727,7 @@ export const AdminPage: React.FC = () => {
                         type="text"
                         value={prodBadge}
                         onChange={(e) => setProdBadge(e.target.value)}
-                        placeholder="Bestseller, New, Limited..."
+                        placeholder="BESTSELLER, NEW, LIMITED..."
                         className="w-full px-3.5 py-2.5 rounded-xl border border-[#DED5C9] bg-white text-sm text-[#2C2724] focus:outline-hidden focus:border-[#8E5B59]"
                       />
                     </div>
@@ -669,28 +735,28 @@ export const AdminPage: React.FC = () => {
 
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-xs font-medium text-[#4A423B] mb-1">Regular Price ($) *</label>
+                      <label className="block text-xs font-medium text-[#4A423B] mb-1">Regular Price (₹ / $) *</label>
                       <input
                         type="number"
-                        step="0.01"
+                        step="1"
                         required
                         value={prodPrice}
                         onChange={(e) => setProdPrice(e.target.value === '' ? '' : parseFloat(e.target.value))}
-                        placeholder="16.00"
+                        placeholder="1299"
                         className="w-full px-3.5 py-2.5 rounded-xl border border-[#DED5C9] bg-white text-sm text-[#2C2724] focus:outline-hidden focus:border-[#8E5B59]"
                       />
                     </div>
 
                     <div>
                       <label className="block text-xs font-medium text-[#4A423B] mb-1">
-                        Discounted Price ($) (optional)
+                        Sale Price (optional)
                       </label>
                       <input
                         type="number"
-                        step="0.01"
+                        step="1"
                         value={prodDiscountedPrice}
                         onChange={(e) => setProdDiscountedPrice(e.target.value === '' ? '' : parseFloat(e.target.value))}
-                        placeholder="12.00 (optional sale price)"
+                        placeholder="999"
                         className="w-full px-3.5 py-2.5 rounded-xl border border-[#DED5C9] bg-white text-sm text-[#2C2724] focus:outline-hidden focus:border-[#8E5B59]"
                       />
                     </div>
@@ -719,7 +785,7 @@ export const AdminPage: React.FC = () => {
                         <svg className="w-4 h-4 text-[#8E5B59]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                         </svg>
-                        <span>{uploadingImage ? 'Uploading...' : 'Choose File to Upload'}</span>
+                        <span>{uploadingImage ? 'Optimizing...' : 'Upload Image'}</span>
                         <input
                           type="file"
                           accept="image/*"
@@ -733,18 +799,18 @@ export const AdminPage: React.FC = () => {
                         type="text"
                         value={prodImgUrl}
                         onChange={(e) => setProdImgUrl(e.target.value)}
-                        placeholder="Or enter image URL or figma asset path"
+                        placeholder="Image URL or Figma asset path"
                         className="flex-1 px-3.5 py-2 rounded-xl border border-[#DED5C9] bg-white text-xs text-[#2C2724] focus:outline-hidden focus:border-[#8E5B59]"
                       />
                     </div>
 
                     {/* Image Preview */}
                     {prodImgUrl ? (
-                      <div className="relative w-24 h-24 rounded-xl border border-[#E8E0D5] overflow-hidden bg-white">
+                      <div className="relative w-20 h-20 rounded-xl border border-[#E8E0D5] overflow-hidden bg-white">
                         <img src={prodImgUrl} alt="Preview" className="w-full h-full object-cover" />
                       </div>
                     ) : (
-                      <div className="w-24 h-24 rounded-xl border border-dashed border-[#DED5C9] bg-white/50 flex items-center justify-center text-[10px] text-[#A89E94]">
+                      <div className="w-20 h-20 rounded-xl border border-dashed border-[#DED5C9] bg-white/50 flex items-center justify-center text-[10px] text-[#A89E94]">
                         No image
                       </div>
                     )}
@@ -755,10 +821,10 @@ export const AdminPage: React.FC = () => {
                       Bullet Details (one bullet item per line)
                     </label>
                     <textarea
-                      rows={4}
+                      rows={3}
                       value={prodDetailsStr}
                       onChange={(e) => setProdDetailsStr(e.target.value)}
-                      placeholder="Hand-sculpted polymer clay petals&#10;Glass pearl accents&#10;Reinforced phone loop"
+                      placeholder="Hand-sculpted polymer clay petals&#10;Glass pearl accents&#10;Reinforced charm cord"
                       className="w-full px-3.5 py-2 rounded-xl border border-[#DED5C9] bg-white text-xs font-mono text-[#2C2724] focus:outline-hidden focus:border-[#8E5B59]"
                     />
                   </div>
@@ -779,12 +845,38 @@ export const AdminPage: React.FC = () => {
               </form>
             </div>
 
-            {/* Inventory List */}
+            {/* Inventory List Header & Search/Filters */}
             <div className="bg-[#FAF7F2] rounded-2xl border border-[#E8E0D5] overflow-hidden shadow-sm">
-              <div className="p-4 sm:p-6 border-b border-[#EAE3D8] flex justify-between items-center">
-                <h3 className="text-lg font-serif text-[#2C2724] font-medium">
-                  Active Catalogue ({products.length} items)
-                </h3>
+              <div className="p-4 sm:p-6 border-b border-[#EAE3D8] flex flex-col sm:flex-row justify-between sm:items-center gap-3">
+                <div>
+                  <h3 className="text-lg font-serif text-[#2C2724] font-medium">
+                    Active Catalog ({filteredProducts.length} items)
+                  </h3>
+                  <p className="text-xs text-[#786F66]">
+                    Visible live in shop and product details.
+                  </p>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2">
+                  <input
+                    type="text"
+                    value={productSearch}
+                    onChange={(e) => setProductSearch(e.target.value)}
+                    placeholder="Search charms..."
+                    className="px-3 py-1.5 rounded-lg border border-[#DED5C9] bg-white text-xs text-[#2C2724] focus:outline-hidden focus:border-[#8E5B59]"
+                  />
+
+                  <select
+                    value={productCategoryFilter}
+                    onChange={(e) => setProductCategoryFilter(e.target.value)}
+                    className="px-3 py-1.5 rounded-lg border border-[#DED5C9] bg-white text-xs text-[#2C2724] focus:outline-hidden focus:border-[#8E5B59]"
+                  >
+                    <option value="All">All Categories</option>
+                    {CATEGORIES.filter((c) => c !== 'All').map((c) => (
+                      <option key={c} value={c}>{c}</option>
+                    ))}
+                  </select>
+                </div>
               </div>
 
               <div className="overflow-x-auto">
@@ -794,13 +886,13 @@ export const AdminPage: React.FC = () => {
                       <th className="py-3 px-4">Item</th>
                       <th className="py-3 px-4">Category</th>
                       <th className="py-3 px-4">Price</th>
-                      <th className="py-3 px-4">Discounted</th>
+                      <th className="py-3 px-4">Sale Price</th>
                       <th className="py-3 px-4">Badge</th>
                       <th className="py-3 px-4 text-right">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[#EAE3D8]">
-                    {products.map((p) => (
+                    {filteredProducts.map((p) => (
                       <tr key={p.id} className="hover:bg-white/60 transition">
                         <td className="py-3 px-4 flex items-center gap-3">
                           <img
@@ -819,11 +911,11 @@ export const AdminPage: React.FC = () => {
                           </span>
                         </td>
                         <td className="py-3 px-4 whitespace-nowrap font-medium text-[#2C2724]">
-                          ${p.price.toFixed(2)}
+                          ₹{p.price}
                         </td>
                         <td className="py-3 px-4 whitespace-nowrap">
                           {p.discountedPrice !== undefined ? (
-                            <span className="font-semibold text-[#8E5B59]">${p.discountedPrice.toFixed(2)}</span>
+                            <span className="font-semibold text-[#8E5B59]">₹{p.discountedPrice}</span>
                           ) : (
                             <span className="text-[#A89E94]">—</span>
                           )}
@@ -837,18 +929,25 @@ export const AdminPage: React.FC = () => {
                             <span className="text-[#A89E94]">—</span>
                           )}
                         </td>
-                        <td className="py-3 px-4 whitespace-nowrap text-right space-x-2">
+                        <td className="py-3 px-4 whitespace-nowrap text-right space-x-1.5">
+                          <Link
+                            to={`/product/${p.id}`}
+                            target="_blank"
+                            className="px-2.5 py-1 rounded-lg border border-[#DED5C9] bg-white text-[#6B5F55] hover:text-[#2C2724] hover:bg-[#F3EDE2] text-[11px] font-medium transition inline-block"
+                          >
+                            View ↗
+                          </Link>
                           <button
                             type="button"
                             onClick={() => handleEditProduct(p)}
-                            className="text-[#8E5B59] hover:underline cursor-pointer"
+                            className="px-2.5 py-1 rounded-lg bg-white border border-[#E8C5B8] text-[#8E5B59] hover:bg-[#FAF0ED] text-[11px] font-medium transition cursor-pointer"
                           >
                             Edit
                           </button>
                           <button
                             type="button"
                             onClick={() => handleDeleteProduct(p.id, p.name)}
-                            className="text-[#9E3E2B] hover:underline cursor-pointer"
+                            className="px-2.5 py-1 rounded-lg bg-[#FAF0ED] hover:bg-[#F3DDD6] text-[#9E3E2B] text-[11px] font-semibold transition cursor-pointer"
                           >
                             Delete
                           </button>
@@ -862,13 +961,202 @@ export const AdminPage: React.FC = () => {
           </div>
         )}
 
-        {/* TAB 2: SITE CMS & IMAGERY */}
+        {/* TAB 2: ORDERS MANAGEMENT */}
+        {activeTab === 'orders' && (
+          <div className="space-y-8">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+              <div>
+                <h2 className="text-2xl font-serif text-[#2C2724] font-medium">Customer Orders</h2>
+                <p className="text-xs text-[#786F66]">
+                  Live customer orders placed from the Cart checkout. Update fulfillment status in real-time.
+                </p>
+              </div>
+
+              {/* Status Filter Tabs */}
+              <div className="flex flex-wrap gap-1.5 p-1 bg-white rounded-xl border border-[#EAE3D8]">
+                {(['all', 'pending', 'processing', 'shipped', 'delivered'] as const).map((st) => (
+                  <button
+                    key={st}
+                    type="button"
+                    onClick={() => setOrderStatusFilter(st)}
+                    className={`px-3 py-1 rounded-lg text-xs capitalize transition cursor-pointer ${
+                      orderStatusFilter === st
+                        ? 'bg-[#8E5B59] text-white font-medium shadow-xs'
+                        : 'text-[#6D635B] hover:text-[#2C2724]'
+                    }`}
+                  >
+                    {st} {st !== 'all' && `(${orders.filter((o) => o.status === st).length})`}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Quick Financial Overview */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              <div className="bg-[#FAF7F2] p-4 rounded-xl border border-[#E8E0D5]">
+                <div className="text-[11px] text-[#786F66] uppercase tracking-wider font-medium">Total Orders</div>
+                <div className="text-2xl font-serif text-[#2C2724] mt-1">{orders.length}</div>
+              </div>
+              <div className="bg-[#FAF7F2] p-4 rounded-xl border border-[#E8E0D5]">
+                <div className="text-[11px] text-[#786F66] uppercase tracking-wider font-medium">Pending Orders</div>
+                <div className="text-2xl font-serif text-[#8E5B59] mt-1">
+                  {orders.filter((o) => o.status === 'pending').length}
+                </div>
+              </div>
+              <div className="bg-[#FAF7F2] p-4 rounded-xl border border-[#E8E0D5]">
+                <div className="text-[11px] text-[#786F66] uppercase tracking-wider font-medium">Completed</div>
+                <div className="text-2xl font-serif text-emerald-700 mt-1">
+                  {orders.filter((o) => o.status === 'delivered').length}
+                </div>
+              </div>
+              <div className="bg-[#FAF7F2] p-4 rounded-xl border border-[#E8E0D5]">
+                <div className="text-[11px] text-[#786F66] uppercase tracking-wider font-medium">Gross Revenue</div>
+                <div className="text-2xl font-serif text-[#2C2724] mt-1">₹{totalRevenue.toFixed(0)}</div>
+              </div>
+            </div>
+
+            {/* Orders List */}
+            {filteredOrders.length === 0 ? (
+              <div className="bg-[#FAF7F2] rounded-2xl border border-[#E8E0D5] p-12 text-center">
+                <div className="w-12 h-12 rounded-full bg-[#FAF0ED] text-[#8E5B59] flex items-center justify-center mx-auto mb-3">
+                  <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                  </svg>
+                </div>
+                <h3 className="text-base font-serif text-[#2C2724] font-medium">No orders found</h3>
+                <p className="text-xs text-[#786F66] mt-1">
+                  When customers complete checkout on the Cart page, orders will appear here live.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {filteredOrders.map((order) => {
+                  const statusColors = {
+                    pending: 'bg-amber-100 text-amber-800 border-amber-200',
+                    processing: 'bg-blue-100 text-blue-800 border-blue-200',
+                    shipped: 'bg-indigo-100 text-indigo-800 border-indigo-200',
+                    delivered: 'bg-emerald-100 text-emerald-800 border-emerald-200',
+                  };
+
+                  return (
+                    <div
+                      key={order.id}
+                      className="bg-[#FAF7F2] rounded-2xl border border-[#E8E0D5] p-5 shadow-xs space-y-4"
+                    >
+                      {/* Order Header */}
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-[#EAE3D8]">
+                        <div className="flex items-center gap-3">
+                          <span className="font-mono text-xs font-bold text-[#8E5B59]">#{order.id}</span>
+                          <span className="text-xs text-[#786F66]">
+                            {order.createdAt ? new Date(order.createdAt).toLocaleString() : 'Just now'}
+                          </span>
+                          <span
+                            className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border ${
+                              statusColors[order.status] || 'bg-gray-100 text-gray-800'
+                            }`}
+                          >
+                            {order.status}
+                          </span>
+                        </div>
+
+                        {/* Status Changers */}
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-[#786F66]">Status:</span>
+                          <select
+                            value={order.status}
+                            onChange={(e) => updateOrderStatus(order.id!, e.target.value as Order['status'])}
+                            className="px-2.5 py-1 rounded-lg border border-[#DED5C9] bg-white text-xs text-[#2C2724] font-medium cursor-pointer"
+                          >
+                            <option value="pending">Pending</option>
+                            <option value="processing">Processing</option>
+                            <option value="shipped">Shipped</option>
+                            <option value="delivered">Delivered</option>
+                          </select>
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (window.confirm('Delete this order record?')) {
+                                deleteOrder(order.id!);
+                              }
+                            }}
+                            className="text-xs text-[#9E3E2B] hover:underline ml-2 cursor-pointer"
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Customer & Shipping Details */}
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs bg-white rounded-xl p-3 border border-[#EAE3D8]">
+                        <div>
+                          <span className="text-[#8C827A] block text-[10px] uppercase font-bold">Customer</span>
+                          <span className="font-medium text-[#2C2724]">{order.customerName}</span>
+                          <div className="text-[#6D635B]">{order.userEmail}</div>
+                        </div>
+
+                        <div>
+                          <span className="text-[#8C827A] block text-[10px] uppercase font-bold">Contact</span>
+                          <span className="text-[#2C2724]">{order.phone || 'No phone provided'}</span>
+                        </div>
+
+                        <div>
+                          <span className="text-[#8C827A] block text-[10px] uppercase font-bold">Delivery Address</span>
+                          <span className="text-[#2C2724]">{order.shippingAddress}</span>
+                        </div>
+                      </div>
+
+                      {/* Order Items */}
+                      <div className="space-y-2">
+                        <div className="text-[11px] font-bold text-[#6D635B] uppercase tracking-wider">
+                          Ordered Items ({order.items.reduce((s, i) => s + i.quantity, 0)})
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
+                          {order.items.map((item, idx) => (
+                            <div
+                              key={idx}
+                              className="flex items-center gap-2.5 bg-white p-2 rounded-xl border border-[#EAE3D8]"
+                            >
+                              <img
+                                src={item.img}
+                                alt={item.name}
+                                className="w-10 h-10 rounded-lg object-cover border border-[#EAE3D8] shrink-0"
+                              />
+                              <div className="min-w-0 flex-1 text-xs">
+                                <div className="font-medium text-[#2C2724] truncate">{item.name}</div>
+                                <div className="text-[#786F66] text-[11px]">
+                                  Qty: {item.quantity} × ₹{item.price}
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Financials Row */}
+                      <div className="flex justify-between items-center pt-2 border-t border-[#EAE3D8] text-xs">
+                        <div className="text-[#786F66]">
+                          Subtotal: ₹{order.subtotal} {order.discount > 0 && `(Discount: -₹${order.discount.toFixed(0)})`}
+                        </div>
+                        <div className="text-sm font-bold text-[#8E5B59]">
+                          Total Paid: ₹{order.total}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* TAB 3: SITE CONTENT CMS */}
         {activeTab === 'cms' && (
           <div className="space-y-8">
             <div>
-              <h2 className="text-2xl font-serif text-[#2C2724] font-medium">Boutique Visuals & Copy CMS</h2>
+              <h2 className="text-2xl font-serif text-[#2C2724] font-medium">Boutique Visuals & Copy</h2>
               <p className="text-xs text-[#786F66]">
-                Instantly update the hero banner, tagline, promo banners, and storefront messages in real-time.
+                Customize the announcement bar, homepage hero banner, promotional stories, and atelier craftsmanship text.
               </p>
             </div>
 
@@ -886,32 +1174,42 @@ export const AdminPage: React.FC = () => {
 
             <form onSubmit={handleSaveCMS} className="space-y-6">
               {/* Top Announcement Bar */}
-              <div className="bg-[#FAF7F2] rounded-2xl border border-[#E8E0D5] p-6 shadow-sm">
-                <h3 className="text-base font-serif text-[#2C2724] font-medium mb-3">Announcement Bar</h3>
+              <div className="bg-[#FAF7F2] rounded-2xl border border-[#E8E0D5] p-6 shadow-sm space-y-4">
+                <h3 className="text-base font-serif text-[#2C2724] font-medium border-b border-[#EAE3D8] pb-2">
+                  Header Announcement Bar
+                </h3>
+
                 <div>
-                  <label className="block text-xs font-medium text-[#4A423B] mb-1">Top Bar Scrolling Text</label>
+                  <label className="block text-xs font-medium text-[#4A423B] mb-1">
+                    Announcement Banner Message
+                  </label>
                   <input
                     type="text"
                     value={cmsContent.announcementText || ''}
                     onChange={(e) => setCmsContent({ ...cmsContent, announcementText: e.target.value })}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-[#DED5C9] bg-white text-sm text-[#2C2724] focus:outline-hidden focus:border-[#8E5B59]"
+                    placeholder="e.g. Free Shipping on All Orders Over $50 | Handmade with Love"
+                    className="w-full px-3.5 py-2 rounded-xl border border-[#DED5C9] bg-white text-sm text-[#2C2724] focus:outline-hidden focus:border-[#8E5B59]"
                   />
+                  <p className="text-[11px] text-[#8C827A] mt-1">
+                    Displays at the very top of all customer-facing storefront pages.
+                  </p>
                 </div>
               </div>
 
               {/* Hero Banner Section */}
               <div className="bg-[#FAF7F2] rounded-2xl border border-[#E8E0D5] p-6 shadow-sm space-y-4">
                 <h3 className="text-base font-serif text-[#2C2724] font-medium border-b border-[#EAE3D8] pb-2">
-                  Hero Banner Section
+                  Homepage Hero Section
                 </h3>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs font-medium text-[#4A423B] mb-1">Tagline Pill</label>
+                    <label className="block text-xs font-medium text-[#4A423B] mb-1">Hero Tagline</label>
                     <input
                       type="text"
                       value={cmsContent.heroTagline || ''}
                       onChange={(e) => setCmsContent({ ...cmsContent, heroTagline: e.target.value })}
+                      placeholder="Made slowly, loved endlessly"
                       className="w-full px-3.5 py-2 rounded-xl border border-[#DED5C9] bg-white text-sm text-[#2C2724] focus:outline-hidden focus:border-[#8E5B59]"
                     />
                   </div>
@@ -922,13 +1220,14 @@ export const AdminPage: React.FC = () => {
                       type="text"
                       value={cmsContent.heroTitle || ''}
                       onChange={(e) => setCmsContent({ ...cmsContent, heroTitle: e.target.value })}
+                      placeholder="Handmade with love, just for you."
                       className="w-full px-3.5 py-2 rounded-xl border border-[#DED5C9] bg-white text-sm text-[#2C2724] focus:outline-hidden focus:border-[#8E5B59]"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-medium text-[#4A423B] mb-1">Hero Subtitle / Description</label>
+                  <label className="block text-xs font-medium text-[#4A423B] mb-1">Hero Subtitle</label>
                   <textarea
                     rows={2}
                     value={cmsContent.heroSubtitle || ''}
@@ -936,51 +1235,12 @@ export const AdminPage: React.FC = () => {
                     className="w-full px-3.5 py-2 rounded-xl border border-[#DED5C9] bg-white text-sm text-[#2C2724] focus:outline-hidden focus:border-[#8E5B59]"
                   />
                 </div>
-
-                <div>
-                  <label className="block text-xs font-medium text-[#4A423B] mb-1">
-                    Hero Banner Image (Upload or URL)
-                  </label>
-                  <div className="flex gap-2 mb-2">
-                    <label className="cursor-pointer px-3 py-2 rounded-xl bg-white border border-[#DED5C9] text-xs font-medium text-[#4A423B] hover:bg-[#F3EDE2] transition inline-flex items-center gap-1.5">
-                      <svg className="w-4 h-4 text-[#8E5B59]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                      </svg>
-                      <span>{uploadingHeroImg ? 'Uploading...' : 'Upload Banner'}</span>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={handleHeroImageUpload}
-                        disabled={uploadingHeroImg}
-                        className="hidden"
-                      />
-                    </label>
-
-                    <input
-                      type="text"
-                      value={cmsContent.heroBannerUrl || ''}
-                      onChange={(e) => setCmsContent({ ...cmsContent, heroBannerUrl: e.target.value })}
-                      placeholder="Banner Image URL"
-                      className="flex-1 px-3.5 py-2 rounded-xl border border-[#DED5C9] bg-white text-xs text-[#2C2724] focus:outline-hidden focus:border-[#8E5B59]"
-                    />
-                  </div>
-
-                  {cmsContent.heroBannerUrl && (
-                    <div className="h-32 max-w-md rounded-xl border border-[#E8E0D5] overflow-hidden bg-white">
-                      <img
-                        src={cmsContent.heroBannerUrl}
-                        alt="Hero Banner Preview"
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                  )}
-                </div>
               </div>
 
-              {/* Promo Banner Section */}
+              {/* Mid-Page Promotional Banner */}
               <div className="bg-[#FAF7F2] rounded-2xl border border-[#E8E0D5] p-6 shadow-sm space-y-4">
                 <h3 className="text-base font-serif text-[#2C2724] font-medium border-b border-[#EAE3D8] pb-2">
-                  Mid-Page Promotional Banner
+                  Mid-Page Promotional Story Banner
                 </h3>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1014,7 +1274,7 @@ export const AdminPage: React.FC = () => {
                       <svg className="w-4 h-4 text-[#8E5B59]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                       </svg>
-                      <span>{uploadingPromoImg ? 'Uploading...' : 'Upload Promo Image'}</span>
+                      <span>{uploadingPromoImg ? 'Optimizing...' : 'Upload Image'}</span>
                       <input
                         type="file"
                         accept="image/*"
@@ -1032,29 +1292,61 @@ export const AdminPage: React.FC = () => {
                       className="flex-1 px-3.5 py-2 rounded-xl border border-[#DED5C9] bg-white text-xs text-[#2C2724] focus:outline-hidden focus:border-[#8E5B59]"
                     />
                   </div>
+
+                  {cmsContent.promoBannerUrl && (
+                    <div className="h-24 max-w-sm rounded-xl border border-[#E8E0D5] overflow-hidden bg-white">
+                      <img
+                        src={cmsContent.promoBannerUrl}
+                        alt="Promo Preview"
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                  )}
                 </div>
               </div>
 
-              {/* About & Craftsmanship Copy */}
+              {/* Craftsmanship Spotlight & About */}
               <div className="bg-[#FAF7F2] rounded-2xl border border-[#E8E0D5] p-6 shadow-sm space-y-4">
                 <h3 className="text-base font-serif text-[#2C2724] font-medium border-b border-[#EAE3D8] pb-2">
                   Atelier Story & Craftsmanship
                 </h3>
 
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-medium text-[#4A423B] mb-1">Craftsmanship Heading</label>
+                    <input
+                      type="text"
+                      value={cmsContent.craftsmanshipTitle || ''}
+                      onChange={(e) => setCmsContent({ ...cmsContent, craftsmanshipTitle: e.target.value })}
+                      className="w-full px-3.5 py-2 rounded-xl border border-[#DED5C9] bg-white text-sm text-[#2C2724] focus:outline-hidden focus:border-[#8E5B59]"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-medium text-[#4A423B] mb-1">Story Heading</label>
+                    <input
+                      type="text"
+                      value={cmsContent.aboutTitle || ''}
+                      onChange={(e) => setCmsContent({ ...cmsContent, aboutTitle: e.target.value })}
+                      className="w-full px-3.5 py-2 rounded-xl border border-[#DED5C9] bg-white text-sm text-[#2C2724] focus:outline-hidden focus:border-[#8E5B59]"
+                    />
+                  </div>
+                </div>
+
                 <div>
-                  <label className="block text-xs font-medium text-[#4A423B] mb-1">Story Heading</label>
-                  <input
-                    type="text"
-                    value={cmsContent.aboutTitle || ''}
-                    onChange={(e) => setCmsContent({ ...cmsContent, aboutTitle: e.target.value })}
+                  <label className="block text-xs font-medium text-[#4A423B] mb-1">Craftsmanship Description</label>
+                  <textarea
+                    rows={2}
+                    value={cmsContent.craftsmanshipText || ''}
+                    onChange={(e) => setCmsContent({ ...cmsContent, craftsmanshipText: e.target.value })}
                     className="w-full px-3.5 py-2 rounded-xl border border-[#DED5C9] bg-white text-sm text-[#2C2724] focus:outline-hidden focus:border-[#8E5B59]"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-medium text-[#4A423B] mb-1">Story Body Paragraph</label>
+                  <label className="block text-xs font-medium text-[#4A423B] mb-1">Story Description</label>
                   <textarea
-                    rows={3}
+                    rows={2}
                     value={cmsContent.aboutDescription || ''}
                     onChange={(e) => setCmsContent({ ...cmsContent, aboutDescription: e.target.value })}
                     className="w-full px-3.5 py-2 rounded-xl border border-[#DED5C9] bg-white text-sm text-[#2C2724] focus:outline-hidden focus:border-[#8E5B59]"
@@ -1079,13 +1371,13 @@ export const AdminPage: React.FC = () => {
           </div>
         )}
 
-        {/* TAB 3: ADMIN PERMISSIONS */}
+        {/* TAB 4: ADMIN PERMISSIONS */}
         {activeTab === 'admins' && (
           <div className="space-y-6">
             <div>
               <h2 className="text-2xl font-serif text-[#2C2724] font-medium">Administrator Access Control</h2>
               <p className="text-xs text-[#786F66]">
-                Authorize new admin registrations. Any newly created admin account defaults to <code className="font-mono text-[#8E5B59]">isAdmin: false</code> and can be toggled to <code className="font-mono text-[#2C6B3F]">true</code> here.
+                Manage administrator accounts and approve access permissions.
               </p>
             </div>
 

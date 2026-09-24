@@ -2,11 +2,10 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
-import { db } from '../lib/firebase';
+import { useContent } from '../context/ContentContext';
+import { OrderItem } from '../types';
 
 const imgGinghamBg = '/figma-assets/772e8e7b4c0d39ad6752261452ccca607e718dc3.png';
-const imgCircleX = '/figma-assets/020e894ad6dbaa5c1e3c88736940d78054819b79.svg';
 const imgChevronLeft = '/figma-assets/a9ed62056d32eaca4682db0b3be7e08d78983400.svg';
 const imgShoppingBag = '/figma-assets/c0a9184bb0018ada313c0983e0b8eacc37091194.svg';
 const imgXCircle = '/figma-assets/cf54c1777967904b46c130fd6899a0c8a75fc015.svg';
@@ -16,11 +15,11 @@ const imgLine1 = '/figma-assets/20bf8e0265d182c607e4c78d452dfc8562b9817e.svg';
 const imgHeart = '/figma-assets/d3d3b0328e7b2065e2dd6237087ca61044311cfd.svg';
 const imgInstagram = '/figma-assets/61242fa42cf1591147b709b00c26b1201880564e.svg';
 const imgMusic = '/figma-assets/76abb4ffe21c8d67bea7f7daf70db2330cc66a88.svg';
-const imgCircleX1 = '/figma-assets/bcd9a84b032010459db4a52a7f22c54922a3c2d4.svg';
 
 export default function Cart() {
   const { items, remove, update, total, count, clear } = useCart();
   const { currentUser, userProfile } = useAuth();
+  const { createOrder } = useContent();
   const [promoCode, setPromoCode] = useState('PETALISSE10');
   const [promoApplied, setPromoApplied] = useState(true);
   const [promoMessage, setPromoMessage] = useState('10% off applied!');
@@ -63,21 +62,29 @@ export default function Cart() {
   const handlePlaceOrder = async () => {
     setIsSubmittingOrder(true);
     try {
-      await addDoc(collection(db, 'orders'), {
-        userId: currentUser?.uid || null,
+      const orderItems: OrderItem[] = items.map((i) => ({
+        id: i.product.id,
+        name: i.product.name,
+        price: i.product.discountedPrice ?? i.product.price,
+        quantity: i.quantity,
+        img: i.product.img,
+      }));
+
+      await createOrder({
+        userId: currentUser?.uid,
         userEmail: currentUser?.email || 'guest@petalisse.com',
-        customerName: fullName,
+        customerName: fullName || 'Boutique Patron',
         shippingAddress: `${address}, ${city}`,
-        phone,
-        items,
+        phone: phone || '',
+        items: orderItems,
         subtotal: total,
         discount: discountAmount,
         total: finalTotal,
         status: 'pending',
-        createdAt: serverTimestamp(),
+        createdAt: new Date().toISOString(),
       });
     } catch (e) {
-      console.warn('Could not save order to Firestore:', e);
+      console.warn('Order placement handled with fallback:', e);
     } finally {
       setIsSubmittingOrder(false);
       setOrderPlaced(true);
@@ -101,46 +108,10 @@ export default function Cart() {
     >
       {/* Central Paper Panel */}
       <main
-        className="w-full max-w-[430px] bg-[#fdfbf7] rounded-[24px] shadow-[0px_8px_28px_rgba(44,62,80,0.14)] px-4 sm:px-5 py-6 relative flex flex-col gap-7 items-stretch overflow-visible border border-[rgba(107,26,42,0.06)]"
+        className="w-full max-w-[430px] bg-[#fdfbf7] rounded-[24px] shadow-[0px_8px_28px_rgba(44,62,80,0.14)] px-4 sm:px-5 py-6 relative flex flex-col gap-6 items-stretch overflow-visible border border-[rgba(107,26,42,0.06)]"
         data-node-id="9:5"
         data-name="paper-center-panel"
       >
-        {/* Flourish: Top Left */}
-        <div
-          className="absolute -top-1.5 -left-1.5 opacity-85 size-6 pointer-events-none z-10"
-          data-node-id="9:6"
-          data-name="flourish-top-left"
-        >
-          <img alt="" className="size-full block" src={imgCircleX} />
-        </div>
-
-        {/* Flourish: Top Right */}
-        <div
-          className="absolute -top-1.5 -right-1.5 opacity-85 size-6 rotate-90 pointer-events-none z-10"
-          data-node-id="9:9"
-          data-name="flourish-top-right"
-        >
-          <img alt="" className="size-full block" src={imgCircleX} />
-        </div>
-
-        {/* Flourish: Bottom Left */}
-        <div
-          className="absolute -bottom-1.5 -left-1.5 opacity-85 size-6 rotate-180 pointer-events-none z-10"
-          data-node-id="9:12"
-          data-name="flourish-bottom-left"
-        >
-          <img alt="" className="size-full block" src={imgCircleX} />
-        </div>
-
-        {/* Flourish: Bottom Right */}
-        <div
-          className="absolute -bottom-1.5 -right-1.5 opacity-85 size-6 -rotate-90 pointer-events-none z-10"
-          data-node-id="9:15"
-          data-name="flourish-bottom-right"
-        >
-          <img alt="" className="size-full block" src={imgCircleX} />
-        </div>
-
         {/* ── TOP NAVBAR ── */}
         <header
           className="border-b border-[#6b1a2a]/10 pb-3 flex items-center justify-between w-full"
