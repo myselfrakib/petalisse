@@ -67,23 +67,31 @@ export default function Home() {
             Petalisse
           </h1>
 
-          {/* Tagline */}
-          <p
-            className="font-handsome text-[#8b827d] text-2xl sm:text-[23px] leading-snug tracking-wide"
+          {/* Sub-heading with Rose Icon */}
+          <div
+            className="font-handsome text-[#8b827d] text-2xl sm:text-[23px] leading-snug tracking-wide flex items-center justify-center gap-2.5"
             data-node-id="2:139"
           >
-            {siteContent.heroTagline || 'Made slowly, loved endlessly'}
-          </p>
-
-          {/* Shop Now Button */}
-          <Link
-            to="/shop"
-            className="mt-2 inline-flex items-center justify-center bg-[#6b1a2a] hover:bg-[#50131f] active:scale-95 transition-all text-white font-cormorant font-bold text-sm tracking-wider uppercase px-9 py-3 rounded-full drop-shadow-[0px_4px_6px_rgba(107,26,42,0.25)]"
-            data-node-id="2:140"
-            data-name="shop-now-button"
-          >
-            Shop Now
-          </Link>
+            {(() => {
+              const tagline = siteContent.heroTagline || 'Made slowly, loved endlessly';
+              if (tagline.includes(',')) {
+                const parts = tagline.split(',');
+                return (
+                  <>
+                    <span>{parts[0].trim()}</span>
+                    <img alt="Petalisse Rose" className="size-5 inline-block shrink-0 object-contain" src={imgRose} />
+                    <span>{parts.slice(1).join(',').trim()}</span>
+                  </>
+                );
+              }
+              return (
+                <>
+                  <span>{tagline}</span>
+                  <img alt="Petalisse Rose" className="size-5 inline-block shrink-0 object-contain" src={imgRose} />
+                </>
+              );
+            })()}
+          </div>
         </section>
 
         {/* ── OUR COLLECTIONS SECTION ── */}
