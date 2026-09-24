@@ -293,6 +293,9 @@ export default function Home() {
                   src={siteContent.promoBannerUrl}
                   alt={siteContent.promoBannerText || 'Promo Banner'}
                   className="w-full h-full object-cover"
+                  onError={(e) => {
+                    (e.currentTarget as HTMLImageElement).src = '/figma-assets/2b39a24648f5a21e9e527dfe97992fd042715209.png';
+                  }}
                 />
               </div>
             )}

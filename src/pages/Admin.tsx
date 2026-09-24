@@ -216,8 +216,10 @@ export const AdminPage: React.FC = () => {
         name: prodName,
         category: prodCategory,
         price: Number(prodPrice),
-        discountedPrice: prodDiscountedPrice !== '' ? Number(prodDiscountedPrice) : undefined,
-        badge: prodBadge.trim() || undefined,
+        ...(prodDiscountedPrice !== '' && prodDiscountedPrice !== undefined
+          ? { discountedPrice: Number(prodDiscountedPrice) }
+          : {}),
+        ...(prodBadge.trim() ? { badge: prodBadge.trim() } : {}),
         img: prodImgUrl,
         alt: prodName,
         description: prodDescription,

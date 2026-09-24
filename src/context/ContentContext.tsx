@@ -20,10 +20,10 @@ const DEFAULT_SITE_CONTENT: SiteContent = {
   heroTagline: 'Made slowly, loved endlessly',
   heroTitle: 'Handmade with love, just for you.',
   heroSubtitle: 'Discover whimsical charms, delicate accessories, and magical keepsakes crafted to brighten your everyday.',
-  heroBannerUrl: '/figma-assets/72be1c70e0a5c4d0ec598f828ae877ae84f509d4.png',
+  heroBannerUrl: '/figma-assets/2416c5a3da640dcea42f85f7a71067eac0c58ca9.png',
   promoBannerText: 'Crafted for the Dreamers & Collectors',
   promoBannerSubtext: 'Each charm carries its own gentle story, sculpted by hand with delicate intention and finished with artisanal ribbon.',
-  promoBannerUrl: '/figma-assets/72be1c70e0a5c4d0ec598f828ae877ae84f509d4.png',
+  promoBannerUrl: '/figma-assets/2b39a24648f5a21e9e527dfe97992fd042715209.png',
   aboutTitle: 'Your little handmade corner, with more love in every piece.',
   aboutDescription: 'Each charm and jar is patiently sculpted, beaded, and tied in our cozy home studio to bring sweet magic to your daily life.',
   craftsmanshipTitle: 'Artisanal Care in Every Petal',
@@ -35,57 +35,54 @@ const DEFAULT_SITE_CONTENT: SiteContent = {
   ]
 };
 
-const INITIAL_ORDERS: Order[] = [
-  {
-    id: 'ord_1001',
-    userEmail: 'clara@petalisse.com',
-    customerName: 'Clara Avery',
-    phone: '(555) 019-2831',
-    shippingAddress: '123 Cozy Lane, Floral Town',
-    items: [
-      {
-        id: 'rose-garden-charm',
-        name: 'Rose Garden Charm',
-        price: 18,
-        quantity: 2,
-        img: '/figma-assets/aac1d8d4d024ee6d6c049df2d059dfd80fda2226.png',
-      },
-      {
-        id: 'daisy-chain-bag-charm',
-        name: 'Daisy Chain Bag Charm',
-        price: 21,
-        quantity: 1,
-        img: '/figma-assets/c985c36ff39bdb6b9a8d2827b0a9f08ad612b3b1.png',
-      },
-    ],
-    subtotal: 57,
-    discount: 5.7,
-    total: 51.3,
-    status: 'processing',
-    createdAt: new Date(Date.now() - 3600000 * 4).toISOString(),
-  },
-  {
-    id: 'ord_1002',
-    userEmail: 'maya.patel@gmail.com',
-    customerName: 'Maya Patel',
-    phone: '+91 98201 12345',
-    shippingAddress: '74 Blossom St, Bangalore, KA - 560001',
-    items: [
-      {
-        id: 'surprise-mystery-jar',
-        name: 'Surprise Mystery Charm Jar',
-        price: 26,
-        quantity: 1,
-        img: '/figma-assets/a53065cbd3c94f32f92edb4e749a2fac1e370cbe.png',
-      },
-    ],
-    subtotal: 26,
-    discount: 0,
-    total: 31,
-    status: 'delivered',
-    createdAt: new Date(Date.now() - 86400000 * 2).toISOString(),
+// No demo orders - orders will only be populated by live customer checkouts
+const INITIAL_ORDERS: Order[] = [];
+
+// Helper to sanitize site content against broken legacy assets
+function sanitizeSiteContent(content: SiteContent): SiteContent {
+  const sanitized = { ...DEFAULT_SITE_CONTENT, ...content };
+  if (!sanitized.heroBannerUrl || sanitized.heroBannerUrl.includes('72be1c70e0a5c4d0ec598f828ae877ae84f509d4')) {
+    sanitized.heroBannerUrl = '/figma-assets/2416c5a3da640dcea42f85f7a71067eac0c58ca9.png';
   }
-];
+  if (!sanitized.promoBannerUrl || sanitized.promoBannerUrl.includes('72be1c70e0a5c4d0ec598f828ae877ae84f509d4')) {
+    sanitized.promoBannerUrl = '/figma-assets/2b39a24648f5a21e9e527dfe97992fd042715209.png';
+  }
+  return sanitized;
+}
+
+// Helper to remove all undefined values so Firestore never throws "Unsupported field value: undefined"
+export function sanitizeForFirestore(obj: any): any {
+  if (obj === null || obj === undefined) return null;
+  if (typeof obj !== 'object') return obj;
+  if (obj instanceof Date || typeof obj.toDate === 'function') return obj;
+  if (obj._methodName || (obj.constructor && obj.constructor.name === 'FieldValue')) return obj;
+
+  if (Array.isArray(obj)) {
+    return obj
+      .filter((v) => v !== undefined)
+      .map((v) => sanitizeForFirestore(v));
+  }
+
+  const cleaned: Record<string, any> = {};
+  for (const [key, value] of Object.entries(obj)) {
+    if (value !== undefined) {
+      if (
+        typeof value === 'object' &&
+        value !== null &&
+        !Array.isArray(value) &&
+        !(value instanceof Date) &&
+        typeof value.toDate !== 'function' &&
+        !value._methodName &&
+        value.constructor?.name !== 'FieldValue'
+      ) {
+        cleaned[key] = sanitizeForFirestore(value);
+      } else {
+        cleaned[key] = value;
+      }
+    }
+  }
+  return cleaned;
+}
 
 // Helper to compress images for lightweight transmission & storage
 const compressImageFile = (file: File): Promise<string> => {
@@ -194,7 +191,7 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
     try {
       const saved = localStorage.getItem('petalisse_site_content');
       if (saved) {
-        return { ...DEFAULT_SITE_CONTENT, ...JSON.parse(saved) };
+        return sanitizeSiteContent(JSON.parse(saved));
       }
     } catch (e) {
       console.warn('Error reading saved site content:', e);
@@ -355,7 +352,7 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
           if (docSnap.exists()) {
             const remote = docSnap.data() as SiteContent;
             setSiteContent((prev) => {
-              const merged = { ...prev, ...remote };
+              const merged = sanitizeSiteContent({ ...prev, ...remote });
               try {
                 localStorage.setItem('petalisse_site_content', JSON.stringify(merged));
               } catch {}
@@ -430,10 +427,11 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
     // Asynchronous Firestore sync
     try {
-      await setDoc(doc(db, 'products', id), {
+      const payload = sanitizeForFirestore({
         ...productData,
         createdAt: serverTimestamp(),
       });
+      await setDoc(doc(db, 'products', id), payload);
     } catch (e) {
       console.warn('Firestore addDoc fallback (saved locally & broadcast live):', e);
     }
@@ -446,17 +444,22 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
     syncProducts(updated);
 
     try {
-      await updateDoc(doc(db, 'products', id), {
+      const payload = sanitizeForFirestore({
         ...productData,
         updatedAt: serverTimestamp(),
       });
+      await updateDoc(doc(db, 'products', id), payload);
     } catch (e) {
       console.warn('Firestore updateDoc fallback (saved locally & broadcast live):', e);
       // If doc didn't exist in Firestore, set it
       try {
         const full = updated.find((p) => p.id === id);
         if (full) {
-          await setDoc(doc(db, 'products', id), { ...full, updatedAt: serverTimestamp() }, { merge: true });
+          const fullPayload = sanitizeForFirestore({
+            ...full,
+            updatedAt: serverTimestamp(),
+          });
+          await setDoc(doc(db, 'products', id), fullPayload, { merge: true });
         }
       } catch {}
     }
@@ -489,10 +492,11 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
     try {
       const contentDoc = doc(db, 'site_content', 'homepage');
-      await setDoc(contentDoc, {
+      const payload = sanitizeForFirestore({
         ...newContent,
         updatedAt: serverTimestamp(),
-      }, { merge: true });
+      });
+      await setDoc(contentDoc, payload, { merge: true });
     } catch (e) {
       console.warn('Firestore site content update fallback (saved locally & broadcast live):', e);
     }
@@ -551,10 +555,11 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
     syncOrders([newOrder, ...orders]);
 
     try {
-      await setDoc(doc(db, 'orders', id), {
+      const payload = sanitizeForFirestore({
         ...orderData,
         createdAt: serverTimestamp(),
       });
+      await setDoc(doc(db, 'orders', id), payload);
     } catch (e) {
       console.warn('Firestore order save fallback (saved locally & broadcast live):', e);
     }
