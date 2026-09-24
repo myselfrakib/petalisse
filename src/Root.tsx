@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Link, Outlet, useLocation, useNavigate } from 'react-router';
+import { useState, useEffect } from 'react';
+import { Link, Outlet, useLocation, useNavigate, ScrollRestoration } from 'react-router';
 import { useCart } from './context/CartContext';
 import { useAuth } from './context/AuthContext';
 import { useContent } from './context/ContentContext';
@@ -15,9 +15,83 @@ export default function Root() {
   const { count } = useCart();
   const { currentUser, isAdmin } = useAuth();
   const { siteContent } = useContent();
-  const { pathname } = useLocation();
+  const location = useLocation();
+  const pathname = location.pathname;
   const navigate = useNavigate();
   const [authModalOpen, setAuthModalOpen] = useState(false);
+
+  // 1. Route persistence across refresh/iframe reload
+  useEffect(() => {
+    try {
+      const savedRoute =
+        sessionStorage.getItem('petalisse_last_route') ||
+        localStorage.getItem('petalisse_last_route');
+      if (savedRoute && savedRoute !== '/' && location.pathname === '/') {
+        navigate(savedRoute, { replace: true });
+      }
+    } catch {}
+  }, []);
+
+  useEffect(() => {
+    try {
+      const fullPath = location.pathname + location.search + location.hash;
+      sessionStorage.setItem('petalisse_last_route', fullPath);
+      localStorage.setItem('petalisse_last_route', fullPath);
+    } catch {}
+  }, [location.pathname, location.search, location.hash]);
+
+  // 2. Scroll position persistence & restoration
+  useEffect(() => {
+    const routeKey = `petalisse_scroll_${location.pathname}${location.search}`;
+
+    let timeoutId: any = null;
+    const handleScroll = () => {
+      if (timeoutId) clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => {
+        try {
+          sessionStorage.setItem(routeKey, String(window.scrollY));
+        } catch {}
+      }, 80);
+    };
+
+    const handleBeforeUnload = () => {
+      try {
+        sessionStorage.setItem(routeKey, String(window.scrollY));
+      } catch {}
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
+    return () => {
+      if (timeoutId) clearTimeout(timeoutId);
+      window.removeEventListener('scroll', handleScroll);
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [location.pathname, location.search]);
+
+  useEffect(() => {
+    const routeKey = `petalisse_scroll_${location.pathname}${location.search}`;
+    try {
+      const savedScroll = sessionStorage.getItem(routeKey);
+      if (savedScroll) {
+        const top = parseInt(savedScroll, 10);
+        if (!isNaN(top) && top > 0) {
+          const raf = requestAnimationFrame(() => {
+            window.scrollTo({ top, behavior: 'instant' });
+          });
+          const timer = setTimeout(() => {
+            window.scrollTo({ top, behavior: 'instant' });
+          }, 120);
+
+          return () => {
+            cancelAnimationFrame(raf);
+            clearTimeout(timer);
+          };
+        }
+      }
+    } catch {}
+  }, [location.pathname, location.search]);
 
   const isAdminPage = pathname.startsWith('/admin');
 
@@ -194,6 +268,7 @@ export default function Root() {
 
       {/* Customer Auth Modal */}
       <AuthModal isOpen={authModalOpen} onClose={() => setAuthModalOpen(false)} />
+      <ScrollRestoration />
     </div>
   );
 }

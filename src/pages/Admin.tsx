@@ -42,8 +42,22 @@ export const AdminPage: React.FC = () => {
   const [authError, setAuthError] = useState<string | null>(null);
   const [checkingApproval, setCheckingApproval] = useState(false);
 
-  // Dashboard Active Tab
-  const [activeTab, setActiveTab] = useState<'products' | 'cms' | 'orders' | 'admins'>('products');
+  // Dashboard Active Tab (persisted across refreshes)
+  const [activeTab, setActiveTab] = useState<'products' | 'cms' | 'orders' | 'admins'>(() => {
+    try {
+      const saved = localStorage.getItem('petalisse_admin_tab');
+      if (saved === 'products' || saved === 'cms' || saved === 'orders' || saved === 'admins') {
+        return saved;
+      }
+    } catch {}
+    return 'products';
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('petalisse_admin_tab', activeTab);
+    } catch {}
+  }, [activeTab]);
 
   // Product Form State
   const [editingProductId, setEditingProductId] = useState<string | null>(null);
@@ -59,12 +73,38 @@ export const AdminPage: React.FC = () => {
   const [prodSubmitting, setProdSubmitting] = useState(false);
   const [prodMessage, setProdMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
-  // Product Filter State
+  // Product Filter State (persisted across refreshes)
   const [productSearch, setProductSearch] = useState('');
-  const [productCategoryFilter, setProductCategoryFilter] = useState('All');
+  const [productCategoryFilter, setProductCategoryFilter] = useState(() => {
+    try {
+      return localStorage.getItem('petalisse_admin_cat_filter') || 'All';
+    } catch {
+      return 'All';
+    }
+  });
 
-  // Orders Tab Filter State
-  const [orderStatusFilter, setOrderStatusFilter] = useState<'all' | 'pending' | 'processing' | 'shipped' | 'delivered'>('all');
+  useEffect(() => {
+    try {
+      localStorage.setItem('petalisse_admin_cat_filter', productCategoryFilter);
+    } catch {}
+  }, [productCategoryFilter]);
+
+  // Orders Tab Filter State (persisted across refreshes)
+  const [orderStatusFilter, setOrderStatusFilter] = useState<'all' | 'pending' | 'processing' | 'shipped' | 'delivered'>(() => {
+    try {
+      const saved = localStorage.getItem('petalisse_admin_order_filter');
+      if (saved && ['all', 'pending', 'processing', 'shipped', 'delivered'].includes(saved)) {
+        return saved as any;
+      }
+    } catch {}
+    return 'all';
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('petalisse_admin_order_filter', orderStatusFilter);
+    } catch {}
+  }, [orderStatusFilter]);
 
   // Site Content CMS Form State
   const [cmsContent, setCmsContent] = useState<SiteContent>(siteContent);

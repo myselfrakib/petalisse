@@ -26,11 +26,44 @@ export default function Cart() {
   const [orderPlaced, setOrderPlaced] = useState(false);
   const [isSubmittingOrder, setIsSubmittingOrder] = useState(false);
 
-  // Form fields matching Figma design
-  const [fullName, setFullName] = useState('Clara Avery');
-  const [address, setAddress] = useState('123 Cozy Lane');
-  const [city, setCity] = useState('Floral Town');
-  const [phone, setPhone] = useState('(555) 019-2831');
+  // Form fields matching Figma design with local storage persistence
+  const [fullName, setFullName] = useState(() => {
+    try {
+      return localStorage.getItem('petalisse_checkout_name') || 'Clara Avery';
+    } catch {
+      return 'Clara Avery';
+    }
+  });
+  const [address, setAddress] = useState(() => {
+    try {
+      return localStorage.getItem('petalisse_checkout_address') || '123 Cozy Lane';
+    } catch {
+      return '123 Cozy Lane';
+    }
+  });
+  const [city, setCity] = useState(() => {
+    try {
+      return localStorage.getItem('petalisse_checkout_city') || 'Floral Town';
+    } catch {
+      return 'Floral Town';
+    }
+  });
+  const [phone, setPhone] = useState(() => {
+    try {
+      return localStorage.getItem('petalisse_checkout_phone') || '(555) 019-2831';
+    } catch {
+      return '(555) 019-2831';
+    }
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('petalisse_checkout_name', fullName);
+      localStorage.setItem('petalisse_checkout_address', address);
+      localStorage.setItem('petalisse_checkout_city', city);
+      localStorage.setItem('petalisse_checkout_phone', phone);
+    } catch {}
+  }, [fullName, address, city, phone]);
 
   useEffect(() => {
     if (currentUser) {

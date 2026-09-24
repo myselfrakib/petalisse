@@ -17,8 +17,35 @@ export default function Shop() {
   const { add, count } = useCart();
   const { products } = useContent();
   const [addedId, setAddedId] = useState<string | null>(null);
-  const [favorites, setFavorites] = useState<Record<string, boolean>>({});
-  const [displayCount, setDisplayCount] = useState<number>(10);
+  const [favorites, setFavorites] = useState<Record<string, boolean>>(() => {
+    try {
+      const saved = localStorage.getItem('petalisse_favorites');
+      return saved ? JSON.parse(saved) : {};
+    } catch {
+      return {};
+    }
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('petalisse_favorites', JSON.stringify(favorites));
+    } catch {}
+  }, [favorites]);
+
+  const [displayCount, setDisplayCount] = useState<number>(() => {
+    try {
+      const saved = sessionStorage.getItem('petalisse_shop_display_count');
+      return saved ? parseInt(saved, 10) : 10;
+    } catch {
+      return 10;
+    }
+  });
+
+  useEffect(() => {
+    try {
+      sessionStorage.setItem('petalisse_shop_display_count', String(displayCount));
+    } catch {}
+  }, [displayCount]);
 
   const activeCategory = searchParams.get('category') ?? 'All';
 
