@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import { useCart } from '../context/CartContext';
 import { useContent } from '../context/ContentContext';

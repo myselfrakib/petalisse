@@ -1,3 +1,4 @@
+import type { Product } from '../types';
 export type { Product } from '../types';
 
 export const CATEGORIES = [

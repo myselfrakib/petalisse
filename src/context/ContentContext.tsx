@@ -84,8 +84,8 @@ export function sanitizeForFirestore(obj: any): any {
         value !== null &&
         !Array.isArray(value) &&
         !(value instanceof Date) &&
-        typeof value.toDate !== 'function' &&
-        !value._methodName &&
+        typeof (value as any).toDate !== 'function' &&
+        !(value as any)._methodName &&
         value.constructor?.name !== 'FieldValue'
       ) {
         cleaned[key] = sanitizeForFirestore(value);
