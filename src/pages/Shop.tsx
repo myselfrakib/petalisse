@@ -10,7 +10,16 @@ const imgShoppingBag = '/figma-assets/8aab77e6404936a9df121d7028258a27c83ee8b7.s
 const imgHeart = '/figma-assets/31e27e08eda6d57eca61746b58532f5771b76653.svg';
 const imgRibbonBow = '/figma-assets/f5ee34f9c15fa3218e53c9e0f3259ab4fed5a2ad.svg';
 
-const SHOP_CATEGORIES = ['All', 'Mobile Charms', 'Bag Charms', 'Mystery Jars'];
+const SHOP_CATEGORIES = [
+  'All',
+  'Mobile Charms',
+  'Bag Charms',
+  'Mystery Jars',
+  'Jewellery',
+  'Hair Accessories',
+  'Desk & Room Decor',
+  'Cute Functional Things',
+];
 
 export default function Shop() {
   const [searchParams, setSearchParams] = useSearchParams();

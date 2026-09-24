@@ -6,10 +6,13 @@ export const CATEGORIES = [
   'Mobile Charms',
   'Bag Charms',
   'Mystery Jars',
+  'Jewellery',
+  'Hair Accessories',
+  'Desk & Room Decor',
+  'Cute Functional Things',
   'Beaded',
   'Clay',
   'Woolen',
-  'Hair Accessories',
   'Hair Ties',
 ];
 

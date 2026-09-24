@@ -1583,6 +1583,10 @@ export const AdminPage: React.FC = () => {
                           'Mobile Charms': '/figma-assets/2416c5a3da640dcea42f85f7a71067eac0c58ca9.png',
                           'Bag Charms': '/figma-assets/2b39a24648f5a21e9e527dfe97992fd042715209.png',
                           'Mystery Jars': '/figma-assets/1908ddbd2af05246c15d1de98d9563a4801070c0.png',
+                          'Jewellery': '/figma-assets/aac1d8d4d024ee6d6c049df2d059dfd80fda2226.png',
+                          'Hair Accessories': '/figma-assets/c985c36ff39bdb6b9a8d2827b0a9f08ad612b3b1.png',
+                          'Desk & Room Decor': '/figma-assets/e8a9f4c7977ea3291af5fdf421b0c3f7801f21ed.png',
+                          'Cute Functional Things': '/figma-assets/a53065cbd3c94f32f92edb4e749a2fac1e370cbe.png',
                         },
                       }));
                     }}
@@ -1592,11 +1596,15 @@ export const AdminPage: React.FC = () => {
                   </button>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-5 pt-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 pt-2">
                   {[
                     { key: 'Mobile Charms', label: 'Mobile Charms', defaultImg: '/figma-assets/2416c5a3da640dcea42f85f7a71067eac0c58ca9.png' },
                     { key: 'Bag Charms', label: 'Bag Charms', defaultImg: '/figma-assets/2b39a24648f5a21e9e527dfe97992fd042715209.png' },
                     { key: 'Mystery Jars', label: 'Mystery Jars', defaultImg: '/figma-assets/1908ddbd2af05246c15d1de98d9563a4801070c0.png' },
+                    { key: 'Jewellery', label: 'Jewellery', defaultImg: '/figma-assets/aac1d8d4d024ee6d6c049df2d059dfd80fda2226.png' },
+                    { key: 'Hair Accessories', label: 'Hair Accessories', defaultImg: '/figma-assets/c985c36ff39bdb6b9a8d2827b0a9f08ad612b3b1.png' },
+                    { key: 'Desk & Room Decor', label: 'Desk & Room Decor', defaultImg: '/figma-assets/e8a9f4c7977ea3291af5fdf421b0c3f7801f21ed.png' },
+                    { key: 'Cute Functional Things', label: 'Cute Functional Things', defaultImg: '/figma-assets/a53065cbd3c94f32f92edb4e749a2fac1e370cbe.png' },
                   ].map((cat) => {
                     const currentCover = cmsContent.collectionCovers?.[cat.key] || cat.defaultImg;
                     const isUploading = uploadingCollectionCover === cat.key;

@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useRef } from 'react';
 import { Link } from 'react-router';
 import { useCart } from '../context/CartContext';
 import { useContent } from '../context/ContentContext';
@@ -11,14 +11,55 @@ const imgRose = '/figma-assets/6651ea04a82113b00c24d2d807dd1e8a69558b14.svg';
 const imgLine = '/figma-assets/cc59bfc996c199663b36f3ef980785829799417a.svg';
 const imgInstagram = '/figma-assets/61242fa42cf1591147b709b00c26b1201880564e.svg';
 
+const ALL_COLLECTIONS = [
+  {
+    key: 'Mobile Charms',
+    label: 'Mobile Charms',
+    defaultImg: '/figma-assets/2416c5a3da640dcea42f85f7a71067eac0c58ca9.png',
+  },
+  {
+    key: 'Bag Charms',
+    label: 'Bag Charms',
+    defaultImg: '/figma-assets/2b39a24648f5a21e9e527dfe97992fd042715209.png',
+  },
+  {
+    key: 'Mystery Jars',
+    label: 'Mystery Jars',
+    defaultImg: '/figma-assets/1908ddbd2af05246c15d1de98d9563a4801070c0.png',
+  },
+  {
+    key: 'Jewellery',
+    label: 'Jewellery',
+    defaultImg: '/figma-assets/aac1d8d4d024ee6d6c049df2d059dfd80fda2226.png',
+  },
+  {
+    key: 'Hair Accessories',
+    label: 'Hair Accessories',
+    defaultImg: '/figma-assets/c985c36ff39bdb6b9a8d2827b0a9f08ad612b3b1.png',
+  },
+  {
+    key: 'Desk & Room Decor',
+    label: 'Desk & Room Decor',
+    defaultImg: '/figma-assets/e8a9f4c7977ea3291af5fdf421b0c3f7801f21ed.png',
+  },
+  {
+    key: 'Cute Functional Things',
+    label: 'Cute Functional Things',
+    defaultImg: '/figma-assets/a53065cbd3c94f32f92edb4e749a2fac1e370cbe.png',
+  },
+];
+
 export default function Home() {
   const { add } = useCart();
   const { products, siteContent } = useContent();
+  const collectionsScrollRef = useRef<HTMLDivElement>(null);
 
-  // Dynamic collections cover photos managed live from Admin Panel
-  const mobileCharmsImg = siteContent.collectionCovers?.['Mobile Charms'] || imgRectangle;
-  const bagCharmsImg = siteContent.collectionCovers?.['Bag Charms'] || imgRectangle1;
-  const mysteryJarsImg = siteContent.collectionCovers?.['Mystery Jars'] || imgRectangle2;
+  const scrollCollections = (direction: 'left' | 'right') => {
+    if (collectionsScrollRef.current) {
+      const scrollAmount = direction === 'left' ? -240 : 240;
+      collectionsScrollRef.current.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+    }
+  };
 
   // Selected favorites / bestsellers managed live from Admin Panel DB
   const bestsellers = useMemo(() => {
@@ -78,121 +119,91 @@ export default function Home() {
           </p>
         </section>
 
-        {/* ── OUR COLLECTIONS SECTION ── */}
+        {/* ── OUR COLLECTIONS SECTION (SLIDABLE CAROUSEL) ── */}
         <section
-          className="flex flex-col gap-4 w-full"
+          className="flex flex-col gap-3.5 w-full relative"
           data-node-id="2:142"
           data-name="categories-section"
         >
-          {/* Title with Lines */}
-          <div
-            className="flex items-center justify-between w-full px-1"
-            data-node-id="2:143"
-            data-name="Frame"
-          >
-            <div className="h-px flex-1 max-w-[60px] opacity-70">
+          {/* Header with Lines and Scroll Controls */}
+          <div className="flex items-center justify-between w-full px-1">
+            <div className="h-px flex-1 max-w-[36px] sm:max-w-[50px] opacity-70">
               <img alt="" className="w-full h-auto block" src={imgLine} />
             </div>
-            <h2
-              className="font-cormorant font-bold text-[#6b1a2a] text-[18px] uppercase tracking-widest text-center px-2"
-              data-node-id="2:145"
-            >
-              Our Collections
-            </h2>
-            <div className="h-px flex-1 max-w-[60px] opacity-70">
+
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => scrollCollections('left')}
+                className="size-7 rounded-full bg-white border border-[#6b1a2a]/15 text-[#6b1a2a] hover:bg-[#FAF5F0] hover:border-[#6b1a2a]/30 transition flex items-center justify-center cursor-pointer shadow-2xs active:scale-95"
+                aria-label="Scroll collections left"
+              >
+                <svg className="size-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" />
+                </svg>
+              </button>
+
+              <h2
+                className="font-cormorant font-bold text-[#6b1a2a] text-[17px] sm:text-[18px] uppercase tracking-widest text-center px-1 select-none"
+                data-node-id="2:145"
+              >
+                Our Collections
+              </h2>
+
+              <button
+                type="button"
+                onClick={() => scrollCollections('right')}
+                className="size-7 rounded-full bg-white border border-[#6b1a2a]/15 text-[#6b1a2a] hover:bg-[#FAF5F0] hover:border-[#6b1a2a]/30 transition flex items-center justify-center cursor-pointer shadow-2xs active:scale-95"
+                aria-label="Scroll collections right"
+              >
+                <svg className="size-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="h-px flex-1 max-w-[36px] sm:max-w-[50px] opacity-70">
               <img alt="" className="w-full h-auto block" src={imgLine} />
             </div>
           </div>
 
-          {/* Collections Grid */}
+          {/* Slidable Carousel Container */}
           <div
-            className="grid grid-cols-3 gap-3 w-full"
-            data-node-id="2:147"
-            data-name="categories-grid"
+            ref={collectionsScrollRef}
+            className="flex gap-3 overflow-x-auto scroll-smooth snap-x snap-mandatory pb-2 pt-1 px-1 -mx-1"
+            style={{
+              scrollbarWidth: 'none',
+              msOverflowStyle: 'none',
+            }}
+            data-name="categories-carousel"
           >
-            {/* Mobile Charms */}
-            <Link
-              to="/shop?category=Mobile+Charms"
-              className="group flex flex-col gap-2 items-center"
-              data-node-id="2:148"
-              data-name="category-card-mobile-charms"
-            >
-              <div
-                className="aspect-[5/6] w-full rounded-xl overflow-hidden border border-[#6b1a2a]/10 bg-[#FAF5F0] shadow-xs group-hover:shadow-md group-hover:scale-[1.02] transition-all"
-                data-node-id="2:149"
-              >
-                <img
-                  alt="Mobile Charms"
-                  className="size-full object-cover"
-                  src={mobileCharmsImg}
-                  onError={(e) => {
-                    (e.currentTarget as HTMLImageElement).src = imgRectangle;
-                  }}
-                />
-              </div>
-              <p
-                className="font-cormorant font-semibold text-[#6b1a2a] text-sm text-center group-hover:underline"
-                data-node-id="2:151"
-              >
-                Mobile Charms
-              </p>
-            </Link>
+            {ALL_COLLECTIONS.map((col) => {
+              const coverImg = siteContent.collectionCovers?.[col.key] || col.defaultImg;
 
-            {/* Bag Charms */}
-            <Link
-              to="/shop?category=Bag+Charms"
-              className="group flex flex-col gap-2 items-center"
-              data-node-id="2:152"
-              data-name="category-card-bag-charms"
-            >
-              <div
-                className="aspect-[5/6] w-full rounded-xl overflow-hidden border border-[#6b1a2a]/10 bg-[#FAF5F0] shadow-xs group-hover:shadow-md group-hover:scale-[1.02] transition-all"
-                data-node-id="2:153"
-              >
-                <img
-                  alt="Bag Charms"
-                  className="size-full object-cover"
-                  src={bagCharmsImg}
-                  onError={(e) => {
-                    (e.currentTarget as HTMLImageElement).src = imgRectangle1;
-                  }}
-                />
-              </div>
-              <p
-                className="font-cormorant font-semibold text-[#6b1a2a] text-sm text-center group-hover:underline"
-                data-node-id="2:155"
-              >
-                Bag Charms
-              </p>
-            </Link>
-
-            {/* Mystery Jars */}
-            <Link
-              to="/shop?category=Mystery+Jars"
-              className="group flex flex-col gap-2 items-center"
-              data-node-id="2:156"
-              data-name="category-card-mystery-jars"
-            >
-              <div
-                className="aspect-[5/6] w-full rounded-xl overflow-hidden border border-[#6b1a2a]/10 bg-[#FAF5F0] shadow-xs group-hover:shadow-md group-hover:scale-[1.02] transition-all"
-                data-node-id="2:157"
-              >
-                <img
-                  alt="Mystery Jars"
-                  className="size-full object-cover"
-                  src={mysteryJarsImg}
-                  onError={(e) => {
-                    (e.currentTarget as HTMLImageElement).src = imgRectangle2;
-                  }}
-                />
-              </div>
-              <p
-                className="font-cormorant font-semibold text-[#6b1a2a] text-sm text-center group-hover:underline"
-                data-node-id="2:159"
-              >
-                Mystery Jars
-              </p>
-            </Link>
+              return (
+                <Link
+                  key={col.key}
+                  to={`/shop?category=${encodeURIComponent(col.key)}`}
+                  className="group flex flex-col gap-2 items-center w-[112px] sm:w-[124px] shrink-0 snap-start"
+                  data-name={`category-card-${col.key.toLowerCase().replace(/[^a-z0-9]/g, '-')}`}
+                >
+                  <div className="aspect-[5/6] w-full rounded-2xl overflow-hidden border border-[#6b1a2a]/12 bg-[#FAF5F0] shadow-xs group-hover:shadow-md group-hover:scale-[1.03] transition-all relative">
+                    <img
+                      alt={col.label}
+                      className="size-full object-cover transition-transform duration-300 group-hover:scale-105"
+                      src={coverImg}
+                      onError={(e) => {
+                        (e.currentTarget as HTMLImageElement).src = col.defaultImg;
+                      }}
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/25 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                  </div>
+                  <p className="font-cormorant font-semibold text-[#6b1a2a] text-[13px] sm:text-sm text-center leading-tight line-clamp-2 px-0.5 group-hover:underline">
+                    {col.label}
+                  </p>
+                </Link>
+              );
+            })}
           </div>
         </section>
 
