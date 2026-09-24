@@ -1,4 +1,4 @@
-import { useMemo, useRef } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router';
 import { useCart } from '../context/CartContext';
 import { useContent } from '../context/ContentContext';
@@ -52,12 +52,35 @@ export default function Home() {
   const { add } = useCart();
   const { products, siteContent } = useContent();
   const collectionsScrollRef = useRef<HTMLDivElement>(null);
+  const [activeCollectionIdx, setActiveCollectionIdx] = useState(0);
 
-  const scrollCollections = (direction: 'left' | 'right') => {
-    if (collectionsScrollRef.current) {
-      const scrollAmount = direction === 'left' ? -240 : 240;
-      collectionsScrollRef.current.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+  const handleCollectionsScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const container = e.currentTarget;
+    const scrollLeft = container.scrollLeft;
+    const maxScroll = container.scrollWidth - container.clientWidth;
+    if (maxScroll <= 0) {
+      setActiveCollectionIdx(0);
+      return;
     }
+    const ratio = scrollLeft / maxScroll;
+    const index = Math.min(
+      ALL_COLLECTIONS.length - 1,
+      Math.max(0, Math.round(ratio * (ALL_COLLECTIONS.length - 1)))
+    );
+    setActiveCollectionIdx(index);
+  };
+
+  const scrollToCollection = (idx: number) => {
+    if (collectionsScrollRef.current) {
+      const maxScroll =
+        collectionsScrollRef.current.scrollWidth - collectionsScrollRef.current.clientWidth;
+      const targetScroll = (idx / (ALL_COLLECTIONS.length - 1)) * maxScroll;
+      collectionsScrollRef.current.scrollTo({
+        left: targetScroll,
+        behavior: 'smooth',
+      });
+    }
+    setActiveCollectionIdx(idx);
   };
 
   // Selected favorites / bestsellers managed live from Admin Panel DB
@@ -126,44 +149,20 @@ export default function Home() {
           data-node-id="2:142"
           data-name="categories-section"
         >
-          {/* Header with Lines and Scroll Controls */}
+          {/* Header with Decorative Lines */}
           <div className="flex items-center justify-between w-full px-1">
-            <div className="h-px flex-1 max-w-[36px] sm:max-w-[50px] opacity-70">
+            <div className="h-px flex-1 opacity-70">
               <img alt="" className="w-full h-auto block" src={imgLine} />
             </div>
 
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => scrollCollections('left')}
-                className="size-7 rounded-full bg-white border border-[#6b1a2a]/15 text-[#6b1a2a] hover:bg-[#FAF5F0] hover:border-[#6b1a2a]/30 transition flex items-center justify-center cursor-pointer shadow-2xs active:scale-95"
-                aria-label="Scroll collections left"
-              >
-                <svg className="size-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" />
-                </svg>
-              </button>
+            <h2
+              className="font-cormorant font-bold text-[#6b1a2a] text-[17px] sm:text-[18px] uppercase tracking-widest text-center px-4 select-none"
+              data-node-id="2:145"
+            >
+              Our Collections
+            </h2>
 
-              <h2
-                className="font-cormorant font-bold text-[#6b1a2a] text-[17px] sm:text-[18px] uppercase tracking-widest text-center px-1 select-none"
-                data-node-id="2:145"
-              >
-                Our Collections
-              </h2>
-
-              <button
-                type="button"
-                onClick={() => scrollCollections('right')}
-                className="size-7 rounded-full bg-white border border-[#6b1a2a]/15 text-[#6b1a2a] hover:bg-[#FAF5F0] hover:border-[#6b1a2a]/30 transition flex items-center justify-center cursor-pointer shadow-2xs active:scale-95"
-                aria-label="Scroll collections right"
-              >
-                <svg className="size-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
-                </svg>
-              </button>
-            </div>
-
-            <div className="h-px flex-1 max-w-[36px] sm:max-w-[50px] opacity-70">
+            <div className="h-px flex-1 opacity-70">
               <img alt="" className="w-full h-auto block" src={imgLine} />
             </div>
           </div>
@@ -171,6 +170,7 @@ export default function Home() {
           {/* Slidable Carousel Container */}
           <div
             ref={collectionsScrollRef}
+            onScroll={handleCollectionsScroll}
             className="flex gap-3 overflow-x-auto scroll-smooth snap-x snap-mandatory pb-2 pt-1 px-1 -mx-1"
             style={{
               scrollbarWidth: 'none',
@@ -205,6 +205,23 @@ export default function Home() {
                 </Link>
               );
             })}
+          </div>
+
+          {/* Dots Indicator for Number of Collections */}
+          <div className="flex items-center justify-center gap-1.5 pt-0.5" aria-label="Collections pagination">
+            {ALL_COLLECTIONS.map((col, idx) => (
+              <button
+                key={col.key}
+                type="button"
+                onClick={() => scrollToCollection(idx)}
+                aria-label={`Go to ${col.label}`}
+                className={`transition-all rounded-full cursor-pointer ${
+                  activeCollectionIdx === idx
+                    ? 'w-4 h-1.5 bg-[#6b1a2a]'
+                    : 'w-1.5 h-1.5 bg-[#6b1a2a]/30 hover:bg-[#6b1a2a]/60'
+                }`}
+              />
+            ))}
           </div>
         </section>
 
