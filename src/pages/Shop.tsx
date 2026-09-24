@@ -8,7 +8,6 @@ const imgGinghamBg = '/figma-assets/772e8e7b4c0d39ad6752261452ccca607e718dc3.png
 const imgChevronLeft = '/figma-assets/de70edd513d91ef52fc2c1fa9af3cbf0656b675a.svg';
 const imgShoppingBag = '/figma-assets/8aab77e6404936a9df121d7028258a27c83ee8b7.svg';
 const imgHeart = '/figma-assets/31e27e08eda6d57eca61746b58532f5771b76653.svg';
-const imgRibbonBow = '/figma-assets/f5ee34f9c15fa3218e53c9e0f3259ab4fed5a2ad.svg';
 
 const SHOP_CATEGORIES = [
   'All',
@@ -325,25 +324,6 @@ export default function Shop() {
             </button>
           </div>
         )}
-
-        {/* ── FABRIC PROMO BANNER ── */}
-        <div
-          className="bg-[#e6f0fa] border-2 border-[#aec6e4] border-dashed rounded-[16px] px-4 py-3.5 flex gap-3 items-center justify-center text-[#6b1a2a] w-full"
-          data-node-id="2:327"
-          data-name="fabric-promo-banner"
-        >
-          <div className="size-5 shrink-0 flex items-center justify-center" data-name="ribbon-bow">
-            <img alt="" className="h-4 w-auto block" src={imgRibbonBow} />
-          </div>
-          <div className="flex flex-col gap-0.5 flex-1 min-w-0" data-name="banner-text">
-            <p className="font-sans font-bold text-[13px] sm:text-[14px] uppercase tracking-wide">
-              FREE SHIPPING on orders over ₹35
-            </p>
-            <p className="font-cormorant text-[12px] opacity-85 leading-tight">
-              Discount applied automatically at checkout
-            </p>
-          </div>
-        </div>
       </main>
     </div>
   );
