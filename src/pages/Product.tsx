@@ -474,22 +474,22 @@ export default function Product() {
             Description
           </h3>
           <p
-            className="font-cormorant text-[#8b827d] text-[15px] leading-[1.5]"
+            className="font-cormorant text-[#8b827d] text-[15px] leading-[1.5] whitespace-pre-line"
             data-node-id="9:233"
           >
-            A delicate handmade phone charm featuring miniature roses crafted from polymer clay, adorned with glass beads and finished with a satin ribbon bow. Each piece is unique and made with love.
+            {product.description || 'A delicate handcrafted piece made with love and care.'}
           </p>
-          <div
-            className="flex flex-col gap-1.5 font-cormorant text-[#8b827d] text-[15px]"
-            data-node-id="9:234"
-            data-name="bullet-points"
-          >
-            <p>• Handmade polymer clay roses</p>
-            <p>• Glass bead accents</p>
-            <p>• Satin ribbon bow detail</p>
-            <p>• Approx. 12cm length</p>
-            <p>• Clip-on attachment</p>
-          </div>
+          {product.details && product.details.length > 0 && (
+            <div
+              className="flex flex-col gap-1.5 font-cormorant text-[#8b827d] text-[15px]"
+              data-node-id="9:234"
+              data-name="bullet-points"
+            >
+              {product.details.map((detail, idx) => (
+                <p key={idx}>• {detail}</p>
+              ))}
+            </div>
+          )}
         </section>
 
         {/* ── BOW DIVIDER ── */}
