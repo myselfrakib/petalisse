@@ -26,12 +26,11 @@ export default function Product() {
   // Gallery thumbnails
   const gallery = useMemo(() => {
     if (!product) return [];
-    return [
-      product.img,
-      '/figma-assets/aac1d8d4d024ee6d6c049df2d059dfd80fda2226.png',
-      '/figma-assets/c985c36ff39bdb6b9a8d2827b0a9f08ad612b3b1.png',
-      '/figma-assets/e8a9f4c7977ea3291af5fdf421b0c3f7801f21ed.png',
-    ];
+    if (product.images && product.images.length > 0) {
+      const valid = product.images.filter(Boolean);
+      if (valid.length > 0) return valid;
+    }
+    return product.img ? [product.img] : [];
   }, [product]);
 
   const [activeImageIndex, setActiveImageIndex] = useState(0);
@@ -150,65 +149,89 @@ export default function Product() {
         >
           {/* Main Hero Image */}
           <div
-            className="aspect-square w-full bg-white border border-[rgba(107,26,42,0.1)] rounded-[20px] overflow-hidden relative shadow-xs"
+            className="aspect-square w-full bg-white border border-[rgba(107,26,42,0.1)] rounded-[20px] overflow-hidden relative shadow-xs group"
             data-node-id="9:200"
             data-name="hero-image-container"
           >
             <img
               alt={product.name}
-              src={gallery[activeImageIndex]}
+              src={gallery[activeImageIndex] || gallery[0] || product.img}
               className="size-full object-cover transition-all duration-300"
             />
+            {gallery.length > 1 && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setActiveImageIndex((prev) => (prev === 0 ? gallery.length - 1 : prev - 1))}
+                  className="absolute left-2.5 top-1/2 -translate-y-1/2 size-8 rounded-full bg-white/85 hover:bg-white text-[#6b1a2a] shadow-sm flex items-center justify-center transition-all opacity-0 group-hover:opacity-100 cursor-pointer"
+                  aria-label="Previous image"
+                >
+                  <img alt="Previous" className="size-3 block" src={imgChevronLeft} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveImageIndex((prev) => (prev === gallery.length - 1 ? 0 : prev + 1))}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 size-8 rounded-full bg-white/85 hover:bg-white text-[#6b1a2a] shadow-sm flex items-center justify-center transition-all opacity-0 group-hover:opacity-100 cursor-pointer"
+                  aria-label="Next image"
+                >
+                  <img alt="Next" className="size-3 block rotate-180" src={imgChevronLeft} />
+                </button>
+              </>
+            )}
           </div>
 
-          {/* Carousel Dots */}
-          <div
-            className="flex items-center justify-center gap-1.5 h-2"
-            data-node-id="9:202"
-            data-name="carousel-dots"
-          >
-            {gallery.map((_, idx) => (
-              <button
-                key={idx}
-                onClick={() => setActiveImageIndex(idx)}
-                className={`h-2 rounded-full transition-all cursor-pointer ${
-                  activeImageIndex === idx
-                    ? 'w-4 bg-[#6b1a2a]'
-                    : 'w-2 bg-[#6b1a2a]/30 hover:bg-[#6b1a2a]/50'
-                }`}
-                aria-label={`View photo ${idx + 1}`}
-              />
-            ))}
-          </div>
-
-          {/* Thumbnails Row */}
-          <div
-            className="flex gap-2 items-center justify-center w-full"
-            data-node-id="9:207"
-            data-name="thumbnails-row"
-          >
-            {gallery.map((thumb, idx) => {
-              const isSelected = activeImageIndex === idx;
-              return (
+          {/* Carousel Dots - only shown if multiple images exist */}
+          {gallery.length > 1 && (
+            <div
+              className="flex items-center justify-center gap-1.5 h-2"
+              data-node-id="9:202"
+              data-name="carousel-dots"
+            >
+              {gallery.map((_, idx) => (
                 <button
                   key={idx}
                   onClick={() => setActiveImageIndex(idx)}
-                  className={`h-[96px] w-[60px] bg-white rounded-[10px] overflow-hidden transition-all cursor-pointer ${
-                    isSelected
-                      ? 'border-[2px] border-[#6b1a2a] shadow-xs scale-102'
-                      : 'border border-[rgba(107,26,42,0.15)] opacity-80 hover:opacity-100'
+                  className={`h-2 rounded-full transition-all cursor-pointer ${
+                    activeImageIndex === idx
+                      ? 'w-4 bg-[#6b1a2a]'
+                      : 'w-2 bg-[#6b1a2a]/30 hover:bg-[#6b1a2a]/50'
                   }`}
-                  data-name={`thumb-${idx}`}
-                >
-                  <img
-                    alt=""
-                    src={thumb}
-                    className="size-full object-cover"
-                  />
-                </button>
-              );
-            })}
-          </div>
+                  aria-label={`View photo ${idx + 1}`}
+                />
+              ))}
+            </div>
+          )}
+
+          {/* Thumbnails Row - only shown if multiple images exist */}
+          {gallery.length > 1 && (
+            <div
+              className="flex gap-2 items-center justify-center w-full overflow-x-auto py-1"
+              data-node-id="9:207"
+              data-name="thumbnails-row"
+            >
+              {gallery.map((thumb, idx) => {
+                const isSelected = activeImageIndex === idx;
+                return (
+                  <button
+                    key={idx}
+                    onClick={() => setActiveImageIndex(idx)}
+                    className={`h-[84px] w-[58px] bg-white rounded-[10px] overflow-hidden shrink-0 transition-all cursor-pointer ${
+                      isSelected
+                        ? 'border-[2px] border-[#6b1a2a] shadow-xs scale-102 ring-2 ring-[#6b1a2a]/20'
+                        : 'border border-[rgba(107,26,42,0.15)] opacity-80 hover:opacity-100'
+                    }`}
+                    data-name={`thumb-${idx}`}
+                  >
+                    <img
+                      alt=""
+                      src={thumb}
+                      className="size-full object-cover"
+                    />
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </section>
 
         {/* ── PRODUCT INFO SECTION ── */}

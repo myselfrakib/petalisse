@@ -187,13 +187,34 @@ export default function Shop() {
                   className="bg-white border border-[rgba(107,26,42,0.1)] rounded-[16px] overflow-hidden relative aspect-square shadow-xs group-hover:shadow-md transition-all"
                   data-name="image-container"
                 >
-                  <Link to={`/product/${product.id}`} className="block size-full">
+                  <Link to={`/product/${product.id}`} className="block size-full relative">
                     <img
                       alt={product.name}
-                      src={product.img}
-                      className="size-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      src={product.img || product.images?.[0]}
+                      className={`size-full object-cover transition-all duration-300 ${
+                        product.images && product.images.length > 1
+                          ? 'group-hover:opacity-0 group-hover:scale-105'
+                          : 'group-hover:scale-105'
+                      }`}
                     />
+                    {product.images && product.images.length > 1 && product.images[1] && (
+                      <img
+                        alt={product.name}
+                        src={product.images[1]}
+                        className="size-full object-cover absolute inset-0 opacity-0 group-hover:opacity-100 group-hover:scale-105 transition-all duration-300"
+                      />
+                    )}
                   </Link>
+
+                  {/* Photo count indicator if multiple photos exist */}
+                  {product.images && product.images.length > 1 && (
+                    <div className="absolute bottom-2 left-2 bg-[rgba(253,251,247,0.92)] backdrop-blur-xs px-1.5 py-0.5 rounded-full text-[10px] font-sans font-medium text-[#6b1a2a] shadow-xs flex items-center gap-1 pointer-events-none z-10">
+                      <svg className="size-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                      <span>{product.images.length}</span>
+                    </div>
+                  )}
 
                   {/* Favorite Button */}
                   <button

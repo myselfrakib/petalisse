@@ -70,6 +70,9 @@ export const AdminPage: React.FC = () => {
   const [prodBadge, setProdBadge] = useState('');
   const [prodIsFavorite, setProdIsFavorite] = useState(false);
   const [prodImgUrl, setProdImgUrl] = useState('');
+  const [prodImages, setProdImages] = useState<string[]>([]);
+  const [newImageUrlInput, setNewImageUrlInput] = useState('');
+  const [uploadingImagesCount, setUploadingImagesCount] = useState(0);
   const [prodDescription, setProdDescription] = useState('');
   const [prodDetailsStr, setProdDetailsStr] = useState('');
   const [uploadingImage, setUploadingImage] = useState(false);
@@ -204,8 +207,17 @@ export const AdminPage: React.FC = () => {
   const handleSaveProduct = async (e: React.FormEvent) => {
     e.preventDefault();
     setProdMessage(null);
-    if (!prodName || prodPrice === '' || !prodImgUrl) {
-      setProdMessage({ type: 'error', text: 'Name, Price and Product Image are required.' });
+
+    // Collect and sanitize all non-empty images, maximum 5
+    const validImages = prodImages
+      .map((u) => (typeof u === 'string' ? u.trim() : ''))
+      .filter(Boolean)
+      .slice(0, 5);
+
+    const mainImg = validImages[0] || (prodImgUrl ? prodImgUrl.trim() : '');
+
+    if (!prodName || prodPrice === '' || !mainImg) {
+      setProdMessage({ type: 'error', text: 'Product Name, Price and at least 1 Image are required.' });
       return;
     }
 
@@ -216,6 +228,8 @@ export const AdminPage: React.FC = () => {
       .filter(Boolean);
 
     try {
+      const finalImagesList = validImages.length > 0 ? validImages : [mainImg];
+
       const productPayload: Omit<Product, 'id'> = {
         name: prodName,
         category: prodCategory,
@@ -225,7 +239,8 @@ export const AdminPage: React.FC = () => {
           : {}),
         ...(prodBadge.trim() ? { badge: prodBadge.trim() } : {}),
         isFavorite: prodIsFavorite,
-        img: prodImgUrl,
+        img: mainImg,
+        images: finalImagesList,
         alt: prodName,
         description: prodDescription,
         details: detailsArray,
@@ -233,10 +248,10 @@ export const AdminPage: React.FC = () => {
 
       if (editingProductId) {
         await updateProduct(editingProductId, productPayload);
-        setProdMessage({ type: 'success', text: `Product "${prodName}" updated & live across storefront!` });
+        setProdMessage({ type: 'success', text: `Product "${prodName}" updated with ${finalImagesList.length} photo(s) & live across storefront!` });
       } else {
         await addProduct(productPayload);
-        setProdMessage({ type: 'success', text: `Product "${prodName}" published live to storefront!` });
+        setProdMessage({ type: 'success', text: `Product "${prodName}" published live with ${finalImagesList.length} photo(s) to storefront!` });
       }
 
       resetProductForm();
@@ -255,7 +270,14 @@ export const AdminPage: React.FC = () => {
     setProdDiscountedPrice(prod.discountedPrice !== undefined ? prod.discountedPrice : '');
     setProdBadge(prod.badge || '');
     setProdIsFavorite(!!prod.isFavorite);
-    setProdImgUrl(prod.img);
+
+    const existingImages = (prod.images && prod.images.length > 0)
+      ? prod.images.filter(Boolean).slice(0, 5)
+      : (prod.img ? [prod.img] : []);
+
+    setProdImages(existingImages);
+    setProdImgUrl(existingImages[0] || prod.img || '');
+    setNewImageUrlInput('');
     setProdDescription(prod.description);
     setProdDetailsStr((prod.details || []).join('\n'));
     setProdMessage(null);
@@ -285,6 +307,8 @@ export const AdminPage: React.FC = () => {
     setProdBadge('');
     setProdIsFavorite(false);
     setProdImgUrl('');
+    setProdImages([]);
+    setNewImageUrlInput('');
     setProdDescription('');
     setProdDetailsStr('');
   };
@@ -329,17 +353,76 @@ export const AdminPage: React.FC = () => {
   };
 
   const handleProductImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    const remainingSlots = 5 - prodImages.length;
+    if (remainingSlots <= 0) {
+      alert('You have already added the maximum of 5 images. Please remove an image before adding a new one.');
+      e.target.value = '';
+      return;
+    }
+
+    const selectedFiles = Array.from(files).slice(0, remainingSlots);
     setUploadingImage(true);
+    setUploadingImagesCount(selectedFiles.length);
+
     try {
-      const url = await uploadImage(file, 'products');
-      setProdImgUrl(url);
+      const uploadedUrls: string[] = [];
+      for (const file of selectedFiles) {
+        const url = await uploadImage(file, 'products');
+        if (url) uploadedUrls.push(url);
+      }
+      setProdImages((prev) => {
+        const combined = [...prev, ...uploadedUrls].slice(0, 5);
+        if (combined.length > 0) {
+          setProdImgUrl(combined[0]);
+        }
+        return combined;
+      });
     } catch (err: any) {
       alert('Upload failed: ' + err.message);
     } finally {
       setUploadingImage(false);
+      setUploadingImagesCount(0);
+      e.target.value = '';
     }
+  };
+
+  const handleAddImageUrl = () => {
+    const trimmed = newImageUrlInput.trim();
+    if (!trimmed) return;
+    if (prodImages.length >= 5) {
+      alert('Maximum of 5 images allowed per product.');
+      return;
+    }
+    setProdImages((prev) => {
+      const combined = [...prev, trimmed].slice(0, 5);
+      if (combined.length > 0) {
+        setProdImgUrl(combined[0]);
+      }
+      return combined;
+    });
+    setNewImageUrlInput('');
+  };
+
+  const handleRemoveProductImage = (indexToRemove: number) => {
+    setProdImages((prev) => {
+      const next = prev.filter((_, idx) => idx !== indexToRemove);
+      setProdImgUrl(next[0] || '');
+      return next;
+    });
+  };
+
+  const handleSetPrimaryImage = (indexToPrimary: number) => {
+    setProdImages((prev) => {
+      if (indexToPrimary <= 0 || indexToPrimary >= prev.length) return prev;
+      const target = prev[indexToPrimary];
+      const rest = prev.filter((_, idx) => idx !== indexToPrimary);
+      const next = [target, ...rest];
+      setProdImgUrl(next[0] || '');
+      return next;
+    });
   };
 
   const handleHeroImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -882,41 +965,153 @@ export const AdminPage: React.FC = () => {
                 {/* Right Column: Image & Details */}
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-xs font-medium text-[#4A423B] mb-1">
-                      Product Image (Upload or URL) *
-                    </label>
-                    <div className="flex gap-2 mb-2">
-                      <label className="cursor-pointer px-3 py-2 rounded-xl bg-white border border-[#DED5C9] text-xs font-medium text-[#4A423B] hover:bg-[#F3EDE2] transition inline-flex items-center gap-1.5">
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="block text-xs font-medium text-[#4A423B]">
+                        Product Gallery (Up to 5 Images) *
+                      </label>
+                      <span className={`text-[11px] font-medium ${prodImages.length === 0 ? 'text-[#C53030]' : 'text-[#8E5B59]'}`}>
+                        {prodImages.length}/5 added {prodImages.length > 0 && '(1st is cover)'}
+                      </span>
+                    </div>
+
+                    {/* Controls: Upload & Add URL */}
+                    <div className="flex flex-col sm:flex-row gap-2 mb-3">
+                      <label className={`cursor-pointer px-3 py-2 rounded-xl bg-white border border-[#DED5C9] text-xs font-medium text-[#4A423B] hover:bg-[#F3EDE2] transition inline-flex items-center justify-center gap-1.5 shrink-0 shadow-2xs ${prodImages.length >= 5 ? 'opacity-50 pointer-events-none' : ''}`}>
                         <svg className="w-4 h-4 text-[#8E5B59]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                         </svg>
-                        <span>{uploadingImage ? 'Optimizing...' : 'Upload Image'}</span>
+                        <span>
+                          {uploadingImage
+                            ? `Uploading (${uploadingImagesCount})...`
+                            : prodImages.length >= 5
+                            ? 'Max 5 Images Reached'
+                            : `Upload Photos (${5 - prodImages.length} slots free)`}
+                        </span>
                         <input
                           type="file"
+                          multiple
                           accept="image/*"
                           onChange={handleProductImageUpload}
-                          disabled={uploadingImage}
+                          disabled={uploadingImage || prodImages.length >= 5}
                           className="hidden"
                         />
                       </label>
 
-                      <input
-                        type="text"
-                        value={prodImgUrl}
-                        onChange={(e) => setProdImgUrl(e.target.value)}
-                        placeholder="Image URL or Figma asset path"
-                        className="flex-1 px-3.5 py-2 rounded-xl border border-[#DED5C9] bg-white text-xs text-[#2C2724] focus:outline-hidden focus:border-[#8E5B59]"
-                      />
+                      <div className="flex-1 flex gap-1.5">
+                        <input
+                          type="text"
+                          value={newImageUrlInput}
+                          onChange={(e) => setNewImageUrlInput(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              handleAddImageUrl();
+                            }
+                          }}
+                          placeholder="Paste image URL or /figma-assets/... path"
+                          disabled={prodImages.length >= 5}
+                          className="flex-1 px-3.5 py-2 rounded-xl border border-[#DED5C9] bg-white text-xs text-[#2C2724] focus:outline-hidden focus:border-[#8E5B59]"
+                        />
+                        <button
+                          type="button"
+                          onClick={handleAddImageUrl}
+                          disabled={!newImageUrlInput.trim() || prodImages.length >= 5}
+                          className="px-3.5 py-2 rounded-xl bg-[#FAF0ED] text-[#8E5B59] hover:bg-[#F3DDD6] disabled:opacity-40 text-xs font-semibold transition cursor-pointer shrink-0 shadow-2xs"
+                        >
+                          + Add
+                        </button>
+                      </div>
                     </div>
 
-                    {/* Image Preview */}
-                    {prodImgUrl ? (
-                      <div className="relative w-20 h-20 rounded-xl border border-[#E8E0D5] overflow-hidden bg-white">
-                        <img src={prodImgUrl} alt="Preview" className="w-full h-full object-cover" />
+                    {/* Image Slots Grid */}
+                    {prodImages.length > 0 ? (
+                      <div className="space-y-2">
+                        <div className="grid grid-cols-5 gap-2 p-2 rounded-xl bg-white border border-[#EAE3D8]">
+                          {prodImages.map((imgUrl, idx) => {
+                            const isCover = idx === 0;
+                            return (
+                              <div
+                                key={idx}
+                                className={`relative group rounded-lg overflow-hidden border aspect-square bg-[#FAF7F2] ${
+                                  isCover ? 'border-[#8E5B59] ring-2 ring-[#8E5B59]/30 shadow-xs' : 'border-[#E0D5C7]'
+                                }`}
+                              >
+                                <img src={imgUrl} alt={`Product ${idx + 1}`} className="w-full h-full object-cover" />
+
+                                {/* Badge */}
+                                <div className="absolute top-1 left-1 pointer-events-none">
+                                  {isCover ? (
+                                    <span className="px-1 py-0.2 rounded bg-[#8E5B59] text-white text-[9px] font-bold shadow-xs">
+                                      Cover
+                                    </span>
+                                  ) : (
+                                    <span className="px-1 py-0.2 rounded bg-black/60 text-white text-[9px] font-semibold">
+                                      #{idx + 1}
+                                    </span>
+                                  )}
+                                </div>
+
+                                {/* Hover Actions Overlay */}
+                                <div className="absolute inset-0 bg-black/55 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-1 p-1">
+                                  {!isCover && (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleSetPrimaryImage(idx)}
+                                      className="px-1.5 py-0.5 rounded bg-white text-[#8E5B59] text-[9px] font-bold hover:bg-[#FAF0ED] transition cursor-pointer"
+                                      title="Set as main cover photo"
+                                    >
+                                      Cover
+                                    </button>
+                                  )}
+                                  <button
+                                    type="button"
+                                    onClick={() => handleRemoveProductImage(idx)}
+                                    className="px-1.5 py-0.5 rounded bg-red-600 text-white text-[9px] font-bold hover:bg-red-700 transition cursor-pointer"
+                                    title="Remove this photo"
+                                  >
+                                    ✕ Remove
+                                  </button>
+                                </div>
+                              </div>
+                            );
+                          })}
+
+                          {/* Empty Add Slots up to 5 */}
+                          {Array.from({ length: 5 - prodImages.length }).map((_, emptyIdx) => (
+                            <label
+                              key={`empty-${emptyIdx}`}
+                              className="border border-dashed border-[#DED5C9] rounded-lg aspect-square flex flex-col items-center justify-center text-[#A89E94] hover:border-[#8E5B59] hover:text-[#8E5B59] hover:bg-[#FAF0ED]/40 transition cursor-pointer text-center p-1"
+                              title="Click to add another photo"
+                            >
+                              <span className="text-sm font-bold leading-none mb-0.5">+</span>
+                              <span className="text-[9px] leading-tight">Slot {prodImages.length + emptyIdx + 1}</span>
+                              <input
+                                type="file"
+                                multiple
+                                accept="image/*"
+                                onChange={handleProductImageUpload}
+                                disabled={uploadingImage}
+                                className="hidden"
+                              />
+                            </label>
+                          ))}
+                        </div>
+
+                        <p className="text-[11px] text-[#786F66]">
+                          💡 Image #1 is the store cover photo. If 1 image is provided, customer pages show only that image without empty placeholder thumbnails. If multiple images are provided (up to 5), an interactive photo carousel is shown.
+                        </p>
                       </div>
                     ) : (
-                      <div className="w-20 h-20 rounded-xl border border-dashed border-[#DED5C9] bg-white/50 flex items-center justify-center text-[10px] text-[#A89E94]">
-                        No image
+                      <div className="p-4 rounded-xl border border-dashed border-[#DED5C9] bg-white/60 flex flex-col items-center justify-center text-center gap-1.5">
+                        <div className="w-8 h-8 rounded-full bg-[#FAF0ED] text-[#8E5B59] flex items-center justify-center">
+                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                          </svg>
+                        </div>
+                        <p className="text-xs text-[#5C534B] font-medium">No images uploaded yet</p>
+                        <p className="text-[11px] text-[#A89E94]">
+                          Upload up to 5 photos or paste URLs. The 1st image will be the primary cover.
+                        </p>
                       </div>
                     )}
                   </div>
@@ -1001,11 +1196,21 @@ export const AdminPage: React.FC = () => {
                     {filteredProducts.map((p) => (
                       <tr key={p.id} className="hover:bg-white/60 transition">
                         <td className="py-3 px-4 flex items-center gap-3">
-                          <img
-                            src={p.img}
-                            alt={p.name}
-                            className="w-10 h-10 rounded-lg object-cover border border-[#E8E0D5] bg-white shrink-0"
-                          />
+                          <div className="relative shrink-0">
+                            <img
+                              src={p.img || p.images?.[0]}
+                              alt={p.name}
+                              className="w-10 h-10 rounded-lg object-cover border border-[#E8E0D5] bg-white"
+                            />
+                            {p.images && p.images.length > 1 && (
+                              <span
+                                className="absolute -bottom-1 -right-1 bg-[#8E5B59] text-white text-[9px] font-bold px-1 rounded-full shadow-2xs border border-white"
+                                title={`${p.images.length} photos in gallery`}
+                              >
+                                {p.images.length}
+                              </span>
+                            )}
+                          </div>
                           <div>
                             <div className="font-medium text-[#2C2724]">{p.name}</div>
                             <div className="text-[11px] text-[#8C827A] line-clamp-1">{p.description}</div>

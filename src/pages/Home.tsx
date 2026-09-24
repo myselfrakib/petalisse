@@ -244,13 +244,29 @@ export default function Home() {
                 >
                   <Link
                     to={`/product/${product.id}`}
-                    className="size-20 rounded-lg overflow-hidden shrink-0 border border-[rgba(107,26,42,0.06)]"
+                    className="size-20 rounded-lg overflow-hidden shrink-0 border border-[rgba(107,26,42,0.06)] relative block"
                   >
                     <img
                       alt={product.name}
-                      className="size-full object-cover group-hover:scale-105 transition-transform duration-300"
-                      src={product.img}
+                      className={`size-full object-cover transition-all duration-300 ${
+                        product.images && product.images.length > 1
+                          ? 'group-hover:opacity-0 group-hover:scale-105'
+                          : 'group-hover:scale-105'
+                      }`}
+                      src={product.img || product.images?.[0]}
                     />
+                    {product.images && product.images.length > 1 && product.images[1] && (
+                      <img
+                        alt={product.name}
+                        src={product.images[1]}
+                        className="size-full object-cover absolute inset-0 opacity-0 group-hover:opacity-100 group-hover:scale-105 transition-all duration-300"
+                      />
+                    )}
+                    {product.images && product.images.length > 1 && (
+                      <span className="absolute bottom-1 right-1 bg-black/60 text-white text-[9px] font-sans px-1 rounded-sm pointer-events-none">
+                        {product.images.length}
+                      </span>
+                    )}
                   </Link>
 
                   <div className="flex flex-col gap-1 flex-1 min-w-0">

@@ -100,7 +100,7 @@ export default function Cart() {
         name: i.product.name,
         price: i.product.discountedPrice ?? i.product.price,
         quantity: i.quantity,
-        img: i.product.img,
+        img: i.product.img || i.product.images?.[0] || '',
       }));
 
       await createOrder({
@@ -214,7 +214,7 @@ export default function Cart() {
                 <Link to={`/product/${p.id}`} className="size-20 rounded-[12px] overflow-hidden shrink-0">
                   <img
                     alt={p.name}
-                    src={p.img}
+                    src={p.img || p.images?.[0]}
                     className="size-full object-cover"
                   />
                 </Link>
