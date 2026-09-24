@@ -80,10 +80,9 @@ export default function Home() {
 
   return (
     <div
-      className="min-h-screen w-full flex flex-col items-center justify-start py-6 px-4 sm:px-6 pb-28 relative bg-repeat"
+      className="min-h-screen w-full flex flex-col items-center justify-start py-6 px-4 sm:px-6 pb-28 relative"
       style={{
-        backgroundImage: `url("${imgPetalisseHomepage}")`,
-        backgroundSize: '153.6px 153.6px',
+        backgroundColor: '#84c9f13a',
       }}
       data-node-id="2:121"
       data-name="petalisse-homepage"
