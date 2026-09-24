@@ -251,36 +251,31 @@ export default function Shop() {
 
                 {/* Details */}
                 <div className="flex flex-col gap-1 px-1">
-                  <div className="flex items-baseline justify-between gap-1">
-                    <Link
-                      to={`/product/${product.id}`}
-                      className="font-sans font-semibold text-[#6b1a2a] text-[14px] sm:text-[15px] truncate hover:underline flex-1"
-                      style={{ fontFamily: "'Inter', sans-serif" }}
-                      title={product.name}
-                    >
-                      {product.name}
-                    </Link>
-                    <div className="flex items-center gap-1 shrink-0">
-                      {product.discountedPrice !== undefined ? (
-                        <>
-                          <span className="font-sans font-bold text-[#6b1a2a] text-[14px] sm:text-[15px]">
-                            ₹{product.discountedPrice}
-                          </span>
-                          <del className="font-sans text-[#8b827d] text-[11px]">
-                            ₹{product.price}
-                          </del>
-                        </>
-                      ) : (
-                        <span className="font-sans font-bold text-[#6b1a2a] text-[14px] sm:text-[15px] shrink-0">
-                          ₹{product.price}
-                        </span>
-                      )}
-                    </div>
-                  </div>
+                  <Link
+                    to={`/product/${product.id}`}
+                    className="font-sans font-semibold text-[#6b1a2a] text-[14px] sm:text-[15px] leading-snug hover:underline"
+                    style={{ fontFamily: "'Inter', sans-serif" }}
+                    title={product.name}
+                  >
+                    {product.name}
+                  </Link>
 
-                  <p className="font-cormorant text-[#8b827d] text-[12px] leading-[1.3] line-clamp-2 h-[31px]">
-                    {product.description}
-                  </p>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    {product.discountedPrice !== undefined ? (
+                      <>
+                        <span className="font-sans font-bold text-[#6b1a2a] text-[14px] sm:text-[15px]">
+                          ₹{product.discountedPrice}
+                        </span>
+                        <del className="font-sans text-[#8b827d] text-[11px]">
+                          ₹{product.price}
+                        </del>
+                      </>
+                    ) : (
+                      <span className="font-sans font-bold text-[#6b1a2a] text-[14px] sm:text-[15px] shrink-0">
+                        ₹{product.price}
+                      </span>
+                    )}
+                  </div>
 
                   {product.colors && product.colors.length > 0 && (
                     <div className="flex items-center gap-1.5 -mt-0.5">
