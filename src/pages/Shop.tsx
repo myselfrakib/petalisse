@@ -3,6 +3,7 @@ import { Link, useSearchParams } from 'react-router';
 import { useCart } from '../context/CartContext';
 import { useContent } from '../context/ContentContext';
 import { Product } from '../types';
+import { getColorHex } from '../lib/colorUtils';
 
 const imgGinghamBg = '/figma-assets/772e8e7b4c0d39ad6752261452ccca607e718dc3.png';
 const imgChevronLeft = '/figma-assets/de70edd513d91ef52fc2c1fa9af3cbf0656b675a.svg';
@@ -275,6 +276,24 @@ export default function Shop() {
                   <p className="font-cormorant text-[#8b827d] text-[12px] leading-[1.3] line-clamp-2 h-[31px]">
                     {product.description}
                   </p>
+
+                  {product.colors && product.colors.length > 0 && (
+                    <div className="flex items-center gap-1.5 -mt-0.5">
+                      <div className="flex -space-x-1 items-center">
+                        {product.colors.slice(0, 4).map((c, i) => (
+                          <span
+                            key={i}
+                            className="size-2 rounded-full border border-white inline-block shadow-2xs"
+                            style={{ backgroundColor: getColorHex(c) }}
+                            title={c}
+                          />
+                        ))}
+                      </div>
+                      <span className="text-[10px] font-sans text-[#8b827d]">
+                        {product.colors.length} {product.colors.length === 1 ? 'color' : 'colors'}
+                      </span>
+                    </div>
+                  )}
 
                   <button
                     onClick={(e) => handleAddToCart(e, product)}

@@ -4,13 +4,14 @@ import type { Product } from '../types';
 export interface CartItem {
   product: Product;
   quantity: number;
+  selectedColor?: string;
 }
 
 interface CartContextValue {
   items: CartItem[];
-  add: (product: Product, qty?: number) => void;
-  remove: (id: string) => void;
-  update: (id: string, qty: number) => void;
+  add: (product: Product, qty?: number, selectedColor?: string) => void;
+  remove: (id: string, selectedColor?: string) => void;
+  update: (id: string, qty: number, selectedColor?: string) => void;
   clear: () => void;
   total: number;
   count: number;
@@ -37,26 +38,44 @@ export function CartProvider({ children }: { children: ReactNode }) {
     } catch {}
   }, [items]);
 
-  const add = (product: Product, qty = 1) => {
+  const add = (product: Product, qty = 1, selectedColor?: string) => {
     setItems((prev) => {
-      const existing = prev.find((i) => i.product.id === product.id);
+      const colorToMatch = selectedColor || (product.colors && product.colors.length > 0 ? product.colors[0] : undefined);
+      const existing = prev.find(
+        (i) => i.product.id === product.id && (i.selectedColor || '') === (colorToMatch || '')
+      );
       if (existing) {
         return prev.map((i) =>
-          i.product.id === product.id ? { ...i, quantity: i.quantity + qty } : i,
+          i.product.id === product.id && (i.selectedColor || '') === (colorToMatch || '')
+            ? { ...i, quantity: i.quantity + qty }
+            : i
         );
       }
-      return [...prev, { product, quantity: qty }];
+      return [...prev, { product, quantity: qty, selectedColor: colorToMatch }];
     });
   };
 
-  const remove = (id: string) => setItems((prev) => prev.filter((i) => i.product.id !== id));
+  const remove = (id: string, selectedColor?: string) => {
+    setItems((prev) =>
+      prev.filter(
+        (i) =>
+          !(i.product.id === id && (selectedColor === undefined || (i.selectedColor || '') === (selectedColor || '')))
+      )
+    );
+  };
 
-  const update = (id: string, qty: number) => {
+  const update = (id: string, qty: number, selectedColor?: string) => {
     if (qty <= 0) {
-      remove(id);
+      remove(id, selectedColor);
       return;
     }
-    setItems((prev) => prev.map((i) => (i.product.id === id ? { ...i, quantity: qty } : i)));
+    setItems((prev) =>
+      prev.map((i) =>
+        i.product.id === id && (selectedColor === undefined || (i.selectedColor || '') === (selectedColor || ''))
+          ? { ...i, quantity: qty }
+          : i
+      )
+    );
   };
 
   const clear = () => {

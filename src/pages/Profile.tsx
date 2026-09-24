@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { useAuth } from '../context/AuthContext';
+import { useContent } from '../context/ContentContext';
 import { AuthModal } from '../components/AuthModal';
 
 const imgGinghamBg = '/figma-assets/772e8e7b4c0d39ad6752261452ccca607e718dc3.png';
@@ -28,7 +29,17 @@ interface SavedAddress {
 
 export default function Profile() {
   const { currentUser, userProfile, updateUserProfileData, logout, isAdmin } = useAuth();
+  const { orders } = useContent();
   const navigate = useNavigate();
+
+  const myOrders = useMemo(() => {
+    if (!currentUser) return [];
+    return orders.filter(
+      (o) =>
+        (o.userId && o.userId === currentUser.uid) ||
+        (o.userEmail && o.userEmail.toLowerCase() === currentUser.email?.toLowerCase())
+    );
+  }, [orders, currentUser]);
 
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -495,6 +506,85 @@ export default function Profile() {
                   <img alt="" className="size-3.5 block" src={imgPlus} />
                   <span>Add New Address</span>
                 </button>
+              )}
+            </section>
+
+            {/* ── MY RECENT ORDERS (SYNCED WITH DB) ── */}
+            <section className="flex flex-col gap-3 w-full text-left">
+              <div className="flex items-center justify-between">
+                <h3 className="font-parisienne text-[#6b1a2a] text-[28px] leading-tight">
+                  My Orders ({myOrders.length})
+                </h3>
+                <span className="text-[11px] font-sans text-[#8b827d]">
+                  Live Synchronized
+                </span>
+              </div>
+
+              {myOrders.length === 0 ? (
+                <div className="bg-white border border-[rgba(107,26,42,0.1)] rounded-[20px] p-5 text-center shadow-xs">
+                  <p className="font-cormorant text-[#8b827d] text-sm">
+                    No orders placed yet. Explore our handcrafted charm collection!
+                  </p>
+                  <Link
+                    to="/shop"
+                    className="inline-block mt-3 px-5 py-2 rounded-full bg-[#6b1a2a] text-white text-xs font-cormorant font-bold uppercase tracking-wider hover:bg-[#50131f] transition"
+                  >
+                    Start Shopping &rarr;
+                  </Link>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {myOrders.map((ord) => (
+                    <div
+                      key={ord.id}
+                      className="bg-white border border-[rgba(107,26,42,0.12)] rounded-[20px] p-4 shadow-xs space-y-2.5"
+                    >
+                      <div className="flex justify-between items-center text-xs pb-2 border-b border-[#FAF0ED]">
+                        <div>
+                          <span className="font-mono font-bold text-[#6b1a2a]">
+                            {ord.orderNumber || `#${ord.id?.slice(-6).toUpperCase()}`}
+                          </span>
+                          <span className="text-[#8b827d] text-[11px] ml-2">
+                            {new Date(ord.createdAt).toLocaleDateString()}
+                          </span>
+                        </div>
+                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-[#f9d5e5] text-[#6b1a2a]">
+                          {ord.status}
+                        </span>
+                      </div>
+
+                      {/* Items */}
+                      <div className="space-y-1">
+                        {ord.items.map((item, idx) => (
+                          <div key={idx} className="flex justify-between text-xs text-[#2C2724]">
+                            <span>
+                              {item.name} {item.selectedColor ? `(${item.selectedColor})` : ''} × {item.quantity}
+                            </span>
+                            <span className="font-semibold">₹{item.price * item.quantity}</span>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Financial info */}
+                      <div className="pt-2 border-t border-[#FAF0ED] flex justify-between items-center text-xs">
+                        <span className="text-[11px] text-[#8b827d]">
+                          {ord.paymentMethod === 'partial_cod' ? 'Partial COD' : 'Online Paid'} • Shipping:{' '}
+                          {ord.shippingFee === 0 ? 'FREE' : `₹${ord.shippingFee}`}
+                        </span>
+                        <span className="font-sans font-bold text-[#6b1a2a] text-sm">
+                          Total: ₹{ord.total}
+                        </span>
+                      </div>
+
+                      {ord.paymentMethod === 'partial_cod' && (
+                        <div className="text-[11px] bg-amber-50 p-2 rounded-lg text-amber-900 border border-amber-200/60 flex justify-between">
+                          <span>Paid: ₹{ord.amountPaid}</span>
+                          <span>Due on delivery: ₹{ord.codAmountDue}</span>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
               )}
             </section>
 

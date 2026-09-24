@@ -10,6 +10,7 @@ export interface Product {
   description: string;
   badge?: string;
   details?: string[];
+  colors?: string[];
   isFavorite?: boolean;
   createdAt?: any;
 }
@@ -41,19 +42,28 @@ export interface OrderItem {
   price: number;
   quantity: number;
   img: string;
+  selectedColor?: string;
 }
 
 export interface Order {
   id?: string;
+  orderNumber?: string;
   userId?: string;
   userEmail: string;
   customerName: string;
   shippingAddress: string;
+  city?: string;
+  state?: string;
+  pinCode?: string;
   phone: string;
   items: OrderItem[];
   subtotal: number;
   discount: number;
+  shippingFee: number;
   total: number;
+  paymentMethod: 'online' | 'partial_cod';
+  amountPaid: number;
+  codAmountDue: number;
   status: 'pending' | 'processing' | 'shipped' | 'delivered';
   createdAt: any;
 }

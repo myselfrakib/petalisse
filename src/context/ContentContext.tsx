@@ -331,10 +331,12 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
                 price: Number(data.price) || 0,
                 discountedPrice: data.discountedPrice !== undefined ? Number(data.discountedPrice) : undefined,
                 img: data.img || '',
+                images: data.images || (data.img ? [data.img] : []),
                 alt: data.alt || data.name || '',
                 description: data.description || '',
                 badge: data.badge || undefined,
                 details: data.details || [],
+                colors: data.colors || [],
                 isFavorite: !!data.isFavorite,
                 createdAt: data.createdAt,
               });
@@ -390,16 +392,9 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
     return () => unsub();
   }, []);
 
-  // 4. Subscribe to Orders in Firestore (only in admin mode)
+  // 4. Subscribe to Orders in Firestore (proper live sync with DB)
   useEffect(() => {
     let unsub = () => {};
-    const isAdminMode =
-      typeof window !== 'undefined' &&
-      (window.location.pathname.startsWith('/admin') ||
-        localStorage.getItem('petalisse_demo_admin') === 'true');
-
-    if (!isAdminMode) return;
-
     try {
       const q = query(collection(db, 'orders'), orderBy('createdAt', 'desc'));
       unsub = onSnapshot(
@@ -411,15 +406,23 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
               const data = docSnap.data();
               list.push({
                 id: docSnap.id,
+                orderNumber: data.orderNumber || `#PET-${docSnap.id.slice(-6).toUpperCase()}`,
                 userId: data.userId,
                 userEmail: data.userEmail || 'guest@petalisse.com',
                 customerName: data.customerName || 'Boutique Patron',
                 shippingAddress: data.shippingAddress || '',
+                city: data.city || '',
+                state: data.state || '',
+                pinCode: data.pinCode || '',
                 phone: data.phone || '',
                 items: data.items || [],
                 subtotal: Number(data.subtotal) || 0,
                 discount: Number(data.discount) || 0,
+                shippingFee: Number(data.shippingFee) || 0,
                 total: Number(data.total) || 0,
+                paymentMethod: data.paymentMethod || 'online',
+                amountPaid: Number(data.amountPaid !== undefined ? data.amountPaid : data.total) || 0,
+                codAmountDue: Number(data.codAmountDue) || 0,
                 status: data.status || 'pending',
                 createdAt: data.createdAt?.toDate
                   ? data.createdAt.toDate().toISOString()
@@ -429,6 +432,11 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
             setOrders(list);
             try {
               localStorage.setItem('petalisse_orders', JSON.stringify(list));
+            } catch {}
+          } else {
+            setOrders([]);
+            try {
+              localStorage.setItem('petalisse_orders', JSON.stringify([]));
             } catch {}
           }
         },
@@ -573,10 +581,15 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   // Order Actions
   const createOrder = async (orderData: Omit<Order, 'id'>): Promise<string> => {
-    const id = `ord_${Date.now()}`;
+    const timestamp = Date.now();
+    const randomSuffix = Math.random().toString(36).substring(2, 6).toUpperCase();
+    const id = `ord_${timestamp}_${randomSuffix.toLowerCase()}`;
+    const orderNumber = orderData.orderNumber || `#PET-${timestamp.toString().slice(-6)}${randomSuffix}`;
+
     const newOrder: Order = {
       ...orderData,
       id,
+      orderNumber,
       createdAt: new Date().toISOString(),
     };
 
@@ -586,6 +599,7 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
     try {
       const payload = sanitizeForFirestore({
         ...orderData,
+        orderNumber,
         createdAt: serverTimestamp(),
       });
       await setDoc(doc(db, 'orders', id), payload);

@@ -1,0 +1,1059 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PETALISSE — Secure Checkout & Payment</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;1,600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+
+  <style>
+    :root {
+      --bg: #fcf9f8;
+      --card: #ffffff;
+      --accent: #b33951;
+      --accent2: #8f2338;
+      --accent-light: #fdf2f4;
+      --success: #15803d;
+      --gold: #b45309;
+      --gold-bg: #fffbeb;
+      --gold-border: #fde68a;
+      --text: #292524;
+      --muted: #78716c;
+      --border: #f3eae6;
+      --maxw: 460px;
+      --radius: 20px;
+    }
+
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Plus Jakarta Sans', 'Poppins', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 0 0 60px;
+      background-image: radial-gradient(#e7d7d2 0.75px, transparent 0.75px), radial-gradient(#e7d7d2 0.75px, #fcf9f8 0.75px);
+      background-size: 30px 30px;
+      background-position: 0 0, 15px 15px;
+    }
+
+    /* ── Top bar ── */
+    .topbar {
+      width: 100%;
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(10px);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px 20px;
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      box-shadow: 0 2px 12px rgba(0, 0, 0, 0.03);
+    }
+
+    .topbar-logo {
+      font-family: 'Playfair Display', serif;
+      font-size: 26px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      color: var(--accent);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .topbar-secure {
+      position: absolute;
+      right: 20px;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--success);
+      background: #f0fdf4;
+      border: 1px solid #bbf7d0;
+      padding: 4px 10px;
+      border-radius: 99px;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .wrap {
+      width: min(100%, var(--maxw));
+      padding: 20px 16px 0;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    /* ── Cards ── */
+    .card {
+      background: var(--card);
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      overflow: hidden;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+    }
+
+    .card-hd {
+      padding: 14px 18px 10px;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 1.2px;
+      text-transform: uppercase;
+      color: var(--muted);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .card-body {
+      padding: 14px 18px;
+    }
+
+    /* ── COD advance banner ── */
+    .cod-banner {
+      background: var(--gold-bg);
+      border: 1.5px solid var(--gold-border);
+      border-radius: var(--radius);
+      padding: 14px 16px;
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+      box-shadow: 0 4px 14px rgba(217, 119, 6, 0.08);
+    }
+
+    .cod-banner-icon {
+      font-size: 24px;
+      flex-shrink: 0;
+      line-height: 1.2;
+    }
+
+    .cod-banner-body {
+      flex: 1;
+    }
+
+    .cod-banner-title {
+      font-size: 13px;
+      font-weight: 800;
+      color: var(--gold);
+      margin-bottom: 4px;
+    }
+
+    .cod-banner-text {
+      font-size: 12px;
+      color: #92400e;
+      line-height: 1.6;
+    }
+
+    .cod-banner-pill {
+      display: inline-block;
+      margin-top: 8px;
+      background: #fef3c7;
+      border: 1px solid #fcd34d;
+      border-radius: 99px;
+      padding: 3px 10px;
+      font-size: 11px;
+      font-weight: 800;
+      color: #78350f;
+    }
+
+    /* ── Online banner ── */
+    .online-banner {
+      background: var(--accent-light);
+      border: 1.5px solid rgba(179, 57, 81, 0.2);
+      border-radius: var(--radius);
+      padding: 14px 16px;
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .online-banner-icon {
+      font-size: 22px;
+      flex-shrink: 0;
+    }
+
+    .online-banner-title {
+      font-size: 13px;
+      font-weight: 800;
+      color: var(--accent);
+      margin-bottom: 2px;
+    }
+
+    .online-banner-text {
+      font-size: 12px;
+      color: #6b2130;
+      line-height: 1.5;
+    }
+
+    /* ── Item row ── */
+    .item-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .item-row:last-child {
+      border-bottom: none;
+    }
+
+    .item-img {
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      background: #f5ebe6;
+      object-fit: cover;
+      flex-shrink: 0;
+      border: 1px solid var(--border);
+    }
+
+    .item-img-ph {
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      background: #fdf2f4;
+      display: grid;
+      place-items: center;
+      font-size: 22px;
+      flex-shrink: 0;
+      border: 1px solid rgba(179, 57, 81, 0.15);
+    }
+
+    .item-name {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .item-meta {
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 2px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .color-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 1px 6px;
+      border-radius: 6px;
+      background: #f4ede9;
+      font-weight: 600;
+      color: #574d49;
+    }
+
+    .item-price {
+      margin-left: auto;
+      font-size: 13px;
+      font-weight: 800;
+      white-space: nowrap;
+      color: var(--text);
+    }
+
+    /* ── Price rows ── */
+    .pr {
+      display: flex;
+      justify-content: space-between;
+      padding: 5px 0;
+      font-size: 13px;
+    }
+
+    .pr.total {
+      font-size: 15px;
+      font-weight: 800;
+      border-top: 2px dashed var(--border);
+      margin-top: 8px;
+      padding-top: 12px;
+    }
+
+    .pr.total span:last-child {
+      color: var(--accent);
+      font-size: 16px;
+    }
+
+    .pr .muted {
+      color: var(--muted);
+    }
+
+    .pr .green {
+      color: var(--success);
+      font-weight: 700;
+    }
+
+    .pr.due-now {
+      background: #fef9ec;
+      border: 1.5px solid #fcd34d;
+      border-radius: 12px;
+      padding: 12px 14px;
+      margin-top: 10px;
+      font-weight: 800;
+    }
+
+    .pr.due-now span:first-child {
+      color: var(--gold);
+    }
+
+    .pr.due-now span:last-child {
+      color: var(--gold);
+      font-size: 18px;
+    }
+
+    .pr.remaining {
+      font-size: 12px;
+      padding: 6px 4px 2px;
+    }
+
+    .pr.remaining span:first-child {
+      color: var(--muted);
+      font-style: italic;
+    }
+
+    .pr.remaining span:last-child {
+      color: var(--muted);
+      font-weight: 700;
+    }
+
+    /* ── Address ── */
+    .addr-name {
+      font-weight: 700;
+      font-size: 14px;
+      margin-bottom: 3px;
+      color: var(--text);
+    }
+
+    .addr-line {
+      font-size: 13px;
+      line-height: 1.6;
+      color: #44403c;
+    }
+
+    /* ── Pay button ── */
+    .pay-btn {
+      width: 100%;
+      border: none;
+      border-radius: 16px;
+      padding: 16px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      color: #fff;
+      font-size: 16px;
+      font-weight: 800;
+      letter-spacing: .4px;
+      cursor: pointer;
+      box-shadow: 0 10px 24px rgba(179, 57, 81, 0.3);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      transition: transform .15s, box-shadow .15s, opacity .15s;
+    }
+
+    .pay-btn.cod {
+      background: linear-gradient(135deg, #d97706, #b45309);
+      box-shadow: 0 10px 24px rgba(180, 83, 9, 0.3);
+    }
+
+    .pay-btn.cod:hover {
+      box-shadow: 0 14px 28px rgba(180, 83, 9, 0.38);
+    }
+
+    .pay-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 14px 28px rgba(179, 57, 81, 0.38);
+    }
+
+    .pay-btn:disabled {
+      opacity: .6;
+      cursor: default;
+      transform: none;
+    }
+
+    .pay-btn-amount {
+      font-size: 18px;
+    }
+
+    .cancel-link {
+      text-align: center;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--muted);
+      text-decoration: none;
+      display: block;
+      margin-top: 4px;
+      transition: color .15s;
+    }
+
+    .cancel-link:hover {
+      color: var(--accent);
+    }
+
+    /* ── Badges ── */
+    .badge {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 800;
+      padding: 3px 10px;
+      border-radius: 99px;
+      letter-spacing: .5px;
+    }
+
+    .badge-gold {
+      background: #fef3c7;
+      color: #92400e;
+      border: 1px solid #fde68a;
+    }
+
+    .badge-rose {
+      background: #fdf2f4;
+      color: #9e2a40;
+      border: 1px solid #fecdd3;
+    }
+
+    /* ── Error & Failed ── */
+    .failed-banner {
+      background: #fff5f5;
+      border: 1.5px solid rgba(179, 57, 81, 0.3);
+      border-radius: var(--radius);
+      padding: 16px;
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+      margin-bottom: 12px;
+      box-shadow: 0 4px 16px rgba(179, 57, 81, 0.08);
+      animation: fadeIn .3s ease;
+    }
+
+    .failed-banner-icon {
+      font-size: 24px;
+      flex-shrink: 0;
+    }
+
+    .failed-banner-body {
+      flex: 1;
+    }
+
+    .failed-banner-title {
+      font-size: 14px;
+      font-weight: 800;
+      color: var(--accent);
+      margin-bottom: 4px;
+    }
+
+    .failed-banner-text {
+      font-size: 12px;
+      color: #7a1f1f;
+      line-height: 1.6;
+    }
+
+    .retry-btn {
+      margin-top: 12px;
+      width: 100%;
+      border: none;
+      border-radius: 12px;
+      padding: 12px;
+      background: var(--accent);
+      color: #fff;
+      font-size: 13px;
+      font-weight: 800;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(179, 57, 81, 0.25);
+    }
+
+    /* ── Overlays ── */
+    #overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.55);
+      backdrop-filter: blur(5px);
+      z-index: 100;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #overlay.show {
+      display: flex;
+    }
+
+    .ov-box {
+      background: #fff;
+      border-radius: 24px;
+      padding: 34px 28px;
+      text-align: center;
+      max-width: 300px;
+      width: 90%;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+    }
+
+    .ov-spinner {
+      width: 46px;
+      height: 46px;
+      border: 4px solid rgba(179, 57, 81, 0.15);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      margin: 0 auto 16px;
+    }
+
+    .ov-title {
+      font-size: 16px;
+      font-weight: 800;
+      margin-bottom: 6px;
+    }
+
+    .ov-sub {
+      font-size: 12px;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+
+    /* ── Success Overlay ── */
+    #successOverlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.65);
+      backdrop-filter: blur(8px);
+      z-index: 110;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #successOverlay.show {
+      display: flex;
+    }
+
+    .success-box {
+      background: #fff;
+      border-radius: 28px;
+      padding: 36px 28px;
+      text-align: center;
+      max-width: 320px;
+      width: 92%;
+      box-shadow: 0 25px 50px rgba(0, 0, 0, 0.2);
+      animation: popIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+    }
+
+    .success-emoji {
+      font-size: 54px;
+      display: block;
+      margin-bottom: 12px;
+    }
+
+    .success-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 26px;
+      font-weight: 700;
+      color: var(--success);
+      margin-bottom: 6px;
+    }
+
+    .success-sub {
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.6;
+      margin-bottom: 18px;
+    }
+
+    .success-btn {
+      width: 100%;
+      border: none;
+      border-radius: 14px;
+      padding: 14px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      color: #fff;
+      font-size: 14px;
+      font-weight: 800;
+      cursor: pointer;
+      box-shadow: 0 8px 20px rgba(179, 57, 81, 0.28);
+    }
+
+    .success-countdown {
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 12px;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    @keyframes popIn {
+      0% { transform: scale(0.4); opacity: 0; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- Top bar -->
+  <div class="topbar">
+    <div class="topbar-logo">🌸 PETALISSE</div>
+    <div class="topbar-secure">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+        <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+        <path d="M7 11V7a5 5 0 0110 0v4" />
+      </svg>
+      Secure Checkout
+    </div>
+  </div>
+
+  <div class="wrap" id="mainWrap">
+    <div class="card">
+      <div class="card-body" style="text-align:center;padding:44px 20px;color:var(--muted);">
+        <div style="font-size:38px;margin-bottom:12px;">⏳</div>
+        <div style="font-weight:700;">Loading your Petalisse order…</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Loading Overlay -->
+  <div id="overlay">
+    <div class="ov-box">
+      <div class="ov-spinner"></div>
+      <div class="ov-title" id="overlayTitle">Opening Payment Gateway…</div>
+      <div class="ov-sub" id="overlaySub">Please do not close or refresh this page.</div>
+    </div>
+  </div>
+
+  <!-- Success Overlay -->
+  <div id="successOverlay">
+    <div class="success-box">
+      <span class="success-emoji">🌸</span>
+      <div class="success-title">Order Confirmed!</div>
+      <div class="success-sub" id="successSub">
+        Your payment has been received and your handcrafted order has been placed with Petalisse!
+      </div>
+      <button class="success-btn" id="successBtn" onclick="returnToPetalisse()">Return to Petalisse →</button>
+      <div class="success-countdown" id="successCountdown"></div>
+    </div>
+  </div>
+
+  <script type="module">
+    /* ══════════════════════════════════════════════════════════
+       PETALISSE PAYMENT GATEWAY PAGE
+       Hosted on: https://waveridrentals.vercel.app/petaliseepayment.html
+       — Reads order payload from URL parameters
+       — Initiates secure Razorpay Checkout
+       — Writes confirmed order directly to Firestore (petalisse-1b489)
+       — Redirects customer back to Petalisse with order details
+    ══════════════════════════════════════════════════════════ */
+
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+    import { getFirestore, doc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+    /* ── Petalisse Firebase Firestore configuration ── */
+    const firebaseConfig = {
+      apiKey: "AIzaSyCvT_Q9H_sICmIw83KE3H9r2iXrEJJ08UU",
+      authDomain: "petalisse-1b489.firebaseapp.com",
+      projectId: "petalisse-1b489",
+      storageBucket: "petalisse-1b489.firebasestorage.app",
+      messagingSenderId: "890535935364",
+      appId: "1:890535935364:web:2e8fee8b61ce76a29031d1",
+      measurementId: "G-RZTRW3EBXQ"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    /* ── Razorpay Configuration ── */
+    const params = new URLSearchParams(window.location.search);
+    const RZP_KEY = params.get('rzp') || 'rzp_live_omDNDSL8gmUBCZ';
+
+    /* ── Read Parameters ── */
+    const orderId = params.get('oid') || '';
+    const amtRaw = parseFloat(params.get('amt') || '0');
+    const fullTotal = parseFloat(params.get('total') || '0') || amtRaw;
+    const name = params.get('n') || '';
+    const email = params.get('e') || '';
+    const phone = params.get('ph') || '';
+    const userId = params.get('uid') || '';
+    const userEmail = params.get('ue') || email;
+    const mode = params.get('mode') || 'online';
+    const returnUrlParam = params.get('ret') || '';
+    const dataRaw = params.get('d') || '';
+
+    // Determine return base URL
+    const PETALISSE_BASE = returnUrlParam || (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+      ? `${window.location.protocol}//${window.location.host}`
+      : 'https://petalisse.vercel.app');
+
+    const isCodAdvance = mode === 'cod_advance' || mode === 'partial_cod';
+    const chargeNow = amtRaw;
+    const remaining = isCodAdvance ? Math.max(0, fullTotal - chargeNow) : 0;
+
+    /* ── Decode payload ── */
+    let payload = {};
+    if (dataRaw) {
+      try {
+        payload = JSON.parse(decodeURIComponent(escape(atob(dataRaw))));
+      } catch (err) {
+        console.warn('Could not base64-decode order payload:', err);
+      }
+    }
+
+    const items = Array.isArray(payload.items) ? payload.items : [];
+    const address = payload.address || '';
+    const city = payload.city || '';
+    const state = payload.state || '';
+    const pincode = payload.pincode || '';
+    const country = payload.country || 'India';
+    const subtotal = payload.subtotal || fullTotal;
+    const discount = payload.discount || 0;
+    const shippingFee = payload.shippingFee ?? (fullTotal >= 599 ? 0 : (isCodAdvance ? 99 : 49));
+    const orderNumber = payload.orderNumber || (orderId ? `#PET-${orderId.slice(-6).toUpperCase()}` : '#PET-ORDER');
+
+    /* ── Validate minimum parameters ── */
+    if (!orderId || !amtRaw || !name) {
+      document.getElementById('mainWrap').innerHTML = `
+        <div class="card">
+          <div class="card-body" style="text-align:center;padding:50px 20px;">
+            <div style="font-size:44px;margin-bottom:12px;">🌸</div>
+            <h2 style="font-size:20px;font-weight:800;color:var(--text);margin-bottom:8px;">Payment Session Expired</h2>
+            <p style="font-size:13px;color:var(--muted);margin-bottom:20px;">
+              Missing required order details. Please return to Petalisse to proceed to checkout.
+            </p>
+            <a href="${PETALISSE_BASE}/cart" style="display:inline-block;padding:12px 24px;border-radius:12px;background:var(--accent);color:#fff;font-weight:700;text-decoration:none;font-size:14px;">
+              ← Back to Petalisse Cart
+            </a>
+          </div>
+        </div>`;
+      throw new Error('Missing required checkout params');
+    }
+
+    /* ── Helper utilities ── */
+    function esc(s) {
+      return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    function showOverlay(title, sub) {
+      document.getElementById('overlayTitle').textContent = title || 'Processing…';
+      document.getElementById('overlaySub').textContent = sub || 'Please wait.';
+      document.getElementById('overlay').classList.add('show');
+    }
+
+    function hideOverlay() {
+      document.getElementById('overlay').classList.remove('show');
+    }
+
+    let returnTimer = null;
+    let savedPaymentId = '';
+
+    window.returnToPetalisse = function () {
+      if (returnTimer) clearInterval(returnTimer);
+      const target = `${PETALISSE_BASE}/cart?orderSuccess=true&oid=${encodeURIComponent(orderId)}&paymentId=${encodeURIComponent(savedPaymentId)}&amt=${chargeNow}`;
+      window.location.href = target;
+    };
+
+    function showSuccess(paymentId) {
+      savedPaymentId = paymentId || '';
+      hideOverlay();
+      document.getElementById('successOverlay').classList.add('show');
+      let count = 4;
+      document.getElementById('successCountdown').textContent = `Auto-redirecting back to Petalisse in ${count}s…`;
+      returnTimer = setInterval(() => {
+        count--;
+        const el = document.getElementById('successCountdown');
+        if (el) el.textContent = `Auto-redirecting back to Petalisse in ${count}s…`;
+        if (count <= 0) {
+          clearInterval(returnTimer);
+          window.returnToPetalisse();
+        }
+      }, 1000);
+    }
+
+    /* ══════════════════════════════════════════════════
+       WRITE CONFIRMED ORDER TO FIREBASE FIRESTORE
+    ══════════════════════════════════════════════════ */
+    async function writeOrderToFirestore(paymentId, rzpOrderId = '') {
+      const nowIso = new Date().toISOString();
+      const fullAddressString = `${address}, ${city}${state ? `, ${state}` : ''} - ${pincode}`;
+
+      const orderRecord = {
+        id: orderId,
+        orderNumber: orderNumber,
+        userId: userId || 'guest',
+        userEmail: userEmail || email,
+        customerName: name,
+        phone: phone,
+        email: email,
+        shippingAddress: fullAddressString,
+        city: city,
+        state: state || '',
+        pinCode: pincode,
+        country: country,
+        items: items,
+        subtotal: subtotal,
+        discount: discount,
+        shippingFee: shippingFee,
+        total: fullTotal,
+        paymentMethod: isCodAdvance ? 'partial_cod' : 'online',
+        amountPaid: chargeNow,
+        codAmountDue: remaining,
+        paymentId: paymentId || '',
+        razorpayOrderId: rzpOrderId || '',
+        status: 'confirmed',
+        source: 'waveridrentals_gateway',
+        createdAt: serverTimestamp(),
+        confirmedAt: serverTimestamp(),
+        createdAtIso: nowIso
+      };
+
+      await setDoc(doc(db, 'orders', orderId), orderRecord);
+    }
+
+    /* ══════════════════════════════════════════════════
+       SHOW PAYMENT FAILED BANNER WITH INSTANT RETRY
+    ══════════════════════════════════════════════════ */
+    function showPaymentFailed(reason) {
+      hideOverlay();
+      const existing = document.querySelector('.failed-banner');
+      if (existing) existing.remove();
+
+      const wrap = document.getElementById('mainWrap');
+      const banner = document.createElement('div');
+      banner.className = 'failed-banner';
+      banner.innerHTML = `
+        <span class="failed-banner-icon">⚠️</span>
+        <div class="failed-banner-body">
+          <div class="failed-banner-title">Payment Incomplete</div>
+          <div class="failed-banner-text">
+            ${reason || 'The payment was cancelled or failed. Your card/account was not debited and your order has not been placed.'}
+          </div>
+          <button class="retry-btn" id="retryBtn">Try Payment Again →</button>
+        </div>`;
+
+      wrap.insertBefore(banner, wrap.firstChild);
+      document.getElementById('retryBtn').addEventListener('click', () => {
+        banner.remove();
+        window.startPayment();
+      });
+
+      const payBtn = document.getElementById('payBtn');
+      if (payBtn) payBtn.disabled = false;
+    }
+
+    /* ══════════════════════════════════════════════════
+       RENDER UI ELEMENTS
+    ══════════════════════════════════════════════════ */
+    const itemsHtml = items.length
+      ? items.map(it => `
+          <div class="item-row">
+            ${(it.img || it.imgUrl || it.imageUrl)
+              ? `<img class="item-img" src="${esc(it.img || it.imgUrl || it.imageUrl)}" onerror="this.outerHTML='<div class=\\'item-img-ph\\'>🌸</div>'"/>`
+              : `<div class="item-img-ph">🌸</div>`}
+            <div style="flex:1;min-width:0;">
+              <div class="item-name">${esc(it.name || 'Handcrafted Crochet')}</div>
+              <div class="item-meta">
+                <span>Qty: ${it.quantity || it.qty || 1}</span>
+                ${it.selectedColor ? `<span class="color-chip">🌸 ${esc(it.selectedColor)}</span>` : ''}
+              </div>
+            </div>
+            <div class="item-price">₹${Number(it.price || 0).toLocaleString('en-IN')}</div>
+          </div>`).join('')
+      : `<div class="item-row">
+          <div class="item-img-ph">🌸</div>
+          <div style="flex:1;">
+            <div class="item-name">Petalisse Handcrafted Crochet Order</div>
+            <div class="item-meta">Ref: ${esc(orderNumber)}</div>
+          </div>
+          <div class="item-price">₹${fullTotal.toLocaleString('en-IN')}</div>
+        </div>`;
+
+    const addrHtml = address
+      ? `<div class="addr-name">${esc(name)}</div>
+         <div class="addr-line">${esc(address)}</div>
+         <div class="addr-line">${esc([city, state, pincode].filter(Boolean).join(', '))}</div>
+         <div class="addr-line" style="color:var(--muted);margin-top:2px;">Phone: +91 ${esc(phone)} ${email ? `· ${esc(email)}` : ''}</div>`
+      : `<div class="addr-name">${esc(name)}</div>
+         <div class="addr-line" style="color:var(--muted);">Delivery address on file (+91 ${esc(phone)})</div>`;
+
+    const priceSummaryHtml = isCodAdvance ? `
+      <div class="pr"><span class="muted">Crochet Product Total</span><span>₹${Number(subtotal).toLocaleString('en-IN')}</span></div>
+      ${discount > 0 ? `<div class="pr"><span class="muted">Discount Applied</span><span class="green">−₹${Number(discount).toLocaleString('en-IN')}</span></div>` : ''}
+      <div class="pr"><span class="muted">Shipping Fee</span><span class="${shippingFee === 0 ? 'green' : ''}">${shippingFee === 0 ? 'FREE' : '₹' + shippingFee}</span></div>
+      <div class="pr total"><span>Total Order Value</span><span>₹${fullTotal.toLocaleString('en-IN')}</span></div>
+      <div class="pr due-now">
+        <span>💳 Pay Now (50% Advance${shippingFee > 0 ? ' + Shipping' : ''})</span>
+        <span>₹${chargeNow.toLocaleString('en-IN')}</span>
+      </div>
+      <div class="pr remaining">
+        <span>🚚 Remaining 50% Balance on Delivery</span>
+        <span>₹${remaining.toLocaleString('en-IN')}</span>
+      </div>
+    ` : `
+      <div class="pr"><span class="muted">Crochet Product Total</span><span>₹${Number(subtotal).toLocaleString('en-IN')}</span></div>
+      ${discount > 0 ? `<div class="pr"><span class="muted">Discount Applied</span><span class="green">−₹${Number(discount).toLocaleString('en-IN')}</span></div>` : ''}
+      <div class="pr"><span class="muted">Shipping Fee</span><span class="${shippingFee === 0 ? 'green' : ''}">${shippingFee === 0 ? 'FREE' : '₹' + shippingFee}</span></div>
+      <div class="pr total"><span>Total Amount Payable</span><span>₹${fullTotal.toLocaleString('en-IN')}</span></div>
+    `;
+
+    const bannerHtml = isCodAdvance ? `
+      <div class="cod-banner">
+        <span class="cod-banner-icon">🚚</span>
+        <div class="cod-banner-body">
+          <div class="cod-banner-title">Cash on Delivery — 50% Advance Required</div>
+          <div class="cod-banner-text">
+            To prevent transit cancellations on made-to-order handcrafted items, pay <strong>₹${chargeNow.toLocaleString('en-IN')}</strong> now to confirm your order.
+            The remaining <strong>₹${remaining.toLocaleString('en-IN')}</strong> is paid upon doorstep delivery.
+          </div>
+          <span class="cod-banner-pill">${shippingFee === 0 ? '🎉 Free Shipping Unlocked' : 'Standard COD Shipping: ₹99'}</span>
+        </div>
+      </div>
+    ` : `
+      <div class="online-banner">
+        <span class="online-banner-icon">⚡</span>
+        <div>
+          <div class="online-banner-title">Instant Online Confirmation</div>
+          <div class="online-banner-text">
+            ${shippingFee === 0 ? '🎉 Orders above ₹599 receive <strong>FREE Express Shipping</strong>!' : 'Standard online delivery shipping: ₹49 included.'}
+          </div>
+        </div>
+      </div>
+    `;
+
+    const badgeHtml = isCodAdvance
+      ? `<span class="badge badge-gold">Partial COD Advance · ${esc(orderNumber)}</span>`
+      : `<span class="badge badge-rose">Online Order · ${esc(orderNumber)}</span>`;
+
+    const btnLabel = isCodAdvance
+      ? `Pay ₹<span class="pay-btn-amount">${chargeNow.toLocaleString('en-IN')}</span>&nbsp;Advance via Razorpay`
+      : `Pay <span class="pay-btn-amount">₹${Number(chargeNow).toLocaleString('en-IN')}</span> via Razorpay`;
+
+    document.getElementById('mainWrap').innerHTML = `
+      <div style="text-align:center;padding:4px 0 6px;">${badgeHtml}</div>
+
+      ${bannerHtml}
+
+      <div class="card">
+        <div class="card-hd">
+          <span>🌸 Your Handcrafted Items</span>
+          <span style="font-weight:600;color:var(--accent);">${items.length} item${items.length === 1 ? '' : 's'}</span>
+        </div>
+        <div class="card-body">${itemsHtml}</div>
+      </div>
+
+      <div class="card">
+        <div class="card-hd">💰 Price & Payment Breakdown</div>
+        <div class="card-body">${priceSummaryHtml}</div>
+      </div>
+
+      <div class="card">
+        <div class="card-hd">📦 Delivery Destination</div>
+        <div class="card-body">${addrHtml}</div>
+      </div>
+
+      <button class="pay-btn${isCodAdvance ? ' cod' : ''}" id="payBtn" onclick="startPayment()">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4">
+          <rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/>
+        </svg>
+        ${btnLabel}
+      </button>
+
+      <a href="${PETALISSE_BASE}/cart" class="cancel-link">← Cancel and return to Petalisse Cart</a>
+
+      <div style="text-align:center;font-size:11px;color:var(--muted);padding-top:6px;display:flex;align-items:center;justify-content:center;gap:6px;">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/>
+        </svg>
+        Secured by Razorpay · UPI (GPay, PhonePe, Paytm), Cards & Net Banking
+      </div>
+    `;
+
+    /* ══════════════════════════════════════════════════
+       START RAZORPAY PAYMENT
+    ══════════════════════════════════════════════════ */
+    window.startPayment = function () {
+      const btn = document.getElementById('payBtn');
+      if (btn) btn.disabled = true;
+
+      showOverlay('Connecting to Razorpay...', 'Initializing secure payment modal.');
+
+      try {
+        const options = {
+          key: RZP_KEY,
+          amount: Math.round(chargeNow * 100), // In paise (INR)
+          currency: 'INR',
+          name: 'PETALISSE',
+          description: isCodAdvance ? `50% COD Advance – ${orderNumber}` : `Handcrafted Order – ${orderNumber}`,
+          image: 'https://images.unsplash.com/photo-1513519245088-0e12902e5a38?auto=format&fit=crop&w=200&q=80',
+          prefill: {
+            name: name,
+            email: email,
+            contact: phone
+          },
+          notes: {
+            orderId: orderId,
+            orderNumber: orderNumber,
+            customerPhone: phone
+          },
+          theme: {
+            color: isCodAdvance ? '#b45309' : '#b33951'
+          },
+          modal: {
+            ondismiss: function () {
+              hideOverlay();
+              if (btn) btn.disabled = false;
+              showPaymentFailed('You dismissed the payment window before completing the payment.');
+            }
+          },
+          handler: async function (response) {
+            showOverlay('Confirming Order...', 'Saving your order to database. Please do not close this window.');
+            try {
+              await writeOrderToFirestore(response.razorpay_payment_id, response.razorpay_order_id || '');
+              showSuccess(response.razorpay_payment_id);
+            } catch (err) {
+              console.error('Firestore order write error:', err);
+              // Still consider payment successful and redirect back to Petalisse with paymentId
+              showSuccess(response.razorpay_payment_id);
+            }
+          }
+        };
+
+        const rzp = new window.Razorpay(options);
+        rzp.on('payment.failed', function (resp) {
+          hideOverlay();
+          if (btn) btn.disabled = false;
+          const reason = resp?.error?.description || 'The payment was declined or could not be completed.';
+          showPaymentFailed(reason);
+        });
+
+        hideOverlay();
+        rzp.open();
+      } catch (err) {
+        hideOverlay();
+        if (btn) btn.disabled = false;
+        showPaymentFailed('Could not open payment window: ' + err.message);
+      }
+    };
+  </script>
+</body>
+
+</html>

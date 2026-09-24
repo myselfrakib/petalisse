@@ -1,7 +1,8 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router';
 import { useCart } from '../context/CartContext';
 import { useContent } from '../context/ContentContext';
+import { getColorHex } from '../lib/colorUtils';
 
 const imgGinghamBg = '/figma-assets/772e8e7b4c0d39ad6752261452ccca607e718dc3.png';
 const imgChevronLeft = '/figma-assets/de70edd513d91ef52fc2c1fa9af3cbf0656b675a.svg';
@@ -35,8 +36,17 @@ export default function Product() {
 
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [qty, setQty] = useState(1);
+  const [selectedColor, setSelectedColor] = useState<string>('');
   const [isWishlisted, setIsWishlisted] = useState(false);
   const [addedNotice, setAddedNotice] = useState(false);
+
+  useEffect(() => {
+    if (product?.colors && product.colors.length > 0) {
+      setSelectedColor(product.colors[0]);
+    } else {
+      setSelectedColor('');
+    }
+  }, [product]);
 
   const relatedProducts = useMemo(() => {
     if (!product) return [];
@@ -51,14 +61,16 @@ export default function Product() {
 
   const handleAddToCart = () => {
     if (!product) return;
-    add(product, qty);
+    const colorToUse = selectedColor || (product.colors && product.colors.length > 0 ? product.colors[0] : undefined);
+    add(product, qty, colorToUse);
     setAddedNotice(true);
     setTimeout(() => setAddedNotice(false), 2000);
   };
 
   const handleBuyNow = () => {
     if (!product) return;
-    add(product, qty);
+    const colorToUse = selectedColor || (product.colors && product.colors.length > 0 ? product.colors[0] : undefined);
+    add(product, qty, colorToUse);
     navigate('/cart');
   };
 
@@ -312,6 +324,76 @@ export default function Product() {
           data-node-id="9:240"
           data-name="quantity-and-actions"
         >
+          {/* Color Variants Option - Just before Quantity */}
+          {product.colors && product.colors.length > 0 && (
+            <div
+              className="flex flex-col gap-2.5 w-full pb-4 border-b border-[rgba(107,26,42,0.08)]"
+              data-name="color-variants-row"
+            >
+              <div className="flex items-center justify-between w-full">
+                <span className="font-cormorant font-bold text-[#6b1a2a] text-lg">
+                  Color:{' '}
+                  <span className="font-sans font-medium text-sm text-[#4A423B]">
+                    {selectedColor || product.colors[0]}
+                  </span>
+                </span>
+                <span className="font-sans text-[11px] text-[#8b827d]">
+                  {product.colors.length} {product.colors.length === 1 ? 'choice' : 'choices'} available
+                </span>
+              </div>
+
+              {/* Color Pills & Swatches */}
+              <div className="flex flex-wrap gap-2 items-center" data-name="color-options-selector">
+                {product.colors.map((color) => {
+                  const isSelected = (selectedColor || product.colors![0]) === color;
+                  const swatchHex = getColorHex(color);
+                  const isWhiteOrCream =
+                    swatchHex.toUpperCase() === '#FFFFFF' ||
+                    swatchHex.toUpperCase() === '#FFFFF0' ||
+                    swatchHex.toUpperCase() === '#FAF9F6';
+
+                  return (
+                    <button
+                      key={color}
+                      type="button"
+                      onClick={() => setSelectedColor(color)}
+                      className={`group flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-sans transition-all duration-150 cursor-pointer ${
+                        isSelected
+                          ? 'bg-[#6b1a2a] text-white shadow-sm ring-2 ring-[#6b1a2a]/25 font-semibold'
+                          : 'bg-white border border-[#DED5C9] text-[#4A423B] hover:border-[#6b1a2a]/40 hover:bg-[#FAF5F0] font-medium'
+                      }`}
+                      aria-label={`Select color ${color}`}
+                      aria-pressed={isSelected}
+                    >
+                      <span
+                        className={`size-3.5 rounded-full shrink-0 ${
+                          isWhiteOrCream ? 'border border-[#DED5C9]' : ''
+                        }`}
+                        style={{ backgroundColor: swatchHex }}
+                      />
+                      <span>{color}</span>
+                      {isSelected && (
+                        <svg
+                          className="w-3 h-3 text-white shrink-0 ml-0.5"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={3}
+                            d="M5 13l4 4L19 7"
+                          />
+                        </svg>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           {/* Quantity Selector */}
           <div
             className="flex items-center justify-between w-full"

@@ -6,6 +6,7 @@ import { CATEGORIES } from '../data/products';
 import { collection, getDocs, updateDoc, doc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { Link } from 'react-router';
+import { getColorHex, SUGGESTED_COLORS } from '../lib/colorUtils';
 
 export const AdminPage: React.FC = () => {
   const { 
@@ -79,6 +80,32 @@ export const AdminPage: React.FC = () => {
   const [uploadingCollectionCover, setUploadingCollectionCover] = useState<string | null>(null);
   const [prodSubmitting, setProdSubmitting] = useState(false);
   const [prodMessage, setProdMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  // Product Color Variants State
+  const [prodColors, setProdColors] = useState<string[]>([]);
+  const [newColorInput, setNewColorInput] = useState('');
+  const [colorPickerHex, setColorPickerHex] = useState('#E8A598');
+
+  const handleAddColor = (colorToAdd?: string) => {
+    const raw = typeof colorToAdd === 'string' ? colorToAdd : newColorInput;
+    const trimmed = raw.trim();
+    if (!trimmed) return;
+
+    const alreadyExists = prodColors.some(
+      (c) => c.toLowerCase() === trimmed.toLowerCase()
+    );
+    if (alreadyExists) {
+      alert(`Color "${trimmed}" has already been added.`);
+      return;
+    }
+
+    setProdColors((prev) => [...prev, trimmed]);
+    setNewColorInput('');
+  };
+
+  const handleRemoveColor = (indexToRemove: number) => {
+    setProdColors((prev) => prev.filter((_, idx) => idx !== indexToRemove));
+  };
 
   // Product Filter State (persisted across refreshes)
   const [productSearch, setProductSearch] = useState('');
@@ -244,6 +271,7 @@ export const AdminPage: React.FC = () => {
         alt: prodName,
         description: prodDescription,
         details: detailsArray,
+        colors: prodColors.filter(Boolean),
       };
 
       if (editingProductId) {
@@ -280,6 +308,8 @@ export const AdminPage: React.FC = () => {
     setNewImageUrlInput('');
     setProdDescription(prod.description);
     setProdDetailsStr((prod.details || []).join('\n'));
+    setProdColors(prod.colors && Array.isArray(prod.colors) ? prod.colors : []);
+    setNewColorInput('');
     setProdMessage(null);
     window.scrollTo({ top: 350, behavior: 'smooth' });
   };
@@ -311,6 +341,8 @@ export const AdminPage: React.FC = () => {
     setNewImageUrlInput('');
     setProdDescription('');
     setProdDetailsStr('');
+    setProdColors([]);
+    setNewColorInput('');
   };
 
   const handleToggleFavoriteInTable = async (p: Product) => {
@@ -944,6 +976,135 @@ export const AdminPage: React.FC = () => {
                     />
                   </div>
 
+                  {/* Color Variants with Plus Color Option */}
+                  <div className="p-3.5 rounded-xl bg-white border border-[#DED5C9]">
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="block text-xs font-semibold text-[#4A423B]">
+                        Color Variants (Optional)
+                      </label>
+                      <span className="text-[11px] font-medium text-[#8E5B59]">
+                        {prodColors.length} {prodColors.length === 1 ? 'color' : 'colors'} added
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-[#786F66] mb-2.5 leading-snug">
+                      Enter color options available for this charm. Customers will see these options on the view product page just before the quantity selector.
+                    </p>
+
+                    {/* Color Input and Plus Color Option Button */}
+                    <div className="flex gap-1.5 mb-2.5">
+                      <div className="relative flex-1 flex items-center border border-[#DED5C9] rounded-xl px-1.5 py-1 bg-white focus-within:border-[#8E5B59]">
+                        <input
+                          type="color"
+                          value={colorPickerHex}
+                          onChange={(e) => setColorPickerHex(e.target.value)}
+                          title="Pick a color swatch"
+                          className="size-6 rounded-md border border-[#DED5C9] cursor-pointer mr-1.5 shrink-0 p-0 bg-white"
+                        />
+                        <input
+                          type="text"
+                          value={newColorInput}
+                          onChange={(e) => setNewColorInput(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              handleAddColor();
+                            }
+                          }}
+                          placeholder="Type color (e.g. Blush Pink, Lilac, Sage Green)"
+                          className="w-full bg-transparent text-xs text-[#2C2724] focus:outline-hidden"
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleAddColor()}
+                        disabled={!newColorInput.trim()}
+                        className="px-3.5 py-2 rounded-xl bg-[#FAF0ED] text-[#8E5B59] hover:bg-[#F3DDD6] disabled:opacity-40 text-xs font-semibold transition cursor-pointer shrink-0 shadow-2xs flex items-center gap-1"
+                        title="Add color variant"
+                      >
+                        <span className="text-sm font-bold leading-none">+</span>
+                        <span>Add Color</span>
+                      </button>
+                    </div>
+
+                    {/* Quick Boutique Suggestions */}
+                    <div className="mb-2.5">
+                      <span className="text-[10px] uppercase font-bold tracking-wider text-[#A89E94] block mb-1">
+                        Quick Suggestions:
+                      </span>
+                      <div className="flex flex-wrap gap-1">
+                        {SUGGESTED_COLORS.map((preset) => {
+                          const alreadyAdded = prodColors.some(
+                            (c) => c.toLowerCase() === preset.toLowerCase()
+                          );
+                          return (
+                            <button
+                              key={preset}
+                              type="button"
+                              disabled={alreadyAdded}
+                              onClick={() => handleAddColor(preset)}
+                              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium transition cursor-pointer ${
+                                alreadyAdded
+                                  ? 'opacity-40 bg-gray-100 text-gray-400 cursor-not-allowed'
+                                  : 'bg-[#FAF7F2] text-[#5C534B] border border-[#E0D5C7] hover:border-[#8E5B59] hover:text-[#8E5B59]'
+                              }`}
+                            >
+                              <span
+                                className="size-1.5 rounded-full inline-block"
+                                style={{ backgroundColor: getColorHex(preset) }}
+                              />
+                              <span>+ {preset}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Active Added Colors */}
+                    {prodColors.length > 0 ? (
+                      <div className="p-2 rounded-lg bg-[#FAF7F2] border border-[#EAE3D8]">
+                        <div className="flex items-center justify-between text-[10px] font-medium text-[#786F66] mb-1.5">
+                          <span>Active Variants on Product:</span>
+                          <button
+                            type="button"
+                            onClick={() => setProdColors([])}
+                            className="text-[#C53030] hover:underline cursor-pointer"
+                          >
+                            Remove all
+                          </button>
+                        </div>
+                        <div className="flex flex-wrap gap-1.5">
+                          {prodColors.map((color, idx) => {
+                            const swatch = getColorHex(color);
+                            return (
+                              <span
+                                key={idx}
+                                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white text-[#2C2724] text-[11px] font-medium border border-[#DED5C9] shadow-2xs"
+                              >
+                                <span
+                                  className="size-2.5 rounded-full border border-black/10 inline-block shrink-0"
+                                  style={{ backgroundColor: swatch }}
+                                />
+                                <span>{color}</span>
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemoveColor(idx)}
+                                  className="ml-0.5 text-[#8C827A] hover:text-[#C53030] font-bold text-[10px] cursor-pointer"
+                                  title={`Remove ${color}`}
+                                >
+                                  ✕
+                                </button>
+                              </span>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="p-2 rounded-lg border border-dashed border-[#DED5C9] text-center text-[10px] text-[#8C827A]">
+                        No color variants added yet. Type a color and click "+ Add Color" or choose a quick suggestion above.
+                      </div>
+                    )}
+                  </div>
+
                   <div className="flex items-center gap-2.5 p-3 rounded-xl bg-[#FAF0ED] border border-[#E8C5B8]/70">
                     <input
                       type="checkbox"
@@ -1214,6 +1375,22 @@ export const AdminPage: React.FC = () => {
                           <div>
                             <div className="font-medium text-[#2C2724]">{p.name}</div>
                             <div className="text-[11px] text-[#8C827A] line-clamp-1">{p.description}</div>
+                            {p.colors && p.colors.length > 0 && (
+                              <div className="flex flex-wrap items-center gap-1 mt-1">
+                                {p.colors.map((c, i) => (
+                                  <span
+                                    key={i}
+                                    className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded-full bg-[#FAF0ED] text-[#8E5B59] text-[10px] font-medium border border-[#E8C5B8]/60"
+                                  >
+                                    <span
+                                      className="size-1.5 rounded-full inline-block"
+                                      style={{ backgroundColor: getColorHex(c) }}
+                                    />
+                                    {c}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
                           </div>
                         </td>
                         <td className="py-3 px-4 whitespace-nowrap">
@@ -1372,7 +1549,7 @@ export const AdminPage: React.FC = () => {
                       {/* Order Header */}
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-[#EAE3D8]">
                         <div className="flex items-center gap-3">
-                          <span className="font-mono text-xs font-bold text-[#8E5B59]">#{order.id}</span>
+                          <span className="font-mono text-xs font-bold text-[#8E5B59]">{order.orderNumber || `#${order.id}`}</span>
                           <span className="text-xs text-[#786F66]">
                             {order.createdAt ? new Date(order.createdAt).toLocaleString() : 'Just now'}
                           </span>
@@ -1450,8 +1627,17 @@ export const AdminPage: React.FC = () => {
                               />
                               <div className="min-w-0 flex-1 text-xs">
                                 <div className="font-medium text-[#2C2724] truncate">{item.name}</div>
-                                <div className="text-[#786F66] text-[11px]">
-                                  Qty: {item.quantity} × ₹{item.price}
+                                <div className="text-[#786F66] text-[11px] flex items-center gap-2 flex-wrap">
+                                  <span>Qty: {item.quantity} × ₹{item.price}</span>
+                                  {item.selectedColor && (
+                                    <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded-md bg-[#FAF0ED] text-[#8E5B59] text-[10px] font-medium border border-[#E8C5B8]/60">
+                                      <span
+                                        className="size-1.5 rounded-full inline-block"
+                                        style={{ backgroundColor: getColorHex(item.selectedColor) }}
+                                      />
+                                      Color: {item.selectedColor}
+                                    </span>
+                                  )}
                                 </div>
                               </div>
                             </div>
@@ -1459,14 +1645,45 @@ export const AdminPage: React.FC = () => {
                         </div>
                       </div>
 
-                      {/* Financials Row */}
-                      <div className="flex justify-between items-center pt-2 border-t border-[#EAE3D8] text-xs">
-                        <div className="text-[#786F66]">
-                          Subtotal: ₹{order.subtotal} {order.discount > 0 && `(Discount: -₹${order.discount.toFixed(0)})`}
+                      {/* Financials & Payment Breakdown Row */}
+                      <div className="pt-2 border-t border-[#EAE3D8] text-xs space-y-1.5">
+                        <div className="flex flex-wrap justify-between items-center gap-2">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider ${
+                              order.paymentMethod === 'partial_cod'
+                                ? 'bg-amber-100 text-amber-900 border border-amber-300'
+                                : 'bg-emerald-100 text-emerald-900 border border-emerald-300'
+                            }`}>
+                              {order.paymentMethod === 'partial_cod' ? 'Partial COD' : 'Online Paid'}
+                            </span>
+                            <span className="text-[#786F66]">
+                              Subtotal: ₹{order.subtotal} {order.discount > 0 && `(Discount: -₹${order.discount.toFixed(0)})`}
+                            </span>
+                            <span className="text-[#786F66]">
+                              • Shipping: {order.shippingFee === 0 ? 'FREE' : `₹${order.shippingFee ?? 0}`}
+                            </span>
+                          </div>
+
+                          <div className="text-right">
+                            <span className="text-xs text-[#786F66] mr-2">Total Order:</span>
+                            <span className="text-sm font-bold text-[#8E5B59]">₹{order.total}</span>
+                          </div>
                         </div>
-                        <div className="text-sm font-bold text-[#8E5B59]">
-                          Total Paid: ₹{order.total}
-                        </div>
+
+                        {order.paymentMethod === 'partial_cod' ? (
+                          <div className="flex flex-wrap justify-between items-center gap-2 p-2 rounded-lg bg-amber-50 border border-amber-200 text-xs">
+                            <span className="text-amber-900 font-medium">
+                              Advance Paid Online: <strong>₹{order.amountPaid}</strong>
+                            </span>
+                            <span className="text-amber-950 font-bold bg-amber-200/70 px-2 py-0.5 rounded">
+                              COD Balance to Collect on Delivery: ₹{order.codAmountDue ?? Math.round(order.total / 2)}
+                            </span>
+                          </div>
+                        ) : (
+                          <div className="text-emerald-700 text-[11px] font-medium">
+                            ✓ 100% paid online (₹{order.amountPaid || order.total}). No collection on delivery.
+                          </div>
+                        )}
                       </div>
                     </div>
                   );
