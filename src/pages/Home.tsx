@@ -215,10 +215,10 @@ export default function Home() {
         >
           <div className="flex flex-col gap-0.5 items-center text-center" data-node-id="2:161">
             <h2
-              className="font-parisienne text-[#6b1a2a] text-4xl leading-tight"
+              className="font-cormorant font-bold text-[#6b1a2a] text-2xl sm:text-[26px] tracking-wider select-none"
               data-node-id="2:162"
             >
-              Our Favorites
+              Best Sellers
             </h2>
             <p
               className="font-cormorant text-[#8b827d] text-xs uppercase tracking-widest"
