@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { Link } from 'react-router';
 import { useCart } from '../context/CartContext';
 import { useContent } from '../context/ContentContext';
@@ -14,8 +15,26 @@ export default function Home() {
   const { add } = useCart();
   const { products, siteContent } = useContent();
 
-  // Selected bestsellers from active dynamic products
-  const bestsellers = products.slice(0, 3);
+  // Dynamic collections cover photos managed live from Admin Panel
+  const mobileCharmsImg = siteContent.collectionCovers?.['Mobile Charms'] || imgRectangle;
+  const bagCharmsImg = siteContent.collectionCovers?.['Bag Charms'] || imgRectangle1;
+  const mysteryJarsImg = siteContent.collectionCovers?.['Mystery Jars'] || imgRectangle2;
+
+  // Selected favorites / bestsellers managed live from Admin Panel DB
+  const bestsellers = useMemo(() => {
+    // 1. Explicitly selected in CMS
+    if (siteContent.featuredProductIds && siteContent.featuredProductIds.length > 0) {
+      const selected = siteContent.featuredProductIds
+        .map((id) => products.find((p) => p.id === id))
+        .filter(Boolean) as typeof products;
+      if (selected.length > 0) return selected;
+    }
+    // 2. Marked as isFavorite in product table
+    const marked = products.filter((p) => p.isFavorite);
+    if (marked.length > 0) return marked;
+    // 3. Fallback to active catalog
+    return products.slice(0, 4);
+  }, [products, siteContent.featuredProductIds]);
 
 
   return (
@@ -122,7 +141,10 @@ export default function Home() {
                 <img
                   alt="Mobile Charms"
                   className="size-full object-cover"
-                  src={imgRectangle}
+                  src={mobileCharmsImg}
+                  onError={(e) => {
+                    (e.currentTarget as HTMLImageElement).src = imgRectangle;
+                  }}
                 />
               </div>
               <p
@@ -147,7 +169,10 @@ export default function Home() {
                 <img
                   alt="Bag Charms"
                   className="size-full object-cover"
-                  src={imgRectangle1}
+                  src={bagCharmsImg}
+                  onError={(e) => {
+                    (e.currentTarget as HTMLImageElement).src = imgRectangle1;
+                  }}
                 />
               </div>
               <p
@@ -172,7 +197,10 @@ export default function Home() {
                 <img
                   alt="Mystery Jars"
                   className="size-full object-cover"
-                  src={imgRectangle2}
+                  src={mysteryJarsImg}
+                  onError={(e) => {
+                    (e.currentTarget as HTMLImageElement).src = imgRectangle2;
+                  }}
                 />
               </div>
               <p

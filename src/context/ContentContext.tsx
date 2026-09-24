@@ -21,6 +21,12 @@ const DEFAULT_SITE_CONTENT: SiteContent = {
   heroTitle: 'Handmade with love, just for you.',
   heroSubtitle: 'Discover whimsical charms, delicate accessories, and magical keepsakes crafted to brighten your everyday.',
   heroBannerUrl: '/figma-assets/2416c5a3da640dcea42f85f7a71067eac0c58ca9.png',
+  collectionCovers: {
+    'Mobile Charms': '/figma-assets/2416c5a3da640dcea42f85f7a71067eac0c58ca9.png',
+    'Bag Charms': '/figma-assets/2b39a24648f5a21e9e527dfe97992fd042715209.png',
+    'Mystery Jars': '/figma-assets/1908ddbd2af05246c15d1de98d9563a4801070c0.png',
+  },
+  featuredProductIds: [],
   promoBannerText: 'Crafted for the Dreamers & Collectors',
   promoBannerSubtext: 'Each charm carries its own gentle story, sculpted by hand with delicate intention and finished with artisanal ribbon.',
   promoBannerUrl: '/figma-assets/2b39a24648f5a21e9e527dfe97992fd042715209.png',
@@ -47,6 +53,13 @@ function sanitizeSiteContent(content: SiteContent): SiteContent {
   if (!sanitized.promoBannerUrl || sanitized.promoBannerUrl.includes('72be1c70e0a5c4d0ec598f828ae877ae84f509d4')) {
     sanitized.promoBannerUrl = '/figma-assets/2b39a24648f5a21e9e527dfe97992fd042715209.png';
   }
+  sanitized.collectionCovers = {
+    ...DEFAULT_SITE_CONTENT.collectionCovers,
+    ...(content?.collectionCovers || {}),
+  };
+  sanitized.featuredProductIds = Array.isArray(content?.featuredProductIds)
+    ? content.featuredProductIds
+    : (sanitized.featuredProductIds || []);
   return sanitized;
 }
 
@@ -136,6 +149,8 @@ interface ContentContextType {
   createOrder: (orderData: Omit<Order, 'id'>) => Promise<string>;
   updateOrderStatus: (orderId: string, status: Order['status']) => Promise<void>;
   deleteOrder: (orderId: string) => Promise<void>;
+  toggleProductFavorite: (id: string) => Promise<void>;
+  setFeaturedProducts: (ids: string[]) => Promise<void>;
 }
 
 const ContentContext = createContext<ContentContextType | undefined>(undefined);
@@ -316,6 +331,7 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
                 description: data.description || '',
                 badge: data.badge || undefined,
                 details: data.details || [],
+                isFavorite: !!data.isFavorite,
                 createdAt: data.createdAt,
               });
             });
@@ -370,9 +386,16 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
     return () => unsub();
   }, []);
 
-  // 4. Subscribe to Orders in Firestore
+  // 4. Subscribe to Orders in Firestore (only in admin mode)
   useEffect(() => {
     let unsub = () => {};
+    const isAdminMode =
+      typeof window !== 'undefined' &&
+      (window.location.pathname.startsWith('/admin') ||
+        localStorage.getItem('petalisse_demo_admin') === 'true');
+
+    if (!isAdminMode) return;
+
     try {
       const q = query(collection(db, 'orders'), orderBy('createdAt', 'desc'));
       unsub = onSnapshot(
@@ -394,7 +417,9 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
                 discount: Number(data.discount) || 0,
                 total: Number(data.total) || 0,
                 status: data.status || 'pending',
-                createdAt: data.createdAt?.toDate ? data.createdAt.toDate().toISOString() : data.createdAt || new Date().toISOString(),
+                createdAt: data.createdAt?.toDate
+                  ? data.createdAt.toDate().toISOString()
+                  : data.createdAt || new Date().toISOString(),
               });
             });
             setOrders(list);
@@ -592,6 +617,17 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
   };
 
+  const toggleProductFavorite = async (id: string): Promise<void> => {
+    const prod = products.find((p) => p.id === id);
+    if (!prod) return;
+    const nextVal = !prod.isFavorite;
+    await updateProduct(id, { isFavorite: nextVal });
+  };
+
+  const setFeaturedProducts = async (ids: string[]): Promise<void> => {
+    await updateSiteContent({ featuredProductIds: ids });
+  };
+
   return (
     <ContentContext.Provider
       value={{
@@ -608,6 +644,8 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
         createOrder,
         updateOrderStatus,
         deleteOrder,
+        toggleProductFavorite,
+        setFeaturedProducts,
       }}
     >
       {children}

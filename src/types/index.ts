@@ -9,6 +9,7 @@ export interface Product {
   description: string;
   badge?: string;
   details?: string[];
+  isFavorite?: boolean;
   createdAt?: any;
 }
 
@@ -62,6 +63,8 @@ export interface SiteContent {
   heroTitle?: string;
   heroSubtitle?: string;
   heroBannerUrl?: string;
+  collectionCovers?: Record<string, string>;
+  featuredProductIds?: string[];
   promoBannerText?: string;
   promoBannerSubtext?: string;
   promoBannerUrl?: string;

@@ -30,7 +30,9 @@ export const AdminPage: React.FC = () => {
     uploadImage, 
     seedInitialProductsToFirestore,
     updateOrderStatus,
-    deleteOrder
+    deleteOrder,
+    toggleProductFavorite,
+    setFeaturedProducts
   } = useContent();
 
   // Admin Auth Form State
@@ -66,10 +68,12 @@ export const AdminPage: React.FC = () => {
   const [prodPrice, setProdPrice] = useState<number | ''>('');
   const [prodDiscountedPrice, setProdDiscountedPrice] = useState<number | ''>('');
   const [prodBadge, setProdBadge] = useState('');
+  const [prodIsFavorite, setProdIsFavorite] = useState(false);
   const [prodImgUrl, setProdImgUrl] = useState('');
   const [prodDescription, setProdDescription] = useState('');
   const [prodDetailsStr, setProdDetailsStr] = useState('');
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [uploadingCollectionCover, setUploadingCollectionCover] = useState<string | null>(null);
   const [prodSubmitting, setProdSubmitting] = useState(false);
   const [prodMessage, setProdMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
@@ -220,6 +224,7 @@ export const AdminPage: React.FC = () => {
           ? { discountedPrice: Number(prodDiscountedPrice) }
           : {}),
         ...(prodBadge.trim() ? { badge: prodBadge.trim() } : {}),
+        isFavorite: prodIsFavorite,
         img: prodImgUrl,
         alt: prodName,
         description: prodDescription,
@@ -249,6 +254,7 @@ export const AdminPage: React.FC = () => {
     setProdPrice(prod.price);
     setProdDiscountedPrice(prod.discountedPrice !== undefined ? prod.discountedPrice : '');
     setProdBadge(prod.badge || '');
+    setProdIsFavorite(!!prod.isFavorite);
     setProdImgUrl(prod.img);
     setProdDescription(prod.description);
     setProdDetailsStr((prod.details || []).join('\n'));
@@ -277,9 +283,49 @@ export const AdminPage: React.FC = () => {
     setProdPrice('');
     setProdDiscountedPrice('');
     setProdBadge('');
+    setProdIsFavorite(false);
     setProdImgUrl('');
     setProdDescription('');
     setProdDetailsStr('');
+  };
+
+  const handleToggleFavoriteInTable = async (p: Product) => {
+    try {
+      await toggleProductFavorite(p.id);
+    } catch (err: any) {
+      alert('Failed to update favorite status: ' + err.message);
+    }
+  };
+
+  const handleCollectionCoverUpload = async (category: string, e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingCollectionCover(category);
+    try {
+      const url = await uploadImage(file, 'collections');
+      setCmsContent((prev) => ({
+        ...prev,
+        collectionCovers: {
+          ...(prev.collectionCovers || {}),
+          [category]: url,
+        },
+      }));
+    } catch (err: any) {
+      alert('Cover upload failed: ' + err.message);
+    } finally {
+      setUploadingCollectionCover(null);
+    }
+  };
+
+  const handleToggleFeaturedInCms = (productId: string) => {
+    const current = cmsContent.featuredProductIds || [];
+    const next = current.includes(productId)
+      ? current.filter((id) => id !== productId)
+      : [...current, productId];
+    setCmsContent((prev) => ({
+      ...prev,
+      featuredProductIds: next,
+    }));
   };
 
   const handleProductImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -814,6 +860,23 @@ export const AdminPage: React.FC = () => {
                       className="w-full px-3.5 py-2 rounded-xl border border-[#DED5C9] bg-white text-sm text-[#2C2724] focus:outline-hidden focus:border-[#8E5B59]"
                     />
                   </div>
+
+                  <div className="flex items-center gap-2.5 p-3 rounded-xl bg-[#FAF0ED] border border-[#E8C5B8]/70">
+                    <input
+                      type="checkbox"
+                      id="prodIsFavorite"
+                      checked={prodIsFavorite}
+                      onChange={(e) => setProdIsFavorite(e.target.checked)}
+                      className="size-4 accent-[#8E5B59] rounded cursor-pointer"
+                    />
+                    <label
+                      htmlFor="prodIsFavorite"
+                      className="text-xs font-medium text-[#4A423B] cursor-pointer flex items-center gap-1.5 select-none"
+                    >
+                      <span>⭐</span>
+                      <span>Feature this charm in <strong>"Our Favorites"</strong> on the homepage</span>
+                    </label>
+                  </div>
                 </div>
 
                 {/* Right Column: Image & Details */}
@@ -930,6 +993,7 @@ export const AdminPage: React.FC = () => {
                       <th className="py-3 px-4">Price</th>
                       <th className="py-3 px-4">Sale Price</th>
                       <th className="py-3 px-4">Badge</th>
+                      <th className="py-3 px-4 text-center">⭐ Favorites</th>
                       <th className="py-3 px-4 text-right">Actions</th>
                     </tr>
                   </thead>
@@ -970,6 +1034,21 @@ export const AdminPage: React.FC = () => {
                           ) : (
                             <span className="text-[#A89E94]">—</span>
                           )}
+                        </td>
+                        <td className="py-3 px-4 whitespace-nowrap text-center">
+                          <button
+                            type="button"
+                            onClick={() => handleToggleFavoriteInTable(p)}
+                            title={p.isFavorite ? 'Featured in Homepage Favorites (Click to unfeature)' : 'Click to feature in Homepage Favorites'}
+                            className={`px-2.5 py-1 rounded-lg text-[11px] transition cursor-pointer inline-flex items-center gap-1 ${
+                              p.isFavorite
+                                ? 'bg-amber-100 text-amber-900 border border-amber-300 font-semibold shadow-2xs'
+                                : 'bg-white text-[#8C827A] border border-[#E8E0D5] hover:text-amber-700 hover:border-amber-300'
+                            }`}
+                          >
+                            <span>{p.isFavorite ? '★' : '☆'}</span>
+                            <span>{p.isFavorite ? 'Featured' : 'Add to Fav'}</span>
+                          </button>
                         </td>
                         <td className="py-3 px-4 whitespace-nowrap text-right space-x-1.5">
                           <Link
@@ -1279,29 +1358,244 @@ export const AdminPage: React.FC = () => {
                 </div>
               </div>
 
-              {/* Mid-Page Promotional Banner */}
+              {/* 1. Our Collections Cover Photos Section */}
               <div className="bg-[#FAF7F2] rounded-2xl border border-[#E8E0D5] p-6 shadow-sm space-y-4">
-                <h3 className="text-base font-serif text-[#2C2724] font-medium border-b border-[#EAE3D8] pb-2">
-                  Mid-Page Promotional Story Banner
-                </h3>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#EAE3D8] pb-3">
+                  <div>
+                    <h3 className="text-base font-serif text-[#2C2724] font-medium">
+                      "Our Collections" Category Cover Photos
+                    </h3>
+                    <p className="text-xs text-[#786F66]">
+                      Customize the cover cards for Mobile Charms, Bag Charms, and Mystery Jars displayed on the homepage.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCmsContent((prev) => ({
+                        ...prev,
+                        collectionCovers: {
+                          'Mobile Charms': '/figma-assets/2416c5a3da640dcea42f85f7a71067eac0c58ca9.png',
+                          'Bag Charms': '/figma-assets/2b39a24648f5a21e9e527dfe97992fd042715209.png',
+                          'Mystery Jars': '/figma-assets/1908ddbd2af05246c15d1de98d9563a4801070c0.png',
+                        },
+                      }));
+                    }}
+                    className="text-xs text-[#8E5B59] hover:underline self-start sm:self-center cursor-pointer"
+                  >
+                    Reset all to default boutique covers
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-5 pt-2">
+                  {[
+                    { key: 'Mobile Charms', label: 'Mobile Charms', defaultImg: '/figma-assets/2416c5a3da640dcea42f85f7a71067eac0c58ca9.png' },
+                    { key: 'Bag Charms', label: 'Bag Charms', defaultImg: '/figma-assets/2b39a24648f5a21e9e527dfe97992fd042715209.png' },
+                    { key: 'Mystery Jars', label: 'Mystery Jars', defaultImg: '/figma-assets/1908ddbd2af05246c15d1de98d9563a4801070c0.png' },
+                  ].map((cat) => {
+                    const currentCover = cmsContent.collectionCovers?.[cat.key] || cat.defaultImg;
+                    const isUploading = uploadingCollectionCover === cat.key;
+
+                    return (
+                      <div key={cat.key} className="bg-white p-4 rounded-xl border border-[#E8E0D5] space-y-3 shadow-2xs">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-semibold text-[#2C2724] uppercase tracking-wider">{cat.label}</span>
+                          <span className="text-[10px] text-[#8C827A] font-mono">Homepage Card</span>
+                        </div>
+
+                        {/* Preview */}
+                        <div className="aspect-[5/6] w-full rounded-xl overflow-hidden border border-[#E8E0D5] bg-[#FAF5F0] relative">
+                          <img
+                            src={currentCover}
+                            alt={cat.label}
+                            className="size-full object-cover"
+                            onError={(e) => {
+                              (e.currentTarget as HTMLImageElement).src = cat.defaultImg;
+                            }}
+                          />
+                        </div>
+
+                        {/* Actions */}
+                        <div className="space-y-2">
+                          <div className="flex gap-2">
+                            <label className="cursor-pointer px-3 py-1.5 rounded-lg bg-[#FAF0ED] hover:bg-[#F3DDD6] border border-[#E8C5B8] text-[11px] font-semibold text-[#8E5B59] transition flex items-center justify-center gap-1.5 flex-1">
+                              <span>{isUploading ? 'Optimizing...' : 'Upload Cover'}</span>
+                              <input
+                                type="file"
+                                accept="image/*"
+                                disabled={isUploading}
+                                onChange={(e) => handleCollectionCoverUpload(cat.key, e)}
+                                className="hidden"
+                              />
+                            </label>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setCmsContent((prev) => ({
+                                  ...prev,
+                                  collectionCovers: {
+                                    ...(prev.collectionCovers || {}),
+                                    [cat.key]: cat.defaultImg,
+                                  },
+                                }));
+                              }}
+                              className="px-2 py-1.5 rounded-lg border border-[#DED5C9] bg-white text-[11px] text-[#786F66] hover:bg-[#F3EDE2] transition cursor-pointer"
+                              title="Reset this cover to default"
+                            >
+                              Reset
+                            </button>
+                          </div>
+
+                          <input
+                            type="text"
+                            value={cmsContent.collectionCovers?.[cat.key] || ''}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setCmsContent((prev) => ({
+                                ...prev,
+                                collectionCovers: {
+                                  ...(prev.collectionCovers || {}),
+                                  [cat.key]: val,
+                                },
+                              }));
+                            }}
+                            placeholder="Or paste image URL"
+                            className="w-full px-2.5 py-1.5 rounded-lg border border-[#DED5C9] bg-white text-xs text-[#2C2724] focus:outline-hidden focus:border-[#8E5B59]"
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* 2. Our Favorites Homepage Showcase Selection */}
+              <div className="bg-[#FAF7F2] rounded-2xl border border-[#E8E0D5] p-6 shadow-sm space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#EAE3D8] pb-3">
+                  <div>
+                    <h3 className="text-base font-serif text-[#2C2724] font-medium flex items-center gap-2">
+                      <span>"Our Favorites" Showcase Picker</span>
+                      <span className="px-2.5 py-0.5 rounded-full bg-[#FAF0ED] text-[#8E5B59] text-[11px] font-bold">
+                        {cmsContent.featuredProductIds && cmsContent.featuredProductIds.length > 0
+                          ? `${cmsContent.featuredProductIds.length} chosen for homepage`
+                          : 'Auto (first available)'}
+                      </span>
+                    </h3>
+                    <p className="text-xs text-[#786F66]">
+                      Choose exactly which handcrafted charms appear in the "Our Favorites" section on the index page. Click any charm to toggle it on/off.
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-2 self-start sm:self-center">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCmsContent((prev) => ({
+                          ...prev,
+                          featuredProductIds: products.map((p) => p.id),
+                        }));
+                      }}
+                      className="px-2.5 py-1 rounded-lg border border-[#DED5C9] bg-white text-xs text-[#5C534B] hover:bg-[#F3EDE2] transition cursor-pointer"
+                    >
+                      Select All
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCmsContent((prev) => ({
+                          ...prev,
+                          featuredProductIds: [],
+                        }));
+                      }}
+                      className="px-2.5 py-1 rounded-lg border border-[#DED5C9] bg-white text-xs text-[#8E5B59] hover:bg-[#FAF0ED] transition cursor-pointer"
+                    >
+                      Clear Selection
+                    </button>
+                  </div>
+                </div>
+
+                {products.length === 0 ? (
+                  <div className="p-8 text-center bg-white rounded-xl border border-[#E8E0D5]">
+                    <p className="text-xs text-[#786F66]">
+                      No live products created yet. Add handcrafted charms in the "Products & Inventory" tab first!
+                    </p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 pt-1 max-h-[380px] overflow-y-auto p-1">
+                    {products.map((p) => {
+                      const isFeatured = (cmsContent.featuredProductIds || []).includes(p.id);
+
+                      return (
+                        <div
+                          key={p.id}
+                          onClick={() => handleToggleFeaturedInCms(p.id)}
+                          className={`relative p-2.5 rounded-xl border transition-all cursor-pointer select-none flex flex-col justify-between ${
+                            isFeatured
+                              ? 'bg-[#FFF9F6] border-[#8E5B59] shadow-sm ring-2 ring-[#8E5B59]/25'
+                              : 'bg-white border-[#E8E0D5] hover:border-[#8E5B59]/50 hover:bg-[#FAF7F2]'
+                          }`}
+                        >
+                          <div className="relative aspect-square w-full rounded-lg overflow-hidden bg-[#FAF5F0] border border-[#E8E0D5] mb-2">
+                            <img src={p.img} alt={p.name} className="size-full object-cover" />
+                            {isFeatured && (
+                              <div className="absolute top-1.5 right-1.5 size-5 rounded-full bg-[#8E5B59] text-white flex items-center justify-center text-[10px] font-bold shadow-xs">
+                                ✓
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="space-y-0.5">
+                            <div className="text-xs font-semibold text-[#2C2724] line-clamp-1">{p.name}</div>
+                            <div className="flex items-center justify-between text-[11px]">
+                              <span className="text-[#8E5B59] font-medium">₹{p.discountedPrice ?? p.price}</span>
+                              <span className="text-[#8C827A] text-[10px]">{p.category}</span>
+                            </div>
+                          </div>
+
+                          <div className="mt-2 pt-1.5 border-t border-[#EAE3D8] text-center">
+                            <span className={`text-[10px] font-semibold uppercase tracking-wider ${
+                              isFeatured ? 'text-[#8E5B59]' : 'text-[#A89E94]'
+                            }`}>
+                              {isFeatured ? '★ In Favorites' : '+ Add to Fav'}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* 3. "Crafted for Dreamers & Collectors" Story Section */}
+              <div className="bg-[#FAF7F2] rounded-2xl border border-[#E8E0D5] p-6 shadow-sm space-y-4">
+                <div className="border-b border-[#EAE3D8] pb-2">
+                  <h3 className="text-base font-serif text-[#2C2724] font-medium">
+                    "Crafted for Dreamers & Collectors" Story Section
+                  </h3>
+                  <p className="text-xs text-[#786F66]">
+                    Control the cover photo, story title, and poetic subtext displayed on the homepage promo section.
+                  </p>
+                </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs font-medium text-[#4A423B] mb-1">Promo Title</label>
+                    <label className="block text-xs font-medium text-[#4A423B] mb-1">Story Title</label>
                     <input
                       type="text"
                       value={cmsContent.promoBannerText || ''}
                       onChange={(e) => setCmsContent({ ...cmsContent, promoBannerText: e.target.value })}
+                      placeholder="Crafted for the Dreamers & Collectors"
                       className="w-full px-3.5 py-2 rounded-xl border border-[#DED5C9] bg-white text-sm text-[#2C2724] focus:outline-hidden focus:border-[#8E5B59]"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-medium text-[#4A423B] mb-1">Promo Subtext</label>
+                    <label className="block text-xs font-medium text-[#4A423B] mb-1">Poetic Story Subtext</label>
                     <input
                       type="text"
                       value={cmsContent.promoBannerSubtext || ''}
                       onChange={(e) => setCmsContent({ ...cmsContent, promoBannerSubtext: e.target.value })}
+                      placeholder="Each charm carries its own gentle story..."
                       className="w-full px-3.5 py-2 rounded-xl border border-[#DED5C9] bg-white text-sm text-[#2C2724] focus:outline-hidden focus:border-[#8E5B59]"
                     />
                   </div>
@@ -1309,14 +1603,14 @@ export const AdminPage: React.FC = () => {
 
                 <div>
                   <label className="block text-xs font-medium text-[#4A423B] mb-1">
-                    Promo Background Image (Upload or URL)
+                    Story Cover Photo (Upload or URL)
                   </label>
                   <div className="flex gap-2 mb-2">
                     <label className="cursor-pointer px-3 py-2 rounded-xl bg-white border border-[#DED5C9] text-xs font-medium text-[#4A423B] hover:bg-[#F3EDE2] transition inline-flex items-center gap-1.5">
                       <svg className="w-4 h-4 text-[#8E5B59]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                       </svg>
-                      <span>{uploadingPromoImg ? 'Optimizing...' : 'Upload Image'}</span>
+                      <span>{uploadingPromoImg ? 'Optimizing...' : 'Upload Cover Photo'}</span>
                       <input
                         type="file"
                         accept="image/*"
@@ -1330,17 +1624,33 @@ export const AdminPage: React.FC = () => {
                       type="text"
                       value={cmsContent.promoBannerUrl || ''}
                       onChange={(e) => setCmsContent({ ...cmsContent, promoBannerUrl: e.target.value })}
-                      placeholder="Promo Image URL"
+                      placeholder="Or paste cover image URL"
                       className="flex-1 px-3.5 py-2 rounded-xl border border-[#DED5C9] bg-white text-xs text-[#2C2724] focus:outline-hidden focus:border-[#8E5B59]"
                     />
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCmsContent((prev) => ({
+                          ...prev,
+                          promoBannerUrl: '/figma-assets/2b39a24648f5a21e9e527dfe97992fd042715209.png',
+                        }));
+                      }}
+                      className="px-3 py-2 rounded-xl border border-[#DED5C9] bg-white text-xs text-[#786F66] hover:bg-[#F3EDE2] transition cursor-pointer"
+                    >
+                      Default
+                    </button>
                   </div>
 
                   {cmsContent.promoBannerUrl && (
-                    <div className="h-24 max-w-sm rounded-xl border border-[#E8E0D5] overflow-hidden bg-white">
+                    <div className="h-32 max-w-md rounded-xl border border-[#E8E0D5] overflow-hidden bg-white shadow-2xs">
                       <img
                         src={cmsContent.promoBannerUrl}
                         alt="Promo Preview"
                         className="w-full h-full object-cover"
+                        onError={(e) => {
+                          (e.currentTarget as HTMLImageElement).src = '/figma-assets/2b39a24648f5a21e9e527dfe97992fd042715209.png';
+                        }}
                       />
                     </div>
                   )}
