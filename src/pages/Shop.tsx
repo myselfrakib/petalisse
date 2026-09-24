@@ -129,7 +129,11 @@ export default function Shop() {
             <img alt="Back" className="size-3.5 block" src={imgChevronLeft} />
           </Link>
 
-          <Link to="/" className="font-parisienne text-[#6b1a2a] text-[32px] leading-none hover:opacity-90">
+          <Link
+            to="/"
+            className="font-meow text-[#6b1a2a] text-[38px] sm:text-[42px] leading-none hover:opacity-90 tracking-wide select-none"
+            style={{ fontFamily: "'Meow Script', cursive" }}
+          >
             Petalisse
           </Link>
 

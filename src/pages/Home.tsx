@@ -141,7 +141,8 @@ export default function Home() {
         >
           {/* Logo Title */}
           <h1
-            className="font-parisienne text-[#6b1a2a] text-5xl sm:text-[54px] leading-none tracking-normal select-none"
+            className="font-meow text-[#6b1a2a] text-6xl sm:text-[70px] leading-none tracking-normal select-none"
+            style={{ fontFamily: "'Meow Script', cursive" }}
             data-node-id="2:133"
           >
             Petalisse

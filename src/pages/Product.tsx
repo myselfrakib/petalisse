@@ -128,7 +128,8 @@ export default function Product() {
 
           <Link
             to="/"
-            className="font-parisienne text-[#6b1a2a] text-[32px] leading-none hover:opacity-90"
+            className="font-meow text-[#6b1a2a] text-[38px] sm:text-[42px] leading-none hover:opacity-90 tracking-wide select-none"
+            style={{ fontFamily: "'Meow Script', cursive" }}
             data-node-id="9:196"
           >
             Petalisse
