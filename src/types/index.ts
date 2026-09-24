@@ -75,7 +75,9 @@ export interface SiteContent {
   heroSubtitle?: string;
   heroBannerUrl?: string;
   collectionCovers?: Record<string, string>;
+  collectionOrder?: string[];
   featuredProductIds?: string[];
+  bestSellerProductIds?: string[];
   promoBannerText?: string;
   promoBannerSubtext?: string;
   promoBannerUrl?: string;

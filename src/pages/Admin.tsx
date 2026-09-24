@@ -8,6 +8,16 @@ import { db } from '../lib/firebase';
 import { Link } from 'react-router';
 import { getColorHex, SUGGESTED_COLORS } from '../lib/colorUtils';
 
+export const ALL_COLLECTION_TEMPLATES = [
+  { key: 'Mobile Charms', label: 'Mobile Charms', defaultImg: '/figma-assets/2416c5a3da640dcea42f85f7a71067eac0c58ca9.png' },
+  { key: 'Bag Charms', label: 'Bag Charms', defaultImg: '/figma-assets/2b39a24648f5a21e9e527dfe97992fd042715209.png' },
+  { key: 'Mystery Jars', label: 'Mystery Jars', defaultImg: '/figma-assets/1908ddbd2af05246c15d1de98d9563a4801070c0.png' },
+  { key: 'Jewellery', label: 'Jewellery', defaultImg: '/figma-assets/aac1d8d4d024ee6d6c049df2d059dfd80fda2226.png' },
+  { key: 'Hair Accessories', label: 'Hair Accessories', defaultImg: '/figma-assets/c985c36ff39bdb6b9a8d2827b0a9f08ad612b3b1.png' },
+  { key: 'Desk & Room Decor', label: 'Desk & Room Decor', defaultImg: '/figma-assets/e8a9f4c7977ea3291af5fdf421b0c3f7801f21ed.png' },
+  { key: 'Cute Functional Things', label: 'Cute Functional Things', defaultImg: '/figma-assets/a53065cbd3c94f32f92edb4e749a2fac1e370cbe.png' },
+];
+
 export const AdminPage: React.FC = () => {
   const { 
     currentUser, 
@@ -353,6 +363,39 @@ export const AdminPage: React.FC = () => {
     }
   };
 
+  // Collections ordering and cover upload
+  const currentCollectionOrder = useMemo(() => {
+    const saved = cmsContent.collectionOrder || [];
+    const templateKeys = ALL_COLLECTION_TEMPLATES.map((c) => c.key);
+    const existing = saved.filter((k) => templateKeys.includes(k));
+    const missing = templateKeys.filter((k) => !existing.includes(k));
+    return [...existing, ...missing];
+  }, [cmsContent.collectionOrder]);
+
+  const handleMoveCollection = (key: string, direction: 'up' | 'down') => {
+    const list = [...currentCollectionOrder];
+    const index = list.indexOf(key);
+    if (index === -1) return;
+    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= list.length) return;
+
+    const temp = list[index];
+    list[index] = list[targetIndex];
+    list[targetIndex] = temp;
+
+    setCmsContent((prev) => ({
+      ...prev,
+      collectionOrder: list,
+    }));
+  };
+
+  const handleResetCollectionOrder = () => {
+    setCmsContent((prev) => ({
+      ...prev,
+      collectionOrder: ALL_COLLECTION_TEMPLATES.map((c) => c.key),
+    }));
+  };
+
   const handleCollectionCoverUpload = async (category: string, e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -373,16 +416,61 @@ export const AdminPage: React.FC = () => {
     }
   };
 
-  const handleToggleFeaturedInCms = (productId: string) => {
-    const current = cmsContent.featuredProductIds || [];
-    const next = current.includes(productId)
-      ? current.filter((id) => id !== productId)
-      : [...current, productId];
+  // Best Sellers sequence and selection handlers
+  const [bestsellerSearch, setBestsellerSearch] = useState('');
+  const [bestsellerCatFilter, setBestsellerCatFilter] = useState('All');
+
+  const currentBestSellerIds = useMemo(() => {
+    return cmsContent.bestSellerProductIds || cmsContent.featuredProductIds || [];
+  }, [cmsContent.bestSellerProductIds, cmsContent.featuredProductIds]);
+
+  const orderedBestSellerProducts = useMemo(() => {
+    return currentBestSellerIds
+      .map((id) => products.find((p) => p.id === id))
+      .filter(Boolean) as Product[];
+  }, [currentBestSellerIds, products]);
+
+  const handleMoveBestSeller = (productId: string, direction: 'up' | 'down') => {
+    const list = [...currentBestSellerIds];
+    const index = list.indexOf(productId);
+    if (index === -1) return;
+    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= list.length) return;
+
+    const temp = list[index];
+    list[index] = list[targetIndex];
+    list[targetIndex] = temp;
+
     setCmsContent((prev) => ({
       ...prev,
+      bestSellerProductIds: list,
+      featuredProductIds: list,
+    }));
+  };
+
+  const handleRemoveBestSeller = (productId: string) => {
+    const next = currentBestSellerIds.filter((id) => id !== productId);
+    setCmsContent((prev) => ({
+      ...prev,
+      bestSellerProductIds: next,
       featuredProductIds: next,
     }));
   };
+
+  const handleToggleBestSeller = (productId: string) => {
+    const exists = currentBestSellerIds.includes(productId);
+    const next = exists
+      ? currentBestSellerIds.filter((id) => id !== productId)
+      : [...currentBestSellerIds, productId];
+
+    setCmsContent((prev) => ({
+      ...prev,
+      bestSellerProductIds: next,
+      featuredProductIds: next,
+    }));
+  };
+
+  const handleToggleFeaturedInCms = handleToggleBestSeller;
 
   const handleProductImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -1780,73 +1868,116 @@ export const AdminPage: React.FC = () => {
                 </div>
               </div>
 
-              {/* 1. Our Collections Cover Photos Section */}
+              {/* 1. Our Collections Sequence & Cover Photos Section */}
               <div className="bg-[#FAF7F2] rounded-2xl border border-[#E8E0D5] p-6 shadow-sm space-y-4">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#EAE3D8] pb-3">
                   <div>
-                    <h3 className="text-base font-serif text-[#2C2724] font-medium">
-                      "Our Collections" Category Cover Photos
+                    <h3 className="text-base font-serif text-[#2C2724] font-medium flex items-center gap-2">
+                      <span>"Our Collections" Sequence & Cover Photos</span>
+                      <span className="px-2 py-0.5 rounded-full bg-[#FAF0ED] text-[#8E5B59] text-[11px] font-bold">
+                        {currentCollectionOrder.length} Collections
+                      </span>
                     </h3>
                     <p className="text-xs text-[#786F66]">
-                      Customize the cover cards for Mobile Charms, Bag Charms, and Mystery Jars displayed on the homepage.
+                      Change the sequence of collections cards displayed on the homepage, and customize their cover images.
                     </p>
                   </div>
                   <button
                     type="button"
-                    onClick={() => {
-                      setCmsContent((prev) => ({
-                        ...prev,
-                        collectionCovers: {
-                          'Mobile Charms': '/figma-assets/2416c5a3da640dcea42f85f7a71067eac0c58ca9.png',
-                          'Bag Charms': '/figma-assets/2b39a24648f5a21e9e527dfe97992fd042715209.png',
-                          'Mystery Jars': '/figma-assets/1908ddbd2af05246c15d1de98d9563a4801070c0.png',
-                          'Jewellery': '/figma-assets/aac1d8d4d024ee6d6c049df2d059dfd80fda2226.png',
-                          'Hair Accessories': '/figma-assets/c985c36ff39bdb6b9a8d2827b0a9f08ad612b3b1.png',
-                          'Desk & Room Decor': '/figma-assets/e8a9f4c7977ea3291af5fdf421b0c3f7801f21ed.png',
-                          'Cute Functional Things': '/figma-assets/a53065cbd3c94f32f92edb4e749a2fac1e370cbe.png',
-                        },
-                      }));
-                    }}
-                    className="text-xs text-[#8E5B59] hover:underline self-start sm:self-center cursor-pointer"
+                    onClick={handleResetCollectionOrder}
+                    className="text-xs text-[#8E5B59] hover:underline self-start sm:self-center cursor-pointer font-medium"
                   >
-                    Reset all to default boutique covers
+                    Reset sequence to default order
                   </button>
                 </div>
 
+                {/* Sequence Overview Bar */}
+                <div className="bg-white p-3 rounded-xl border border-[#E8E0D5] space-y-1.5">
+                  <div className="text-[11px] font-semibold text-[#8E5B59] uppercase tracking-wider">
+                    Current Homepage Display Sequence (Left to Right):
+                  </div>
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    {currentCollectionOrder.map((key, idx) => (
+                      <span
+                        key={key}
+                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#FAF0ED] text-[#8E5B59] text-xs font-medium border border-[#E8C5B8]/60 shadow-2xs"
+                      >
+                        <span className="font-bold text-[10px] text-white bg-[#8E5B59] size-4 rounded-full inline-flex items-center justify-center">
+                          {idx + 1}
+                        </span>
+                        <span>{key}</span>
+                        {idx < currentCollectionOrder.length - 1 && (
+                          <span className="text-[#A89E94] ml-1">→</span>
+                        )}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Reorderable Collections Cards */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 pt-2">
-                  {[
-                    { key: 'Mobile Charms', label: 'Mobile Charms', defaultImg: '/figma-assets/2416c5a3da640dcea42f85f7a71067eac0c58ca9.png' },
-                    { key: 'Bag Charms', label: 'Bag Charms', defaultImg: '/figma-assets/2b39a24648f5a21e9e527dfe97992fd042715209.png' },
-                    { key: 'Mystery Jars', label: 'Mystery Jars', defaultImg: '/figma-assets/1908ddbd2af05246c15d1de98d9563a4801070c0.png' },
-                    { key: 'Jewellery', label: 'Jewellery', defaultImg: '/figma-assets/aac1d8d4d024ee6d6c049df2d059dfd80fda2226.png' },
-                    { key: 'Hair Accessories', label: 'Hair Accessories', defaultImg: '/figma-assets/c985c36ff39bdb6b9a8d2827b0a9f08ad612b3b1.png' },
-                    { key: 'Desk & Room Decor', label: 'Desk & Room Decor', defaultImg: '/figma-assets/e8a9f4c7977ea3291af5fdf421b0c3f7801f21ed.png' },
-                    { key: 'Cute Functional Things', label: 'Cute Functional Things', defaultImg: '/figma-assets/a53065cbd3c94f32f92edb4e749a2fac1e370cbe.png' },
-                  ].map((cat) => {
-                    const currentCover = cmsContent.collectionCovers?.[cat.key] || cat.defaultImg;
-                    const isUploading = uploadingCollectionCover === cat.key;
+                  {currentCollectionOrder.map((key, idx) => {
+                    const template = ALL_COLLECTION_TEMPLATES.find((t) => t.key === key) || {
+                      key,
+                      label: key,
+                      defaultImg: '/figma-assets/2416c5a3da640dcea42f85f7a71067eac0c58ca9.png',
+                    };
+                    const currentCover = cmsContent.collectionCovers?.[key] || template.defaultImg;
+                    const isUploading = uploadingCollectionCover === key;
 
                     return (
-                      <div key={cat.key} className="bg-white p-4 rounded-xl border border-[#E8E0D5] space-y-3 shadow-2xs">
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs font-semibold text-[#2C2724] uppercase tracking-wider">{cat.label}</span>
-                          <span className="text-[10px] text-[#8C827A] font-mono">Homepage Card</span>
-                        </div>
+                      <div key={key} className="bg-white p-4 rounded-xl border border-[#E8E0D5] space-y-3 shadow-2xs flex flex-col justify-between">
+                        <div>
+                          {/* Header with Sequence Badge */}
+                          <div className="flex items-center justify-between gap-1 mb-2">
+                            <span className="inline-flex items-center gap-1 text-xs font-bold text-[#8E5B59] bg-[#FAF0ED] px-2 py-0.5 rounded-md border border-[#E8C5B8]">
+                              #{idx + 1}
+                            </span>
+                            <span className="text-xs font-semibold text-[#2C2724] truncate flex-1 ml-1" title={template.label}>
+                              {template.label}
+                            </span>
+                          </div>
 
-                        {/* Preview */}
-                        <div className="aspect-[5/6] w-full rounded-xl overflow-hidden border border-[#E8E0D5] bg-[#FAF5F0] relative">
-                          <img
-                            src={currentCover}
-                            alt={cat.label}
-                            className="size-full object-cover"
-                            onError={(e) => {
-                              (e.currentTarget as HTMLImageElement).src = cat.defaultImg;
-                            }}
-                          />
+                          {/* Move Left / Right Reorder Controls */}
+                          <div className="grid grid-cols-2 gap-1.5 mb-2.5">
+                            <button
+                              type="button"
+                              onClick={() => handleMoveCollection(key, 'up')}
+                              disabled={idx === 0}
+                              className="px-2 py-1 rounded-lg border border-[#DED5C9] bg-white text-[11px] font-semibold text-[#5C534B] hover:bg-[#F3EDE2] disabled:opacity-35 disabled:cursor-not-allowed transition flex items-center justify-center gap-1 cursor-pointer"
+                              title="Move card earlier (left) in sequence"
+                            >
+                              <span>← Earlier</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleMoveCollection(key, 'down')}
+                              disabled={idx === currentCollectionOrder.length - 1}
+                              className="px-2 py-1 rounded-lg border border-[#DED5C9] bg-white text-[11px] font-semibold text-[#5C534B] hover:bg-[#F3EDE2] disabled:opacity-35 disabled:cursor-not-allowed transition flex items-center justify-center gap-1 cursor-pointer"
+                              title="Move card later (right) in sequence"
+                            >
+                              <span>Later →</span>
+                            </button>
+                          </div>
+
+                          {/* Preview Cover */}
+                          <div className="aspect-[5/6] w-full rounded-xl overflow-hidden border border-[#E8E0D5] bg-[#FAF5F0] relative">
+                            <img
+                              src={currentCover}
+                              alt={template.label}
+                              className="size-full object-cover"
+                              onError={(e) => {
+                                (e.currentTarget as HTMLImageElement).src = template.defaultImg;
+                              }}
+                            />
+                            <div className="absolute top-2 left-2 bg-black/60 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-md">
+                              Card #{idx + 1}
+                            </div>
+                          </div>
                         </div>
 
                         {/* Actions */}
-                        <div className="space-y-2">
+                        <div className="space-y-2 pt-2">
                           <div className="flex gap-2">
                             <label className="cursor-pointer px-3 py-1.5 rounded-lg bg-[#FAF0ED] hover:bg-[#F3DDD6] border border-[#E8C5B8] text-[11px] font-semibold text-[#8E5B59] transition flex items-center justify-center gap-1.5 flex-1">
                               <span>{isUploading ? 'Optimizing...' : 'Upload Cover'}</span>
@@ -1854,7 +1985,7 @@ export const AdminPage: React.FC = () => {
                                 type="file"
                                 accept="image/*"
                                 disabled={isUploading}
-                                onChange={(e) => handleCollectionCoverUpload(cat.key, e)}
+                                onChange={(e) => handleCollectionCoverUpload(key, e)}
                                 className="hidden"
                               />
                             </label>
@@ -1865,7 +1996,7 @@ export const AdminPage: React.FC = () => {
                                   ...prev,
                                   collectionCovers: {
                                     ...(prev.collectionCovers || {}),
-                                    [cat.key]: cat.defaultImg,
+                                    [key]: template.defaultImg,
                                   },
                                 }));
                               }}
@@ -1878,14 +2009,14 @@ export const AdminPage: React.FC = () => {
 
                           <input
                             type="text"
-                            value={cmsContent.collectionCovers?.[cat.key] || ''}
+                            value={cmsContent.collectionCovers?.[key] || ''}
                             onChange={(e) => {
                               const val = e.target.value;
                               setCmsContent((prev) => ({
                                 ...prev,
                                 collectionCovers: {
                                   ...(prev.collectionCovers || {}),
-                                  [cat.key]: val,
+                                  [key]: val,
                                 },
                               }));
                             }}
@@ -1899,20 +2030,18 @@ export const AdminPage: React.FC = () => {
                 </div>
               </div>
 
-              {/* 2. Our Favorites Homepage Showcase Selection */}
-              <div className="bg-[#FAF7F2] rounded-2xl border border-[#E8E0D5] p-6 shadow-sm space-y-4">
+              {/* 2. Best Sellers Homepage Showcase & Sequence Manager */}
+              <div className="bg-[#FAF7F2] rounded-2xl border border-[#E8E0D5] p-6 shadow-sm space-y-5">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#EAE3D8] pb-3">
                   <div>
                     <h3 className="text-base font-serif text-[#2C2724] font-medium flex items-center gap-2">
-                      <span>"Our Favorites" Showcase Picker</span>
+                      <span>"Best Sellers" Showcase & Sequence Manager</span>
                       <span className="px-2.5 py-0.5 rounded-full bg-[#FAF0ED] text-[#8E5B59] text-[11px] font-bold">
-                        {cmsContent.featuredProductIds && cmsContent.featuredProductIds.length > 0
-                          ? `${cmsContent.featuredProductIds.length} chosen for homepage`
-                          : 'Auto (first available)'}
+                        {currentBestSellerIds.length} Products in Best Sellers
                       </span>
                     </h3>
                     <p className="text-xs text-[#786F66]">
-                      Choose exactly which handcrafted charms appear in the "Our Favorites" section on the index page. Click any charm to toggle it on/off.
+                      Choose exactly which handcrafted charms appear in the "Best Sellers" section on the homepage, and reorder their exact display sequence.
                     </p>
                   </div>
 
@@ -1920,9 +2049,11 @@ export const AdminPage: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => {
+                        const allIds = products.map((p) => p.id);
                         setCmsContent((prev) => ({
                           ...prev,
-                          featuredProductIds: products.map((p) => p.id),
+                          bestSellerProductIds: allIds,
+                          featuredProductIds: allIds,
                         }));
                       }}
                       className="px-2.5 py-1 rounded-lg border border-[#DED5C9] bg-white text-xs text-[#5C534B] hover:bg-[#F3EDE2] transition cursor-pointer"
@@ -1934,66 +2065,197 @@ export const AdminPage: React.FC = () => {
                       onClick={() => {
                         setCmsContent((prev) => ({
                           ...prev,
+                          bestSellerProductIds: [],
                           featuredProductIds: [],
                         }));
                       }}
                       className="px-2.5 py-1 rounded-lg border border-[#DED5C9] bg-white text-xs text-[#8E5B59] hover:bg-[#FAF0ED] transition cursor-pointer"
                     >
-                      Clear Selection
+                      Clear All
                     </button>
                   </div>
                 </div>
 
-                {products.length === 0 ? (
-                  <div className="p-8 text-center bg-white rounded-xl border border-[#E8E0D5]">
-                    <p className="text-xs text-[#786F66]">
-                      No live products created yet. Add handcrafted charms in the "Products & Inventory" tab first!
-                    </p>
+                {/* SUBSECTION A: Active Best Sellers Ordered Queue */}
+                <div className="bg-white p-4 sm:p-5 rounded-xl border border-[#E8E0D5] space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="text-sm font-semibold text-[#2C2724] flex items-center gap-2">
+                        <span>⭐ Active Best Sellers (In Display Order)</span>
+                        <span className="text-xs font-normal text-[#8C827A]">
+                          Use ▲ Move Up and ▼ Move Down to adjust sequence
+                        </span>
+                      </h4>
+                    </div>
                   </div>
-                ) : (
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 pt-1 max-h-[380px] overflow-y-auto p-1">
-                    {products.map((p) => {
-                      const isFeatured = (cmsContent.featuredProductIds || []).includes(p.id);
 
-                      return (
+                  {orderedBestSellerProducts.length === 0 ? (
+                    <div className="p-6 text-center bg-[#FAF7F2] rounded-xl border border-dashed border-[#DED5C9]">
+                      <p className="text-xs text-[#786F66] font-medium">
+                        No products currently in Best Sellers. Click "+ Add to Best Sellers" from the catalog below to add and arrange products.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="divide-y divide-[#EAE3D8] border border-[#EAE3D8] rounded-xl overflow-hidden max-h-[360px] overflow-y-auto">
+                      {orderedBestSellerProducts.map((p, idx) => (
                         <div
                           key={p.id}
-                          onClick={() => handleToggleFeaturedInCms(p.id)}
-                          className={`relative p-2.5 rounded-xl border transition-all cursor-pointer select-none flex flex-col justify-between ${
-                            isFeatured
-                              ? 'bg-[#FFF9F6] border-[#8E5B59] shadow-sm ring-2 ring-[#8E5B59]/25'
-                              : 'bg-white border-[#E8E0D5] hover:border-[#8E5B59]/50 hover:bg-[#FAF7F2]'
-                          }`}
+                          className="flex items-center justify-between p-3 bg-white hover:bg-[#FAF7F2] transition gap-3"
                         >
-                          <div className="relative aspect-square w-full rounded-lg overflow-hidden bg-[#FAF5F0] border border-[#E8E0D5] mb-2">
-                            <img src={p.img} alt={p.name} className="size-full object-cover" />
-                            {isFeatured && (
-                              <div className="absolute top-1.5 right-1.5 size-5 rounded-full bg-[#8E5B59] text-white flex items-center justify-center text-[10px] font-bold shadow-xs">
-                                ✓
+                          {/* Position Badge & Product Info */}
+                          <div className="flex items-center gap-3 min-w-0 flex-1">
+                            <span className="size-7 rounded-lg bg-[#FAF0ED] text-[#8E5B59] font-bold text-xs flex items-center justify-center border border-[#E8C5B8] shrink-0">
+                              #{idx + 1}
+                            </span>
+                            <img
+                              src={p.img || p.images?.[0]}
+                              alt={p.name}
+                              className="size-10 rounded-lg object-cover border border-[#E8E0D5] shrink-0"
+                            />
+                            <div className="min-w-0">
+                              <div className="text-xs font-semibold text-[#2C2724] truncate">{p.name}</div>
+                              <div className="text-[11px] text-[#8C827A] flex items-center gap-2">
+                                <span className="text-[#8E5B59] font-medium">₹{p.discountedPrice ?? p.price}</span>
+                                <span>•</span>
+                                <span>{p.category}</span>
                               </div>
-                            )}
-                          </div>
-
-                          <div className="space-y-0.5">
-                            <div className="text-xs font-semibold text-[#2C2724] line-clamp-1">{p.name}</div>
-                            <div className="flex items-center justify-between text-[11px]">
-                              <span className="text-[#8E5B59] font-medium">₹{p.discountedPrice ?? p.price}</span>
-                              <span className="text-[#8C827A] text-[10px]">{p.category}</span>
                             </div>
                           </div>
 
-                          <div className="mt-2 pt-1.5 border-t border-[#EAE3D8] text-center">
-                            <span className={`text-[10px] font-semibold uppercase tracking-wider ${
-                              isFeatured ? 'text-[#8E5B59]' : 'text-[#A89E94]'
-                            }`}>
-                              {isFeatured ? '★ In Favorites' : '+ Add to Fav'}
-                            </span>
+                          {/* Reordering Controls */}
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            <button
+                              type="button"
+                              onClick={() => handleMoveBestSeller(p.id, 'up')}
+                              disabled={idx === 0}
+                              className="px-2 py-1 rounded-lg border border-[#DED5C9] bg-white text-xs font-bold text-[#5C534B] hover:bg-[#FAF0ED] hover:text-[#8E5B59] disabled:opacity-30 disabled:cursor-not-allowed transition cursor-pointer flex items-center gap-1"
+                              title="Move product earlier in best sellers sequence"
+                            >
+                              ▲ Up
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleMoveBestSeller(p.id, 'down')}
+                              disabled={idx === orderedBestSellerProducts.length - 1}
+                              className="px-2 py-1 rounded-lg border border-[#DED5C9] bg-white text-xs font-bold text-[#5C534B] hover:bg-[#FAF0ED] hover:text-[#8E5B59] disabled:opacity-30 disabled:cursor-not-allowed transition cursor-pointer flex items-center gap-1"
+                              title="Move product later in best sellers sequence"
+                            >
+                              ▼ Down
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveBestSeller(p.id)}
+                              className="px-2 py-1 rounded-lg border border-[#F3DDD6] bg-[#FAF0ED] text-xs font-semibold text-[#9E3E2B] hover:bg-[#F3DDD6] transition cursor-pointer ml-1"
+                              title="Remove from Best Sellers"
+                            >
+                              ✕ Remove
+                            </button>
                           </div>
                         </div>
-                      );
-                    })}
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* SUBSECTION B: Add Products from Catalog */}
+                <div className="bg-white p-4 sm:p-5 rounded-xl border border-[#E8E0D5] space-y-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div>
+                      <h4 className="text-sm font-semibold text-[#2C2724]">
+                        Add Products from Catalog to Best Sellers
+                      </h4>
+                      <p className="text-xs text-[#8C827A]">
+                        Click any product card to add or remove it from the Best Sellers showcase.
+                      </p>
+                    </div>
+
+                    {/* Filter and Search */}
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        value={bestsellerSearch}
+                        onChange={(e) => setBestsellerSearch(e.target.value)}
+                        placeholder="Search products..."
+                        className="px-3 py-1.5 rounded-lg border border-[#DED5C9] bg-white text-xs text-[#2C2724] focus:outline-hidden focus:border-[#8E5B59] w-[140px] sm:w-[180px]"
+                      />
+                      <select
+                        value={bestsellerCatFilter}
+                        onChange={(e) => setBestsellerCatFilter(e.target.value)}
+                        className="px-2.5 py-1.5 rounded-lg border border-[#DED5C9] bg-white text-xs text-[#2C2724] focus:outline-hidden focus:border-[#8E5B59]"
+                      >
+                        <option value="All">All Categories</option>
+                        {CATEGORIES.filter((c) => c !== 'All Items').map((cat) => (
+                          <option key={cat} value={cat}>
+                            {cat}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
                   </div>
-                )}
+
+                  {products.length === 0 ? (
+                    <div className="p-8 text-center bg-[#FAF7F2] rounded-xl border border-[#E8E0D5]">
+                      <p className="text-xs text-[#786F66]">
+                        No live products created yet. Add handcrafted charms in the "Products & Inventory" tab first!
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 pt-1 max-h-[380px] overflow-y-auto p-1">
+                      {products
+                        .filter((p) => {
+                          const matchesCat = bestsellerCatFilter === 'All' || p.category === bestsellerCatFilter;
+                          const matchesSearch =
+                            !bestsellerSearch ||
+                            p.name.toLowerCase().includes(bestsellerSearch.toLowerCase()) ||
+                            p.category.toLowerCase().includes(bestsellerSearch.toLowerCase());
+                          return matchesCat && matchesSearch;
+                        })
+                        .map((p) => {
+                          const isFeatured = currentBestSellerIds.includes(p.id);
+                          const positionIdx = currentBestSellerIds.indexOf(p.id);
+
+                          return (
+                            <div
+                              key={p.id}
+                              onClick={() => handleToggleBestSeller(p.id)}
+                              className={`relative p-2.5 rounded-xl border transition-all cursor-pointer select-none flex flex-col justify-between ${
+                                isFeatured
+                                  ? 'bg-[#FFF9F6] border-[#8E5B59] shadow-sm ring-2 ring-[#8E5B59]/25'
+                                  : 'bg-white border-[#E8E0D5] hover:border-[#8E5B59]/50 hover:bg-[#FAF7F2]'
+                              }`}
+                            >
+                              <div className="relative aspect-square w-full rounded-lg overflow-hidden bg-[#FAF5F0] border border-[#E8E0D5] mb-2">
+                                <img src={p.img || p.images?.[0]} alt={p.name} className="size-full object-cover" />
+                                {isFeatured && (
+                                  <div className="absolute top-1.5 right-1.5 px-1.5 py-0.5 rounded-full bg-[#8E5B59] text-white flex items-center justify-center text-[10px] font-bold shadow-xs">
+                                    #{positionIdx + 1}
+                                  </div>
+                                )}
+                              </div>
+
+                              <div className="space-y-0.5">
+                                <div className="text-xs font-semibold text-[#2C2724] line-clamp-1">{p.name}</div>
+                                <div className="flex items-center justify-between text-[11px]">
+                                  <span className="text-[#8E5B59] font-medium">₹{p.discountedPrice ?? p.price}</span>
+                                  <span className="text-[#8C827A] text-[10px]">{p.category}</span>
+                                </div>
+                              </div>
+
+                              <div className="mt-2 pt-1.5 border-t border-[#EAE3D8] text-center">
+                                <span
+                                  className={`text-[10px] font-semibold uppercase tracking-wider ${
+                                    isFeatured ? 'text-[#8E5B59]' : 'text-[#A89E94]'
+                                  }`}
+                                >
+                                  {isFeatured ? `✓ In Best Sellers (#${positionIdx + 1})` : '+ Add to Best Sellers'}
+                                </span>
+                              </div>
+                            </div>
+                          );
+                        })}
+                    </div>
+                  )}
+                </div>
               </div>
 
               {/* 3. "Crafted for Dreamers & Collectors" Story Section */}

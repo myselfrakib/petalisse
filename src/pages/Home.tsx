@@ -54,6 +54,20 @@ export default function Home() {
   const collectionsScrollRef = useRef<HTMLDivElement>(null);
   const [activeCollectionIdx, setActiveCollectionIdx] = useState(0);
 
+  // Ordered collections managed live via Admin Panel CMS
+  const orderedCollections = useMemo(() => {
+    const order = siteContent.collectionOrder;
+    if (!order || !order.length) return ALL_COLLECTIONS;
+
+    return [...ALL_COLLECTIONS].sort((a, b) => {
+      const idxA = order.indexOf(a.key);
+      const idxB = order.indexOf(b.key);
+      const posA = idxA === -1 ? 999 : idxA;
+      const posB = idxB === -1 ? 999 : idxB;
+      return posA - posB;
+    });
+  }, [siteContent.collectionOrder]);
+
   const handleCollectionsScroll = (e: React.UIEvent<HTMLDivElement>) => {
     const container = e.currentTarget;
     const scrollLeft = container.scrollLeft;
@@ -64,8 +78,8 @@ export default function Home() {
     }
     const ratio = scrollLeft / maxScroll;
     const index = Math.min(
-      ALL_COLLECTIONS.length - 1,
-      Math.max(0, Math.round(ratio * (ALL_COLLECTIONS.length - 1)))
+      orderedCollections.length - 1,
+      Math.max(0, Math.round(ratio * (orderedCollections.length - 1)))
     );
     setActiveCollectionIdx(index);
   };
@@ -74,7 +88,7 @@ export default function Home() {
     if (collectionsScrollRef.current) {
       const maxScroll =
         collectionsScrollRef.current.scrollWidth - collectionsScrollRef.current.clientWidth;
-      const targetScroll = (idx / (ALL_COLLECTIONS.length - 1)) * maxScroll;
+      const targetScroll = (idx / (orderedCollections.length - 1)) * maxScroll;
       collectionsScrollRef.current.scrollTo({
         left: targetScroll,
         behavior: 'smooth',
@@ -83,21 +97,22 @@ export default function Home() {
     setActiveCollectionIdx(idx);
   };
 
-  // Selected favorites / bestsellers managed live from Admin Panel DB
+  // Selected favorites / bestsellers managed live from Admin Panel DB in exact sequence
   const bestsellers = useMemo(() => {
-    // 1. Explicitly selected in CMS
-    if (siteContent.featuredProductIds && siteContent.featuredProductIds.length > 0) {
-      const selected = siteContent.featuredProductIds
+    // 1. Explicitly selected and ordered in CMS
+    const chosenIds = siteContent.bestSellerProductIds || siteContent.featuredProductIds;
+    if (chosenIds && chosenIds.length > 0) {
+      const ordered = chosenIds
         .map((id) => products.find((p) => p.id === id))
         .filter(Boolean) as typeof products;
-      if (selected.length > 0) return selected;
+      if (ordered.length > 0) return ordered;
     }
     // 2. Marked as isFavorite in product table
     const marked = products.filter((p) => p.isFavorite);
     if (marked.length > 0) return marked;
     // 3. Fallback to active catalog
     return products.slice(0, 4);
-  }, [products, siteContent.featuredProductIds]);
+  }, [products, siteContent.bestSellerProductIds, siteContent.featuredProductIds]);
 
 
   return (
@@ -178,7 +193,7 @@ export default function Home() {
             }}
             data-name="categories-carousel"
           >
-            {ALL_COLLECTIONS.map((col) => {
+            {orderedCollections.map((col) => {
               const coverImg = siteContent.collectionCovers?.[col.key] || col.defaultImg;
 
               return (
@@ -209,7 +224,7 @@ export default function Home() {
 
           {/* Dots Indicator for Number of Collections */}
           <div className="flex items-center justify-center gap-1.5 pt-0.5" aria-label="Collections pagination">
-            {ALL_COLLECTIONS.map((col, idx) => (
+            {orderedCollections.map((col, idx) => (
               <button
                 key={col.key}
                 type="button"

@@ -15,6 +15,16 @@ import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, storage } from '../lib/firebase';
 import { Product, SiteContent, Order } from '../types';
 
+export const DEFAULT_COLLECTIONS_ORDER = [
+  'Mobile Charms',
+  'Bag Charms',
+  'Mystery Jars',
+  'Jewellery',
+  'Hair Accessories',
+  'Desk & Room Decor',
+  'Cute Functional Things',
+];
+
 const DEFAULT_SITE_CONTENT: SiteContent = {
   announcementText: 'Free Shipping on All Orders Over $50 | Handmade with Love',
   heroTagline: 'Made slowly, loved endlessly',
@@ -30,7 +40,9 @@ const DEFAULT_SITE_CONTENT: SiteContent = {
     'Desk & Room Decor': '/figma-assets/e8a9f4c7977ea3291af5fdf421b0c3f7801f21ed.png',
     'Cute Functional Things': '/figma-assets/a53065cbd3c94f32f92edb4e749a2fac1e370cbe.png',
   },
+  collectionOrder: DEFAULT_COLLECTIONS_ORDER,
   featuredProductIds: [],
+  bestSellerProductIds: [],
   promoBannerText: 'Crafted for the Dreamers & Collectors',
   promoBannerSubtext: 'Each charm carries its own gentle story, sculpted by hand with delicate intention and finished with artisanal ribbon.',
   promoBannerUrl: '/figma-assets/2b39a24648f5a21e9e527dfe97992fd042715209.png',
@@ -61,9 +73,13 @@ function sanitizeSiteContent(content: SiteContent): SiteContent {
     ...DEFAULT_SITE_CONTENT.collectionCovers,
     ...(content?.collectionCovers || {}),
   };
-  sanitized.featuredProductIds = Array.isArray(content?.featuredProductIds)
-    ? content.featuredProductIds
-    : (sanitized.featuredProductIds || []);
+  sanitized.collectionOrder = Array.isArray(content?.collectionOrder) && content.collectionOrder.length > 0
+    ? content.collectionOrder
+    : DEFAULT_COLLECTIONS_ORDER;
+  sanitized.bestSellerProductIds = Array.isArray(content?.bestSellerProductIds)
+    ? content.bestSellerProductIds
+    : (Array.isArray(content?.featuredProductIds) ? content.featuredProductIds : []);
+  sanitized.featuredProductIds = sanitized.bestSellerProductIds;
   return sanitized;
 }
 
