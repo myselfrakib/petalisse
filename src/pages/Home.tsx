@@ -59,15 +59,6 @@ export default function Home() {
           data-node-id="2:129"
           data-name="hero-section"
         >
-          {/* Rose Icon */}
-          <div
-            className="flex items-center justify-center size-10 mb-0.5"
-            data-node-id="2:130"
-            data-name="rose-mark"
-          >
-            <img alt="Petalisse Rose" className="size-8 block" src={imgRose} />
-          </div>
-
           {/* Logo Title */}
           <h1
             className="font-parisienne text-[#6b1a2a] text-5xl sm:text-[54px] leading-none tracking-normal select-none"
@@ -411,10 +402,12 @@ export default function Home() {
         >
           <div className="flex flex-col gap-1.5 items-center">
             <p
-              className="font-cormorant font-bold text-[#6b1a2a] text-[15px] uppercase tracking-widest"
+              className="font-cormorant font-bold text-[#6b1a2a] text-[15px] tracking-wider flex items-center justify-center gap-2"
               data-node-id="2:196"
             >
-              SMALL DETAILS. BIG PERSONALITY.
+              <span>Small details</span>
+              <img alt="Petalisse Rose" className="size-4.5 block shrink-0" src={imgRose} />
+              <span>big Personality!!</span>
             </p>
             <p
               className="font-parisienne text-[#8b827d] text-2xl"
