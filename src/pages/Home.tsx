@@ -79,16 +79,19 @@ export default function Home() {
 
   return (
     <div
-      className="min-h-screen w-full flex flex-col items-center justify-start py-6 px-4 sm:px-6 pb-28 relative bg-[#84c9f13a]"
+      className="min-h-screen w-full flex flex-col items-center justify-start py-6 px-4 sm:px-6 pb-28 relative bg-[#fdfbf7]"
       style={{
-        backgroundColor: '#84c9f13a',
+        backgroundColor: '#fdfbf7',
       }}
       data-node-id="2:121"
       data-name="petalisse-homepage"
     >
       {/* Central Paper Panel */}
       <main
-        className="w-full max-w-[430px] bg-[#fdfbf7] rounded-[24px] shadow-[0px_8px_28px_rgba(44,62,80,0.14)] p-5 sm:p-7 relative flex flex-col gap-9 items-stretch overflow-visible border border-[rgba(107,26,42,0.06)]"
+        className="w-full max-w-[430px] rounded-[24px] shadow-[0px_8px_28px_rgba(44,62,80,0.14)] p-5 sm:p-7 relative flex flex-col gap-9 items-stretch overflow-visible border border-[rgba(107,26,42,0.06)] bg-[#84c9f13a]"
+        style={{
+          backgroundColor: '#84c9f13a',
+        }}
         data-node-id="2:122"
         data-name="paper-center-panel"
       >
