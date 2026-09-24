@@ -3,7 +3,6 @@ import { Link } from 'react-router';
 import { useCart } from '../context/CartContext';
 import { useContent } from '../context/ContentContext';
 
-const imgPetalisseHomepage = '/figma-assets/772e8e7b4c0d39ad6752261452ccca607e718dc3.png';
 const imgRectangle = '/figma-assets/2416c5a3da640dcea42f85f7a71067eac0c58ca9.png';
 const imgRectangle1 = '/figma-assets/2b39a24648f5a21e9e527dfe97992fd042715209.png';
 const imgRectangle2 = '/figma-assets/1908ddbd2af05246c15d1de98d9563a4801070c0.png';
@@ -80,7 +79,7 @@ export default function Home() {
 
   return (
     <div
-      className="min-h-screen w-full flex flex-col items-center justify-start py-6 px-4 sm:px-6 pb-28 relative"
+      className="min-h-screen w-full flex flex-col items-center justify-start py-6 px-4 sm:px-6 pb-28 relative bg-[#84c9f13a]"
       style={{
         backgroundColor: '#84c9f13a',
       }}

@@ -112,7 +112,7 @@ export default function Root() {
   };
 
   return (
-    <div className="font-body text-ink min-h-screen flex flex-col bg-[#FDFBF7]">
+    <div className={`font-body text-ink min-h-screen flex flex-col ${pathname === '/' ? 'bg-white' : 'bg-[#FDFBF7]'}`}>
       {/* Announcement Bar */}
       {!isAdminPage && siteContent.announcementText && (
         <div className="bg-[#6B1A2A] text-white py-1.5 px-4 text-center text-xs tracking-wider font-light flex items-center justify-center gap-2">
