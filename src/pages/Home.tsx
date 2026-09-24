@@ -67,31 +67,15 @@ export default function Home() {
             Petalisse
           </h1>
 
-          {/* Sub-heading with Rose Icon */}
-          <div
-            className="font-handsome text-[#8b827d] text-2xl sm:text-[23px] leading-snug tracking-wide flex items-center justify-center gap-2.5"
+          {/* Sub-heading: Small details 🌹 big Personality!! */}
+          <p
+            className="font-cormorant font-bold text-[#6b1a2a] text-[16px] sm:text-[17px] tracking-wider flex items-center justify-center gap-2 select-none"
             data-node-id="2:139"
           >
-            {(() => {
-              const tagline = siteContent.heroTagline || 'Made slowly, loved endlessly';
-              if (tagline.includes(',')) {
-                const parts = tagline.split(',');
-                return (
-                  <>
-                    <span>{parts[0].trim()}</span>
-                    <img alt="Petalisse Rose" className="size-5 inline-block shrink-0 object-contain" src={imgRose} />
-                    <span>{parts.slice(1).join(',').trim()}</span>
-                  </>
-                );
-              }
-              return (
-                <>
-                  <span>{tagline}</span>
-                  <img alt="Petalisse Rose" className="size-5 inline-block shrink-0 object-contain" src={imgRose} />
-                </>
-              );
-            })()}
-          </div>
+            <span>Small details</span>
+            <img alt="Petalisse Rose" className="size-4.5 sm:size-5 block shrink-0 object-contain" src={imgRose} />
+            <span>big Personality!!</span>
+          </p>
         </section>
 
         {/* ── OUR COLLECTIONS SECTION ── */}
@@ -410,12 +394,10 @@ export default function Home() {
         >
           <div className="flex flex-col gap-1.5 items-center">
             <p
-              className="font-cormorant font-bold text-[#6b1a2a] text-[15px] tracking-wider flex items-center justify-center gap-2"
+              className="font-cormorant font-bold text-[#6b1a2a] text-[15px] uppercase tracking-widest"
               data-node-id="2:196"
             >
-              <span>Small details</span>
-              <img alt="Petalisse Rose" className="size-4.5 block shrink-0" src={imgRose} />
-              <span>big Personality!!</span>
+              SMALL DETAILS. BIG PERSONALITY.
             </p>
             <p
               className="font-parisienne text-[#8b827d] text-2xl"
