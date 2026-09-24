@@ -1862,40 +1862,18 @@ export const AdminPage: React.FC = () => {
                 </div>
               </div>
 
-              {/* Craftsmanship Spotlight & About */}
+              {/* Atelier Story / About Boutique Card */}
               <div className="bg-[#FAF7F2] rounded-2xl border border-[#E8E0D5] p-6 shadow-sm space-y-4">
                 <h3 className="text-base font-serif text-[#2C2724] font-medium border-b border-[#EAE3D8] pb-2">
-                  Atelier Story & Craftsmanship
+                  Atelier Story Card (Homepage)
                 </h3>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-medium text-[#4A423B] mb-1">Craftsmanship Heading</label>
-                    <input
-                      type="text"
-                      value={cmsContent.craftsmanshipTitle || ''}
-                      onChange={(e) => setCmsContent({ ...cmsContent, craftsmanshipTitle: e.target.value })}
-                      className="w-full px-3.5 py-2 rounded-xl border border-[#DED5C9] bg-white text-sm text-[#2C2724] focus:outline-hidden focus:border-[#8E5B59]"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-medium text-[#4A423B] mb-1">Story Heading</label>
-                    <input
-                      type="text"
-                      value={cmsContent.aboutTitle || ''}
-                      onChange={(e) => setCmsContent({ ...cmsContent, aboutTitle: e.target.value })}
-                      className="w-full px-3.5 py-2 rounded-xl border border-[#DED5C9] bg-white text-sm text-[#2C2724] focus:outline-hidden focus:border-[#8E5B59]"
-                    />
-                  </div>
-                </div>
-
                 <div>
-                  <label className="block text-xs font-medium text-[#4A423B] mb-1">Craftsmanship Description</label>
-                  <textarea
-                    rows={2}
-                    value={cmsContent.craftsmanshipText || ''}
-                    onChange={(e) => setCmsContent({ ...cmsContent, craftsmanshipText: e.target.value })}
+                  <label className="block text-xs font-medium text-[#4A423B] mb-1">Story Heading</label>
+                  <input
+                    type="text"
+                    value={cmsContent.aboutTitle || ''}
+                    onChange={(e) => setCmsContent({ ...cmsContent, aboutTitle: e.target.value })}
                     className="w-full px-3.5 py-2 rounded-xl border border-[#DED5C9] bg-white text-sm text-[#2C2724] focus:outline-hidden focus:border-[#8E5B59]"
                   />
                 </div>
@@ -1903,7 +1881,7 @@ export const AdminPage: React.FC = () => {
                 <div>
                   <label className="block text-xs font-medium text-[#4A423B] mb-1">Story Description</label>
                   <textarea
-                    rows={2}
+                    rows={3}
                     value={cmsContent.aboutDescription || ''}
                     onChange={(e) => setCmsContent({ ...cmsContent, aboutDescription: e.target.value })}
                     className="w-full px-3.5 py-2 rounded-xl border border-[#DED5C9] bg-white text-sm text-[#2C2724] focus:outline-hidden focus:border-[#8E5B59]"

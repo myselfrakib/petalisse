@@ -362,30 +362,6 @@ export default function Home() {
           </section>
         )}
 
-        {/* ── CRAFTSMANSHIP SPOTLIGHT (LIVE CMS) ── */}
-        <section className="flex flex-col gap-3 w-full bg-[#FAF5F0] rounded-[20px] p-5 border border-[#6b1a2a]/10">
-          <div className="text-center">
-            <h3 className="font-parisienne text-[#6b1a2a] text-3xl">
-              {siteContent.craftsmanshipTitle || 'Artisanal Care in Every Petal'}
-            </h3>
-            <p className="font-cormorant text-[#8b827d] text-xs mt-1 leading-relaxed">
-              {siteContent.craftsmanshipText || 'Every bead is hand-knotted, every bow hand-tied, and every clay blossom sculpted one petal at a time in our sunlit boutique atelier.'}
-            </p>
-          </div>
-          {siteContent.fabricItems && siteContent.fabricItems.length > 0 && (
-            <div className="grid grid-cols-3 gap-2 mt-2">
-              {siteContent.fabricItems.map((item, idx) => (
-                <div key={idx} className="bg-white rounded-xl p-2 text-center border border-[#6b1a2a]/10 flex flex-col items-center">
-                  <div className="w-10 h-10 rounded-full overflow-hidden mb-1.5 border border-[#6b1a2a]/10 bg-[#FAF5F0]">
-                    <img src={item.img} alt={item.title} className="w-full h-full object-cover" />
-                  </div>
-                  <span className="font-cormorant font-bold text-[#6b1a2a] text-[11px] leading-tight line-clamp-1">{item.title}</span>
-                  <span className="font-cormorant text-[#8b827d] text-[10px] leading-tight line-clamp-2 mt-0.5">{item.desc}</span>
-                </div>
-              ))}
-            </div>
-          )}
-        </section>
 
         {/* ── ABOUT SECTION (BLUE CARD) ── */}
         <section
