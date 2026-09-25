@@ -205,31 +205,6 @@ export default function Product() {
       data-node-id="9:179"
       data-name="petalisse-product-detail"
     >
-      {/* Floating Side Slide Buttons for larger screens / desktop */}
-      {prevProduct && (
-        <button
-          type="button"
-          onClick={() => goToProduct(prevProduct, 'right')}
-          className="hidden md:flex fixed left-[max(1rem,calc(50vw-275px))] top-1/2 -translate-y-1/2 size-11 rounded-full bg-white/95 border border-[#6b1a2a]/20 shadow-lg items-center justify-center text-[#6b1a2a] hover:bg-[#6b1a2a] hover:text-white transition-all cursor-pointer z-30 group active:scale-95"
-          title={`Previous Product: ${prevProduct.name}`}
-          aria-label="Previous product"
-        >
-          <img alt="Prev" className="size-4 block group-hover:brightness-200 transition" src={imgChevronLeft} />
-        </button>
-      )}
-
-      {nextProduct && (
-        <button
-          type="button"
-          onClick={() => goToProduct(nextProduct, 'left')}
-          className="hidden md:flex fixed right-[max(1rem,calc(50vw-275px))] top-1/2 -translate-y-1/2 size-11 rounded-full bg-white/95 border border-[#6b1a2a]/20 shadow-lg items-center justify-center text-[#6b1a2a] hover:bg-[#6b1a2a] hover:text-white transition-all cursor-pointer z-30 group active:scale-95"
-          title={`Next Product: ${nextProduct.name}`}
-          aria-label="Next product"
-        >
-          <img alt="Next" className="size-4 block rotate-180 group-hover:brightness-200 transition" src={imgChevronLeft} />
-        </button>
-      )}
-
       {/* Central Paper Panel */}
       <main
         className="w-full max-w-[430px] rounded-[24px] shadow-[0px_8px_28px_rgba(44,62,80,0.14)] px-4 sm:px-5 py-6 relative flex flex-col gap-7 items-stretch overflow-visible border border-[rgba(107,26,42,0.06)] bg-[#84c9f13a]"
@@ -324,70 +299,6 @@ export default function Product() {
               ))}
             </div>
 
-            {/* Left Slide Arrow (Image or Previous Product) */}
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                if (gallery.length > 1 && activeImageIndex > 0) {
-                  setActiveImageIndex((prev) => prev - 1);
-                } else if (prevProduct) {
-                  goToProduct(prevProduct, 'right');
-                }
-              }}
-              className="absolute left-2.5 top-1/2 -translate-y-1/2 size-8 rounded-full bg-white/90 hover:bg-white text-[#6b1a2a] shadow-md flex items-center justify-center transition-all cursor-pointer z-10 active:scale-95"
-              aria-label={
-                gallery.length > 1 && activeImageIndex > 0
-                  ? 'Previous image'
-                  : prevProduct
-                  ? `Previous product: ${prevProduct.name}`
-                  : 'Previous'
-              }
-              title={
-                gallery.length > 1 && activeImageIndex > 0
-                  ? 'Previous image'
-                  : prevProduct
-                  ? `Previous: ${prevProduct.name}`
-                  : 'Previous'
-              }
-            >
-              <img alt="Previous" className="size-3 block" src={imgChevronLeft} />
-            </button>
-
-            {/* Right Slide Arrow (Image or Next Product) */}
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                if (gallery.length > 1 && activeImageIndex < gallery.length - 1) {
-                  setActiveImageIndex((prev) => prev + 1);
-                } else if (nextProduct) {
-                  goToProduct(nextProduct, 'left');
-                }
-              }}
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 size-8 rounded-full bg-white/90 hover:bg-white text-[#6b1a2a] shadow-md flex items-center justify-center transition-all cursor-pointer z-10 active:scale-95"
-              aria-label={
-                gallery.length > 1 && activeImageIndex < gallery.length - 1
-                  ? 'Next image'
-                  : nextProduct
-                  ? `Next product: ${nextProduct.name}`
-                  : 'Next'
-              }
-              title={
-                gallery.length > 1 && activeImageIndex < gallery.length - 1
-                  ? 'Next image'
-                  : nextProduct
-                  ? `Next: ${nextProduct.name}`
-                  : 'Next'
-              }
-            >
-              <img alt="Next" className="size-3 block rotate-180" src={imgChevronLeft} />
-            </button>
-
-            {/* Hint overlay badge */}
-            <div className="absolute bottom-2.5 right-2.5 bg-[rgba(253,251,247,0.92)] backdrop-blur-xs px-2 py-0.5 rounded-full text-[10px] font-sans font-medium text-[#6b1a2a] shadow-xs flex items-center gap-1 pointer-events-none z-10">
-              <span className="opacity-75">Slide &larr;&rarr;</span>
-            </div>
           </div>
 
           {/* Carousel Dots - only shown if multiple images exist */}
