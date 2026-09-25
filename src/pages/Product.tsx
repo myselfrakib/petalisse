@@ -283,52 +283,6 @@ export default function Product() {
           </button>
         </header>
 
-        {/* ── PRODUCT QUICK SLIDE BAR (SLIDE LEFT / RIGHT) ── */}
-        <div
-          className="flex items-center justify-between w-full px-1 text-xs font-cormorant border-b border-[#6b1a2a]/10 pb-2.5 -mt-3"
-          data-name="product-quick-slide-bar"
-        >
-          {prevProduct ? (
-            <button
-              type="button"
-              onClick={() => goToProduct(prevProduct, 'right')}
-              className="group flex items-center gap-1.5 text-[#6b1a2a] hover:opacity-85 transition cursor-pointer font-bold tracking-wide active:scale-95"
-              aria-label={`Previous product: ${prevProduct.name}`}
-              title={`Slide to previous: ${prevProduct.name}`}
-            >
-              <span className="size-6 rounded-full bg-[#f9d5e5] group-hover:bg-[#f3bed3] flex items-center justify-center transition shadow-xs">
-                <img alt="" className="size-2.5 block" src={imgChevronLeft} />
-              </span>
-              <span className="truncate max-w-[85px] sm:max-w-[110px] text-[13px]">{prevProduct.name}</span>
-            </button>
-          ) : (
-            <div className="w-16" />
-          )}
-
-          <div className="flex items-center gap-1 bg-white/80 px-2.5 py-0.5 rounded-full border border-[#6b1a2a]/15 shadow-2xs">
-            <span className="font-cormorant font-bold text-[#6b1a2a] tracking-wider uppercase text-[11px]">
-              {currentIndex >= 0 ? `${currentIndex + 1} of ${products.length}` : 'Product'}
-            </span>
-          </div>
-
-          {nextProduct ? (
-            <button
-              type="button"
-              onClick={() => goToProduct(nextProduct, 'left')}
-              className="group flex items-center gap-1.5 text-[#6b1a2a] hover:opacity-85 transition cursor-pointer font-bold tracking-wide active:scale-95"
-              aria-label={`Next product: ${nextProduct.name}`}
-              title={`Slide to next: ${nextProduct.name}`}
-            >
-              <span className="truncate max-w-[85px] sm:max-w-[110px] text-[13px]">{nextProduct.name}</span>
-              <span className="size-6 rounded-full bg-[#f9d5e5] group-hover:bg-[#f3bed3] flex items-center justify-center transition shadow-xs">
-                <img alt="" className="size-2.5 block rotate-180" src={imgChevronLeft} />
-              </span>
-            </button>
-          ) : (
-            <div className="w-16" />
-          )}
-        </div>
-
         {/* ── IMAGE CAROUSEL SECTION (TOUCH & ARROW SLIDABLE) ── */}
         <section
           className={`flex flex-col gap-4 items-center w-full transition-all duration-200 ${
