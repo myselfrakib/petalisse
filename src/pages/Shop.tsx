@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import { useCart } from '../context/CartContext';
 import { useContent } from '../context/ContentContext';
@@ -64,6 +64,73 @@ export default function Shop() {
   }, [activeCategory, products]);
 
   const displayedProducts = filtered.slice(0, displayCount);
+
+  const categoriesRef = useRef<HTMLDivElement>(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
+  const isDraggingRef = useRef(false);
+  const startXRef = useRef(0);
+  const scrollLeftRef = useRef(0);
+
+  const checkCategoriesScroll = useCallback(() => {
+    if (categoriesRef.current) {
+      const { scrollLeft, scrollWidth, clientWidth } = categoriesRef.current;
+      setCanScrollLeft(scrollLeft > 4);
+      setCanScrollRight(scrollLeft + clientWidth < scrollWidth - 4);
+    }
+  }, []);
+
+  useEffect(() => {
+    checkCategoriesScroll();
+    window.addEventListener('resize', checkCategoriesScroll);
+    return () => window.removeEventListener('resize', checkCategoriesScroll);
+  }, [checkCategoriesScroll]);
+
+  // Center active category tab
+  useEffect(() => {
+    if (categoriesRef.current) {
+      const activeEl = categoriesRef.current.querySelector<HTMLElement>(`[data-category="${activeCategory}"]`);
+      if (activeEl) {
+        const container = categoriesRef.current;
+        const containerWidth = container.clientWidth;
+        const elLeft = activeEl.offsetLeft;
+        const elWidth = activeEl.clientWidth;
+        container.scrollTo({
+          left: elLeft - containerWidth / 2 + elWidth / 2,
+          behavior: 'smooth',
+        });
+      }
+    }
+    checkCategoriesScroll();
+  }, [activeCategory, checkCategoriesScroll]);
+
+  const slideCategories = (dir: 'left' | 'right') => {
+    if (categoriesRef.current) {
+      const offset = dir === 'left' ? -180 : 180;
+      categoriesRef.current.scrollBy({ left: offset, behavior: 'smooth' });
+      setTimeout(checkCategoriesScroll, 300);
+    }
+  };
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (!categoriesRef.current) return;
+    isDraggingRef.current = true;
+    startXRef.current = e.pageX - categoriesRef.current.offsetLeft;
+    scrollLeftRef.current = categoriesRef.current.scrollLeft;
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isDraggingRef.current || !categoriesRef.current) return;
+    e.preventDefault();
+    const x = e.pageX - categoriesRef.current.offsetLeft;
+    const walk = (x - startXRef.current) * 1.5;
+    categoriesRef.current.scrollLeft = scrollLeftRef.current - walk;
+    checkCategoriesScroll();
+  };
+
+  const handleMouseUpOrLeave = () => {
+    isDraggingRef.current = false;
+  };
 
   const setCategory = (cat: string) => {
     setDisplayCount(10);
@@ -155,29 +222,72 @@ export default function Shop() {
           </Link>
         </header>
 
-        {/* ── CATEGORY FILTERS ── */}
-        <div
-          className="flex flex-wrap gap-2 items-center justify-center w-full"
-          data-node-id="2:238"
-          data-name="category-filters-container"
-        >
-          {SHOP_CATEGORIES.map((cat) => {
-            const isActive = activeCategory === cat;
-            return (
-              <button
-                key={cat}
-                onClick={() => setCategory(cat)}
-                className={`font-cormorant font-bold text-[13px] uppercase tracking-wider px-3.5 py-1.5 rounded-full transition-all duration-200 cursor-pointer ${
-                  isActive
-                    ? 'bg-[#6b1a2a] text-white drop-shadow-[0px_2px_4px_rgba(107,26,42,0.25)] scale-102'
-                    : 'bg-white border border-[#6b1a2a]/15 text-[#6b1a2a] hover:border-[#6b1a2a]/40 hover:bg-[#FAF5F0]'
-                }`}
-                data-name="category-tab"
-              >
-                {cat}
-              </button>
-            );
-          })}
+        {/* ── CATEGORY FILTERS (SLIDABLE SINGLE LINE) ── */}
+        <div className="relative w-full flex items-center group/cat" data-name="categories-slider-wrapper">
+          {/* Left Arrow */}
+          {canScrollLeft && (
+            <button
+              type="button"
+              onClick={() => slideCategories('left')}
+              className="absolute -left-2 z-20 size-7 rounded-full bg-white/95 border border-[#6b1a2a]/20 shadow-md flex items-center justify-center text-[#6b1a2a] hover:bg-[#6b1a2a] hover:text-white transition-all cursor-pointer active:scale-95"
+              aria-label="Slide categories left"
+            >
+              <svg className="size-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+              </svg>
+            </button>
+          )}
+
+          {/* Slidable category track */}
+          <div
+            ref={categoriesRef}
+            onScroll={checkCategoriesScroll}
+            onMouseDown={handleMouseDown}
+            onMouseMove={handleMouseMove}
+            onMouseUp={handleMouseUpOrLeave}
+            onMouseLeave={handleMouseUpOrLeave}
+            className="flex flex-nowrap gap-2 items-center overflow-x-auto w-full py-1.5 px-0.5 scroll-smooth select-none cursor-grab active:cursor-grabbing"
+            style={{
+              scrollbarWidth: 'none',
+              msOverflowStyle: 'none',
+            }}
+            data-node-id="2:238"
+            data-name="category-filters-container"
+          >
+            {SHOP_CATEGORIES.map((cat) => {
+              const isActive = activeCategory === cat;
+              return (
+                <button
+                  key={cat}
+                  data-category={cat}
+                  data-active={isActive ? 'true' : 'false'}
+                  onClick={() => setCategory(cat)}
+                  className={`shrink-0 whitespace-nowrap font-cormorant font-bold text-[13px] uppercase tracking-wider px-3.5 py-1.5 rounded-full transition-all duration-200 cursor-pointer ${
+                    isActive
+                      ? 'bg-[#6b1a2a] text-white drop-shadow-[0px_2px_4px_rgba(107,26,42,0.25)] scale-102 ring-1 ring-[#6b1a2a]'
+                      : 'bg-white border border-[#6b1a2a]/15 text-[#6b1a2a] hover:border-[#6b1a2a]/40 hover:bg-[#FAF5F0]'
+                  }`}
+                  data-name="category-tab"
+                >
+                  {cat}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Right Arrow */}
+          {canScrollRight && (
+            <button
+              type="button"
+              onClick={() => slideCategories('right')}
+              className="absolute -right-2 z-20 size-7 rounded-full bg-white/95 border border-[#6b1a2a]/20 shadow-md flex items-center justify-center text-[#6b1a2a] hover:bg-[#6b1a2a] hover:text-white transition-all cursor-pointer active:scale-95"
+              aria-label="Slide categories right"
+            >
+              <svg className="size-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+          )}
         </div>
 
         {/* ── PRODUCT GRID (2 COLUMNS) ── */}
