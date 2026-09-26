@@ -2432,7 +2432,7 @@ export const AdminPage: React.FC = () => {
                   </div>
 
                   {cmsContent.aboutImageUrl && (
-                    <div className="size-16 rounded-xl border border-[#E8E0D5] overflow-hidden bg-white shadow-2xs">
+                    <div className="size-20 sm:size-24 rounded-xl border border-[#E8E0D5] overflow-hidden bg-white shadow-2xs">
                       <img
                         src={cmsContent.aboutImageUrl}
                         alt="Story Preview"

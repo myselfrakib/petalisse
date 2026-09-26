@@ -398,7 +398,7 @@ export default function Home() {
           data-name="about-section"
         >
           {/* Small Story Image */}
-          <div className="size-16 sm:size-20 rounded-2xl overflow-hidden border-2 border-white shadow-xs shrink-0 bg-white/80 ring-1 ring-[#aec6e4]/60">
+          <div className="size-24 sm:size-28 rounded-2xl overflow-hidden border-2 border-white shadow-sm shrink-0 bg-white/80 ring-1 ring-[#aec6e4]/60">
             <img
               alt="Petalisse Story"
               src={siteContent.aboutImageUrl || '/figma-assets/2416c5a3da640dcea42f85f7a71067eac0c58ca9.png'}
