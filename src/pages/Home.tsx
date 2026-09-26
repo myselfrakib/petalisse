@@ -391,12 +391,24 @@ export default function Home() {
         )}
 
 
-        {/* ── ABOUT SECTION (BLUE CARD) ── */}
+        {/* ── ABOUT SECTION (BLUE CARD / PETALISSE STORY CARD) ── */}
         <section
-          className="bg-[#e6f0fa] border border-[#aec6e4]/60 rounded-[20px] p-6 flex flex-col gap-3 items-center text-center"
+          className="bg-[#e6f0fa] border border-[#aec6e4]/60 rounded-[20px] p-6 flex flex-col gap-3.5 items-center text-center"
           data-node-id="2:186"
           data-name="about-section"
         >
+          {/* Small Story Image */}
+          <div className="size-16 sm:size-20 rounded-2xl overflow-hidden border-2 border-white shadow-xs shrink-0 bg-white/80 ring-1 ring-[#aec6e4]/60">
+            <img
+              alt="Petalisse Story"
+              src={siteContent.aboutImageUrl || '/figma-assets/2416c5a3da640dcea42f85f7a71067eac0c58ca9.png'}
+              className="size-full object-cover"
+              onError={(e) => {
+                (e.currentTarget as HTMLImageElement).src = '/figma-assets/2416c5a3da640dcea42f85f7a71067eac0c58ca9.png';
+              }}
+            />
+          </div>
+
           <h3
             className="font-cormorant font-semibold text-[#6b1a2a] text-lg leading-snug"
             data-node-id="2:189"

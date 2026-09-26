@@ -83,6 +83,7 @@ export interface SiteContent {
   promoBannerUrl?: string;
   aboutTitle?: string;
   aboutDescription?: string;
+  aboutImageUrl?: string;
   craftsmanshipTitle?: string;
   craftsmanshipText?: string;
   fabricItems?: Array<{ title: string; desc: string; img: string }>;

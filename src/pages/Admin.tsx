@@ -156,6 +156,7 @@ export const AdminPage: React.FC = () => {
   const [cmsMessage, setCmsMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [uploadingHeroImg, setUploadingHeroImg] = useState(false);
   const [uploadingPromoImg, setUploadingPromoImg] = useState(false);
+  const [uploadingAboutImg, setUploadingAboutImg] = useState(false);
 
   // Admin Accounts List
   const [adminUsers, setAdminUsers] = useState<any[]>([]);
@@ -570,6 +571,20 @@ export const AdminPage: React.FC = () => {
       alert('Upload failed: ' + err.message);
     } finally {
       setUploadingPromoImg(false);
+    }
+  };
+
+  const handleAboutImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingAboutImg(true);
+    try {
+      const url = await uploadImage(file, 'site');
+      setCmsContent((prev) => ({ ...prev, aboutImageUrl: url }));
+    } catch (err: any) {
+      alert('Upload failed: ' + err.message);
+    } finally {
+      setUploadingAboutImg(false);
     }
   };
 
@@ -2373,6 +2388,61 @@ export const AdminPage: React.FC = () => {
                     onChange={(e) => setCmsContent({ ...cmsContent, aboutDescription: e.target.value })}
                     className="w-full px-3.5 py-2 rounded-xl border border-[#DED5C9] bg-white text-sm text-[#2C2724] focus:outline-hidden focus:border-[#8E5B59]"
                   />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-[#4A423B] mb-1">
+                    Story Small Image (Upload or URL)
+                  </label>
+                  <div className="flex gap-2 mb-2">
+                    <label className="cursor-pointer px-3 py-2 rounded-xl bg-white border border-[#DED5C9] text-xs font-medium text-[#4A423B] hover:bg-[#F3EDE2] transition inline-flex items-center gap-1.5">
+                      <svg className="w-4 h-4 text-[#8E5B59]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                      <span>{uploadingAboutImg ? 'Optimizing...' : 'Upload Image'}</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleAboutImageUpload}
+                        disabled={uploadingAboutImg}
+                        className="hidden"
+                      />
+                    </label>
+
+                    <input
+                      type="text"
+                      value={cmsContent.aboutImageUrl || ''}
+                      onChange={(e) => setCmsContent({ ...cmsContent, aboutImageUrl: e.target.value })}
+                      placeholder="Or paste small image URL"
+                      className="flex-1 px-3.5 py-2 rounded-xl border border-[#DED5C9] bg-white text-xs text-[#2C2724] focus:outline-hidden focus:border-[#8E5B59]"
+                    />
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCmsContent((prev) => ({
+                          ...prev,
+                          aboutImageUrl: '/figma-assets/2416c5a3da640dcea42f85f7a71067eac0c58ca9.png',
+                        }));
+                      }}
+                      className="px-3 py-2 rounded-xl border border-[#DED5C9] bg-white text-xs text-[#786F66] hover:bg-[#F3EDE2] transition cursor-pointer"
+                    >
+                      Default
+                    </button>
+                  </div>
+
+                  {cmsContent.aboutImageUrl && (
+                    <div className="size-16 rounded-xl border border-[#E8E0D5] overflow-hidden bg-white shadow-2xs">
+                      <img
+                        src={cmsContent.aboutImageUrl}
+                        alt="Story Preview"
+                        className="size-full object-cover"
+                        onError={(e) => {
+                          (e.currentTarget as HTMLImageElement).src = '/figma-assets/2416c5a3da640dcea42f85f7a71067eac0c58ca9.png';
+                        }}
+                      />
+                    </div>
+                  )}
                 </div>
               </div>
 

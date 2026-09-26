@@ -48,6 +48,7 @@ const DEFAULT_SITE_CONTENT: SiteContent = {
   promoBannerUrl: '/figma-assets/2b39a24648f5a21e9e527dfe97992fd042715209.png',
   aboutTitle: 'Your little handmade corner, with more love in every piece.',
   aboutDescription: 'Each charm and jar is patiently sculpted, beaded, and tied in our cozy home studio to bring sweet magic to your daily life.',
+  aboutImageUrl: '/figma-assets/2416c5a3da640dcea42f85f7a71067eac0c58ca9.png',
   craftsmanshipTitle: 'Artisanal Care in Every Petal',
   craftsmanshipText: 'Every bead is hand-knotted, every bow hand-tied, and every clay blossom sculpted one petal at a time in our sunlit boutique atelier.',
   fabricItems: [
@@ -68,6 +69,9 @@ function sanitizeSiteContent(content: SiteContent): SiteContent {
   }
   if (!sanitized.promoBannerUrl || sanitized.promoBannerUrl.includes('72be1c70e0a5c4d0ec598f828ae877ae84f509d4')) {
     sanitized.promoBannerUrl = '/figma-assets/2b39a24648f5a21e9e527dfe97992fd042715209.png';
+  }
+  if (!sanitized.aboutImageUrl) {
+    sanitized.aboutImageUrl = '/figma-assets/2416c5a3da640dcea42f85f7a71067eac0c58ca9.png';
   }
   sanitized.collectionCovers = {
     ...DEFAULT_SITE_CONTENT.collectionCovers,
