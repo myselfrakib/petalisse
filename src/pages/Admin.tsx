@@ -655,26 +655,6 @@ export const AdminPage: React.FC = () => {
             </p>
           </div>
 
-          {/* Quick Demo Admin Entry Card */}
-          <div className="mb-6 p-4 rounded-2xl bg-gradient-to-br from-[#FAF0ED] to-[#FDF5F2] border-2 border-[#E8C5B8] shadow-md text-center">
-            <div className="flex items-center justify-center gap-2 mb-1.5">
-              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
-              <span className="text-xs font-bold uppercase tracking-wider text-[#8E5B59]">
-                Live Admin Mode Available
-              </span>
-            </div>
-            <p className="text-xs text-[#6B5F55] mb-3">
-              One-click instant authorized access to manage products, view incoming customer orders, and edit storefront CMS live.
-            </p>
-            <button
-              type="button"
-              onClick={() => loginAsDemoAdmin()}
-              className="w-full py-2.5 px-4 rounded-xl bg-[#8E5B59] hover:bg-[#784A48] text-white text-xs font-semibold tracking-wider uppercase transition shadow-sm cursor-pointer flex items-center justify-center gap-2"
-            >
-              <span>⚡ Enter Admin Console (Instant Access)</span>
-            </button>
-          </div>
-
           {/* Admin Sign In / Sign Up Form */}
           <div className="bg-[#FAF7F2] rounded-2xl border border-[#E8E0D5] p-6 sm:p-8 shadow-xl">
             {/* Tab Switcher */}
