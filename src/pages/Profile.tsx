@@ -43,24 +43,11 @@ export default function Profile() {
 
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
-  const [profileName, setProfileName] = useState('Ananya Sharma');
-  const [profilePhone, setProfilePhone] = useState('+91 98765 43210');
+  const [profileName, setProfileName] = useState('');
+  const [profilePhone, setProfilePhone] = useState('');
   const [savingProfile, setSavingProfile] = useState(false);
 
-  const [addresses, setAddresses] = useState<SavedAddress[]>([
-    {
-      id: 'addr-1',
-      label: 'Home',
-      address: '42, Rose Garden Lane, Koramangala, Bangalore, Karnataka - 560034',
-      isDefault: true,
-    },
-    {
-      id: 'addr-2',
-      label: 'Office',
-      address: '5th Floor, Lotus Tower, MG Road, Bangalore, Karnataka - 560001',
-      isDefault: false,
-    },
-  ]);
+  const [addresses, setAddresses] = useState<SavedAddress[]>([]);
 
   const [showAddAddressModal, setShowAddAddressModal] = useState(false);
   const [newLabel, setNewLabel] = useState('Home');
@@ -225,11 +212,6 @@ export default function Profile() {
             >
               Sign In or Create Account
             </button>
-            <div className="pt-2">
-              <Link to="/admin" className="text-xs text-[#8b827d] hover:text-[#6b1a2a] underline">
-                Administrator? Access Admin Portal &rarr;
-              </Link>
-            </div>
           </div>
         ) : (
           /* LOGGED IN USER PROFILE */
