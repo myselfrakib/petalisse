@@ -25,7 +25,6 @@ export const AdminPage: React.FC = () => {
     loading: authLoading, 
     login, 
     adminSignup, 
-    loginAsDemoAdmin,
     checkAdminStatus, 
     logout 
   } = useAuth();
@@ -188,14 +187,17 @@ export const AdminPage: React.FC = () => {
     }
   };
 
-  const toggleAdminApproval = async (uid: string, currentStatus: boolean) => {
+  const revokeAdminAccess = async (uid: string) => {
+    if (!window.confirm('Are you sure you want to revoke admin access for this account? This will set isAdmin to false.')) {
+      return;
+    }
     try {
       await updateDoc(doc(db, 'admins', uid), {
-        isAdmin: !currentStatus,
-        status: !currentStatus ? 'approved' : 'revoked',
+        isAdmin: false,
+        status: 'revoked',
       });
       await updateDoc(doc(db, 'users', uid), {
-        isAdmin: !currentStatus,
+        isAdmin: false,
       }).catch(() => {});
       fetchAdminUsers();
     } catch (err: any) {
@@ -782,25 +784,24 @@ export const AdminPage: React.FC = () => {
               Authorization Verification
             </h2>
             <p className="text-xs text-[#6B5F55] leading-relaxed mb-6">
-              You are signed in as <span className="font-semibold">{currentUser.email}</span>. Click below to enter the live console immediately.
+              You are signed in as <span className="font-semibold">{currentUser.email}</span>. Your account is pending administrator authorization. Access to the Admin Console requires <span className="font-mono text-[#8E5B59] font-medium">isAdmin: true</span>, which can only be set directly in the database (Firestore) by an existing database administrator. Once updated, click below to verify.
             </p>
 
             <div className="space-y-3">
               <button
                 type="button"
-                onClick={() => loginAsDemoAdmin()}
-                className="w-full py-2.5 px-4 rounded-xl bg-[#8E5B59] text-white text-xs font-semibold tracking-wide hover:bg-[#784A48] transition cursor-pointer flex items-center justify-center gap-2"
-              >
-                <span>⚡ Unlock Admin Console Now</span>
-              </button>
-
-              <button
-                type="button"
                 onClick={handleManualCheckApproval}
                 disabled={checkingApproval}
-                className="w-full py-2 px-4 rounded-xl border border-[#DED5C9] bg-white text-xs text-[#5C534B] hover:bg-[#F3EDE2] transition"
+                className="w-full py-2.5 px-4 rounded-xl bg-[#8E5B59] hover:bg-[#784A48] text-white text-xs font-semibold tracking-wide transition cursor-pointer flex items-center justify-center gap-2 shadow-xs"
               >
-                {checkingApproval ? 'Checking Firestore...' : 'Re-check Firestore Status'}
+                {checkingApproval ? (
+                  <>
+                    <span className="inline-block w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    <span>Verifying Firestore Status...</span>
+                  </>
+                ) : (
+                  <span>Verify Database Authorization</span>
+                )}
               </button>
 
               <div className="flex items-center justify-between pt-2">
@@ -2449,7 +2450,17 @@ export const AdminPage: React.FC = () => {
             <div>
               <h2 className="text-2xl font-serif text-[#2C2724] font-medium">Administrator Access Control</h2>
               <p className="text-xs text-[#786F66]">
-                Manage administrator accounts and approve access permissions.
+                Review registered admin accounts. Admin privileges can only be granted directly in the database.
+              </p>
+            </div>
+
+            {/* Database-only Notice */}
+            <div className="p-4 rounded-xl bg-[#FAF0ED] border border-[#E8C5B8] text-xs text-[#8E5B59]">
+              <div className="font-semibold mb-1 flex items-center gap-1.5">
+                <span>🔒</span> Direct Database Management Only
+              </div>
+              <p className="text-[#6B5F55] leading-relaxed">
+                For security reasons, granting admin privileges (<span className="font-mono font-semibold">isAdmin: true</span>) cannot be done from the website. An authorized administrator must set <span className="font-mono font-semibold">isAdmin: true</span> directly in the Firestore database under the <span className="font-mono">admins</span> or <span className="font-mono">users</span> collection.
               </p>
             </div>
 
@@ -2480,7 +2491,7 @@ export const AdminPage: React.FC = () => {
                         <th className="py-3 px-4">Email</th>
                         <th className="py-3 px-4">Admin UID</th>
                         <th className="py-3 px-4">Status</th>
-                        <th className="py-3 px-4 text-right">Action</th>
+                        <th className="py-3 px-4 text-right">Access Control</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-[#EAE3D8]">
@@ -2501,17 +2512,19 @@ export const AdminPage: React.FC = () => {
                             )}
                           </td>
                           <td className="py-3 px-4 text-right whitespace-nowrap">
-                            <button
-                              type="button"
-                              onClick={() => toggleAdminApproval(adm.id, !!adm.isAdmin)}
-                              className={`px-3 py-1 rounded-lg text-xs font-medium cursor-pointer transition ${
-                                adm.isAdmin === true
-                                  ? 'bg-[#FAF0ED] text-[#9E3E2B] hover:bg-[#F3DDD6]'
-                                  : 'bg-[#8E5B59] text-white hover:bg-[#784A48]'
-                              }`}
-                            >
-                              {adm.isAdmin === true ? 'Revoke Access' : 'Approve Admin'}
-                            </button>
+                            {adm.isAdmin === true ? (
+                              <button
+                                type="button"
+                                onClick={() => revokeAdminAccess(adm.id)}
+                                className="px-3 py-1 rounded-lg text-xs font-medium cursor-pointer transition bg-[#FAF0ED] text-[#9E3E2B] hover:bg-[#F3DDD6]"
+                              >
+                                Revoke Access
+                              </button>
+                            ) : (
+                              <span className="text-[11px] text-[#8C827A] italic">
+                                Direct DB only
+                              </span>
+                            )}
                           </td>
                         </tr>
                       ))}

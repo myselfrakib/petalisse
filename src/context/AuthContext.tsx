@@ -39,25 +39,13 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
-  const [isAdmin, setIsAdmin] = useState<boolean>(() => {
-    return localStorage.getItem('petalisse_demo_admin') === 'true';
-  });
+  const [isAdmin, setIsAdmin] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(true);
 
   const fetchProfileAndRole = async (user: User | null) => {
     if (!user) {
-      if (localStorage.getItem('petalisse_demo_admin') === 'true') {
-        setIsAdmin(true);
-        setUserProfile({
-          uid: 'admin-demo',
-          email: 'admin@petalisse.com',
-          name: 'Petalisse Administrator',
-          isAdmin: true,
-        });
-      } else {
-        setUserProfile(null);
-        setIsAdmin(false);
-      }
+      setUserProfile(null);
+      setIsAdmin(false);
       return;
     }
 
@@ -71,50 +59,35 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         name: user.displayName || '',
       };
 
+      let userIsAdmin = false;
+
       if (userSnap.exists()) {
-        profileData = { ...profileData, ...(userSnap.data() as UserProfile) };
+        const uData = userSnap.data() as UserProfile;
+        profileData = { ...profileData, ...uData };
+        if (uData.isAdmin === true) {
+          userIsAdmin = true;
+        }
       }
       setUserProfile(profileData);
 
-      // 2. Check admin authorization status
+      // 2. Check admin authorization status directly from Firestore
       const adminRef = doc(db, 'admins', user.uid);
       const adminSnap = await getDoc(adminRef);
 
-      if (
-        (adminSnap.exists() && adminSnap.data()?.isAdmin === true) ||
-        profileData.isAdmin === true ||
-        user.email?.toLowerCase().includes('admin') ||
-        localStorage.getItem('petalisse_demo_admin') === 'true'
-      ) {
-        setIsAdmin(true);
-      } else {
-        setIsAdmin(false);
+      if (adminSnap.exists() && adminSnap.data()?.isAdmin === true) {
+        userIsAdmin = true;
       }
+
+      setIsAdmin(userIsAdmin);
     } catch (err) {
       console.warn('Could not fetch user/admin profile:', err);
-      // Fallback: check email or localStorage
-      if (
-        user.email?.toLowerCase().includes('admin') ||
-        localStorage.getItem('petalisse_demo_admin') === 'true'
-      ) {
-        setIsAdmin(true);
-      } else {
-        setIsAdmin(false);
-      }
+      setIsAdmin(false);
     }
   };
 
   useEffect(() => {
-    const isDemoAdmin = localStorage.getItem('petalisse_demo_admin') === 'true';
-    if (isDemoAdmin) {
-      setIsAdmin(true);
-      setUserProfile({
-        uid: 'admin-demo',
-        email: 'admin@petalisse.com',
-        name: 'Petalisse Administrator',
-        isAdmin: true,
-      });
-    }
+    // Clear any legacy demo admin flag
+    localStorage.removeItem('petalisse_demo_admin');
 
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setCurrentUser(user);
@@ -126,14 +99,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const loginAsDemoAdmin = () => {
-    localStorage.setItem('petalisse_demo_admin', 'true');
-    setIsAdmin(true);
-    setUserProfile({
-      uid: 'admin-demo',
-      email: 'admin@petalisse.com',
-      name: 'Petalisse Administrator',
-      isAdmin: true,
-    });
+    console.warn('Instant demo admin access has been removed. isAdmin: true must be set directly in the database.');
   };
 
   const login = async (email: string, pass: string) => {
@@ -169,12 +135,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const cred = await createUserWithEmailAndPassword(auth, email, pass);
     await updateProfile(cred.user, { displayName: name });
 
+    // New admin registrations are created with isAdmin: false and status: 'pending'.
+    // isAdmin: true can only be granted directly in the database (Firestore) by an administrator.
     const adminRecord = {
       uid: cred.user.uid,
       email,
       name,
-      isAdmin: true,
-      status: 'approved',
+      isAdmin: false,
+      status: 'pending',
       createdAt: serverTimestamp(),
     };
 
@@ -184,39 +152,35 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         uid: cred.user.uid,
         email,
         name,
-        isAdmin: true,
-        role: 'admin',
+        isAdmin: false,
+        role: 'admin_applicant',
         createdAt: serverTimestamp(),
       });
     } catch (e) {
       console.warn('Admin record creation warning:', e);
     }
 
-    localStorage.setItem('petalisse_demo_admin', 'true');
-    setIsAdmin(true);
+    setIsAdmin(false);
     await fetchProfileAndRole(cred.user);
   };
 
   const checkAdminStatus = async (): Promise<boolean> => {
-    if (localStorage.getItem('petalisse_demo_admin') === 'true') {
-      setIsAdmin(true);
-      return true;
+    if (!auth.currentUser) {
+      setIsAdmin(false);
+      return false;
     }
-    if (!auth.currentUser) return false;
     try {
+      // 1. Check admins collection
       const adminRef = doc(db, 'admins', auth.currentUser.uid);
       const snap = await getDoc(adminRef);
       if (snap.exists() && snap.data()?.isAdmin === true) {
         setIsAdmin(true);
         return true;
       }
+      // 2. Check users collection
       const userRef = doc(db, 'users', auth.currentUser.uid);
       const userSnap = await getDoc(userRef);
       if (userSnap.exists() && userSnap.data()?.isAdmin === true) {
-        setIsAdmin(true);
-        return true;
-      }
-      if (auth.currentUser.email?.toLowerCase().includes('admin')) {
         setIsAdmin(true);
         return true;
       }
@@ -224,6 +188,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return false;
     } catch (e) {
       console.warn('Failed checking admin status:', e);
+      setIsAdmin(false);
       return false;
     }
   };
@@ -242,21 +207,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const updateUserProfileData = async (data: Partial<UserProfile>) => {
     if (!currentUser) return;
+    // Ensure isAdmin can never be altered from the client site
+    const { isAdmin: _stripIsAdmin, ...safeData } = data as any;
     try {
       const userRef = doc(db, 'users', currentUser.uid);
       await updateDoc(userRef, {
-        ...data,
+        ...safeData,
         updatedAt: serverTimestamp(),
       });
-      setUserProfile((prev) => (prev ? { ...prev, ...data } : null));
+      setUserProfile((prev) => (prev ? { ...prev, ...safeData } : null));
     } catch (e) {
       await setDoc(doc(db, 'users', currentUser.uid), {
         uid: currentUser.uid,
         email: currentUser.email || '',
-        ...data,
+        ...safeData,
         updatedAt: serverTimestamp(),
       }, { merge: true });
-      setUserProfile((prev) => (prev ? { ...prev, ...data } : null));
+      setUserProfile((prev) => (prev ? { ...prev, ...safeData } : null));
     }
   };
 
