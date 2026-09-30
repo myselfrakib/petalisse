@@ -180,7 +180,7 @@ export const AdminPage: React.FC = () => {
   };
 
   const revokeAdminAccess = async (uid: string) => {
-    if (!window.confirm('Are you sure you want to revoke admin access for this account? This will set isAdmin to false.')) {
+    if (!window.confirm('Are you sure you want to revoke admin access for this account? This will set isAdmin to false in /admins.')) {
       return;
     }
     try {
@@ -188,9 +188,6 @@ export const AdminPage: React.FC = () => {
         isAdmin: false,
         status: 'revoked',
       });
-      await updateDoc(doc(db, 'users', uid), {
-        isAdmin: false,
-      }).catch(() => {});
       fetchAdminUsers();
     } catch (err: any) {
       alert('Error updating admin: ' + err.message);
@@ -2273,7 +2270,7 @@ export const AdminPage: React.FC = () => {
                 <span>🔒</span> Direct Database Management Only
               </div>
               <p className="text-[#6B5F55] leading-relaxed">
-                For security reasons, granting admin privileges (<span className="font-mono font-semibold">isAdmin: true</span>) cannot be done from the website. An authorized administrator must set <span className="font-mono font-semibold">isAdmin: true</span> directly in the Firestore database under the <span className="font-mono">admins</span> or <span className="font-mono">users</span> collection.
+                For security reasons, granting admin privileges (<span className="font-mono font-semibold">isAdmin: true</span>) cannot be done from the website. An authorized administrator must set <span className="font-mono font-semibold">isAdmin: true</span> directly in the Firestore database under the <span className="font-mono">admins</span> collection.
               </p>
             </div>
 

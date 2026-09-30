@@ -135,8 +135,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const cred = await createUserWithEmailAndPassword(auth, email, pass);
     await updateProfile(cred.user, { displayName: name });
 
-    // New admin registrations are created with isAdmin: false and status: 'pending'.
-    // isAdmin: true can only be granted directly in the database (Firestore) by an administrator.
+    // Admin registrations: isAdmin is stored in /admins only (with isAdmin: false and status: 'pending').
+    // isAdmin: true can only be granted directly in the database (Firestore) in /admins by an administrator.
     const adminRecord = {
       uid: cred.user.uid,
       email,
@@ -147,12 +147,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     try {
+      // Store isAdmin in /admins ONLY
       await setDoc(doc(db, 'admins', cred.user.uid), adminRecord);
+
+      // Create base patron profile in /users without isAdmin field
       await setDoc(doc(db, 'users', cred.user.uid), {
         uid: cred.user.uid,
         email,
         name,
-        isAdmin: false,
         role: 'admin_applicant',
         createdAt: serverTimestamp(),
       });
