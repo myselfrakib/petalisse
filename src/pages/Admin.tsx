@@ -45,7 +45,6 @@ export const AdminPage: React.FC = () => {
     setFeaturedProducts
   } = useContent();
 
-  const [checkingApproval, setCheckingApproval] = useState(false);
 
   // Dashboard Active Tab (persisted across refreshes)
   const [activeTab, setActiveTab] = useState<'products' | 'cms' | 'orders' | 'admins'>(() => {
@@ -199,14 +198,6 @@ export const AdminPage: React.FC = () => {
   };
 
 
-  const handleManualCheckApproval = async () => {
-    setCheckingApproval(true);
-    const approved = await checkAdminStatus();
-    setCheckingApproval(false);
-    if (!approved) {
-      alert('Your account authorization is still pending approval.');
-    }
-  };
 
   // Product Handlers
   const handleSaveProduct = async (e: React.FormEvent) => {
@@ -607,54 +598,37 @@ export const AdminPage: React.FC = () => {
     return <Navigate to="/login?redirect=/admin" replace />;
   }
 
-  // If user is logged in, but somehow isAdmin is false (pending approval view)
+  // If user is logged in, but not authorized as admin (isAdmin == false)
   if (currentUser && !isAdmin) {
     return (
-      <div className="min-h-screen bg-[#F7F3EE] py-12 px-4 sm:px-6 lg:px-8 flex flex-col justify-center">
-        <div className="max-w-md w-full mx-auto">
-          <div className="bg-[#FAF7F2] rounded-2xl border border-[#E8C5B8] p-6 sm:p-8 shadow-xl text-center relative overflow-hidden">
+      <div className="min-h-screen bg-[#F7F3EE] py-12 px-4 sm:px-6 lg:px-8 flex flex-col justify-center items-center">
+        <div className="max-w-md w-full mx-auto text-center">
+          <div className="bg-[#FAF7F2] rounded-2xl border border-[#E8E0D5] p-8 shadow-xl">
             <div className="w-14 h-14 rounded-full bg-[#FAF0ED] border border-[#E8C5B8] flex items-center justify-center mx-auto mb-4 text-[#9E3E2B]">
               <svg className="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
               </svg>
             </div>
-
-            <h2 className="text-xl font-serif text-[#2C2724] font-medium mb-2">
-              Authorization Verification
-            </h2>
-            <p className="text-xs text-[#6B5F55] leading-relaxed mb-6">
-              You are signed in as <span className="font-semibold">{currentUser.email}</span>. Your account is pending administrator authorization. Access to the Admin Console requires <span className="font-mono text-[#8E5B59] font-medium">isAdmin: true</span>, which can only be set directly in the database (Firestore) by an existing database administrator. Once updated, click below to verify.
+            <h1 className="text-2xl font-serif text-[#2C2724] font-medium mb-2">
+              Access denied
+            </h1>
+            <p className="text-xs text-[#786F66] mb-6">
+              You do not have permission to access the administration portal.
             </p>
-
-            <div className="space-y-3">
+            <div className="flex items-center justify-center gap-3">
+              <Link
+                to="/"
+                className="py-2.5 px-5 rounded-xl bg-[#8E5B59] hover:bg-[#784A48] text-white text-xs font-medium tracking-wide transition shadow-xs"
+              >
+                Back to Boutique Home &rarr;
+              </Link>
               <button
                 type="button"
-                onClick={handleManualCheckApproval}
-                disabled={checkingApproval}
-                className="w-full py-2.5 px-4 rounded-xl bg-[#8E5B59] hover:bg-[#784A48] text-white text-xs font-semibold tracking-wide transition cursor-pointer flex items-center justify-center gap-2 shadow-xs"
+                onClick={() => logout()}
+                className="py-2.5 px-4 rounded-xl border border-[#DED5C9] bg-white text-xs text-[#5C534B] hover:bg-[#F3EDE2] transition cursor-pointer"
               >
-                {checkingApproval ? (
-                  <>
-                    <span className="inline-block w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    <span>Verifying Firestore Status...</span>
-                  </>
-                ) : (
-                  <span>Verify Database Authorization</span>
-                )}
+                Sign out
               </button>
-
-              <div className="flex items-center justify-between pt-2">
-                <button
-                  type="button"
-                  onClick={() => logout()}
-                  className="text-xs text-[#8E5B59] hover:underline cursor-pointer"
-                >
-                  Sign out
-                </button>
-                <Link to="/" className="text-xs text-[#786F66] hover:underline">
-                  Back to Boutique Home &rarr;
-                </Link>
-              </div>
             </div>
           </div>
         </div>
