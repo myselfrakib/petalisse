@@ -201,8 +201,55 @@ export const AdminPage: React.FC = () => {
           mediaType: 'video',
           mediaUrl: uploadedUrl,
         }));
+      } else if (!file.type.includes('gif') && file.type.startsWith('image/')) {
+        // Static photo: queue for 9:16 vertical splash crop
+        const dataUrl = URL.createObjectURL(file);
+        setCropQueue([{
+          file,
+          dataUrl,
+          title: 'Crop & Preview 9:16 Splash Photo',
+          defaultAspectRatio: 9 / 16,
+          aspectRatioLabel: '9:16 Vertical (Splash Screen)',
+          onConfirm: async (croppedFile) => {
+            setUploadingSplashMedia(true);
+            try {
+              const uploadedUrl = await uploadMedia(croppedFile, 'splash');
+              setSplashConfig((prev) => ({
+                ...prev,
+                mediaType: 'gif',
+                mediaUrl: uploadedUrl,
+              }));
+              setSplashSaveMsg('9:16 Splash photo uploaded! Click "Save Splash Screen" to apply.');
+            } catch (err: any) {
+              alert('Upload failed: ' + err.message);
+            } finally {
+              setUploadingSplashMedia(false);
+            }
+          },
+          onSkip: async (originalFile) => {
+            setUploadingSplashMedia(true);
+            try {
+              const uploadedUrl = await uploadMedia(originalFile, 'splash');
+              setSplashConfig((prev) => ({
+                ...prev,
+                mediaType: 'gif',
+                mediaUrl: uploadedUrl,
+              }));
+              setSplashSaveMsg('Splash photo uploaded! Click "Save Splash Screen" to apply.');
+            } catch (err: any) {
+              alert('Upload failed: ' + err.message);
+            } finally {
+              setUploadingSplashMedia(false);
+            }
+          },
+        }]);
+        setCropTotalCount(1);
+        setCropCurrentIndex(1);
+        setUploadingSplashMedia(false);
+        e.target.value = '';
+        return;
       } else {
-        // 3. GIF / Image file
+        // 3. GIF / Animation file
         const uploadedUrl = await uploadMedia(file, 'splash');
         setSplashConfig((prev) => ({
           ...prev,
@@ -3208,27 +3255,21 @@ export const AdminPage: React.FC = () => {
                     </button>
                   </div>
 
-                  {/* Frame */}
+                  {/* 9:16 Frame */}
                   <div
-                    className="relative w-full aspect-4/5 rounded-2xl border border-black/10 overflow-hidden shadow-inner flex flex-col items-center justify-between p-6 transition-colors duration-300"
+                    className="relative w-full max-w-[280px] mx-auto aspect-[9/16] rounded-3xl border border-black/10 overflow-hidden shadow-xl flex flex-col items-center justify-between p-5 transition-colors duration-300"
                     style={{ backgroundColor: splashConfig.backgroundColor || '#FDFBF7' }}
                   >
-                    {/* Mock Skip */}
-                    <div className="w-full flex justify-end">
-                      {splashConfig.showSkipButton !== false && (
-                        <span className="px-2.5 py-0.5 rounded-full bg-black/5 text-[9px] uppercase tracking-wider text-[#6B5F55] font-medium">
-                          Enter Boutique &rarr;
-                        </span>
-                      )}
-                    </div>
-
-                    {/* Media Showcase */}
-                    <div className="size-44 flex items-center justify-center my-auto">
+                    {/* Media Showcase Layer (9:16 full-bleed) */}
+                    <div className="absolute inset-0 size-full flex items-center justify-center overflow-hidden">
                       {!splashConfig.mediaUrl && !splashConfig.lottieData ? (
-                        <div className="text-center p-4">
-                          <div className="text-2xl mb-1">🎬</div>
-                          <p className="text-[11px] text-[#8C827A]">
-                            No media uploaded yet. Upload a video, GIF, or Lottie animation to preview.
+                        <div className="text-center p-5 z-10 my-auto">
+                          <div className="text-3xl mb-1.5">🎬</div>
+                          <p className="text-xs text-[#8C827A] font-medium leading-relaxed">
+                            No media uploaded yet.
+                          </p>
+                          <p className="text-[10px] text-[#A89E94] mt-1">
+                            Upload a 9:16 vertical video, GIF, or Lottie animation.
                           </p>
                         </div>
                       ) : splashConfig.mediaType === 'video' ? (
@@ -3238,38 +3279,70 @@ export const AdminPage: React.FC = () => {
                           muted
                           loop
                           playsInline
-                          className="max-h-full max-w-full object-contain rounded-xl drop-shadow-sm"
+                          className="size-full object-cover"
                         />
                       ) : splashConfig.mediaType === 'gif' ? (
                         <img
                           src={splashConfig.mediaUrl}
                           alt="Preview"
-                          className="max-h-full max-w-full object-contain rounded-xl drop-shadow-sm"
+                          className="size-full object-cover"
                         />
                       ) : (
-                        <div className="size-full flex items-center justify-center">
+                        <div className="size-full flex items-center justify-center p-3">
                           <LottiePreview
                             mediaUrl={splashConfig.mediaUrl}
                             lottieData={splashConfig.lottieData}
                           />
                         </div>
                       )}
+
+                      {/* Vignette overlay */}
+                      {splashConfig.mediaUrl && (splashConfig.title || splashConfig.subtitle || splashConfig.showSkipButton !== false) && (
+                        <div className="absolute inset-0 bg-gradient-to-b from-black/25 via-transparent to-black/35 pointer-events-none" />
+                      )}
+                    </div>
+
+                    {/* Mock Skip */}
+                    <div className="relative z-10 w-full flex justify-end">
+                      {splashConfig.showSkipButton !== false && (
+                        <span className="px-2.5 py-1 rounded-full bg-white/70 backdrop-blur-xs text-[9px] uppercase tracking-wider text-[#2C2724] font-medium shadow-2xs border border-white/40">
+                          Enter Boutique &rarr;
+                        </span>
+                      )}
                     </div>
 
                     {/* Titles */}
-                    <div className="text-center w-full">
+                    <div className="relative z-10 text-center w-full my-auto px-2 pointer-events-none">
                       {splashConfig.title && (
-                        <p className="font-['Parisienne'] text-2xl text-[#6B1A2A] leading-tight">
+                        <p
+                          className={`font-['Parisienne'] text-3xl leading-tight ${
+                            splashConfig.mediaUrl ? 'text-white' : 'text-[#6B1A2A]'
+                          }`}
+                          style={{
+                            textShadow: splashConfig.mediaUrl ? '0 2px 8px rgba(0,0,0,0.5)' : 'none',
+                          }}
+                        >
                           {splashConfig.title}
                         </p>
                       )}
                       {splashConfig.subtitle && (
-                        <p className="font-cormorant text-[10px] uppercase tracking-widest text-[#8C827A] mt-0.5">
+                        <p
+                          className={`font-cormorant text-[11px] uppercase tracking-widest mt-1 font-medium ${
+                            splashConfig.mediaUrl ? 'text-white/90' : 'text-[#8C827A]'
+                          }`}
+                          style={{
+                            textShadow: splashConfig.mediaUrl ? '0 1px 4px rgba(0,0,0,0.5)' : 'none',
+                          }}
+                        >
                           {splashConfig.subtitle}
                         </p>
                       )}
-                      <div className="w-full h-1 bg-black/5 rounded-full mt-3 overflow-hidden">
-                        <div className="w-2/3 h-full bg-[#8E5B59] rounded-full animate-pulse" />
+                    </div>
+
+                    {/* Progress Bar */}
+                    <div className="relative z-10 w-full">
+                      <div className="w-full h-1 bg-black/15 rounded-full overflow-hidden backdrop-blur-xs">
+                        <div className="w-2/3 h-full bg-[#8E5B59] rounded-full animate-pulse shadow-xs" />
                       </div>
                     </div>
                   </div>
