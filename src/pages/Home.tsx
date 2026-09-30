@@ -297,7 +297,7 @@ export default function Home() {
                     )}
                   </Link>
 
-                  <div className="flex flex-col gap-1 flex-1 min-w-0">
+                  <div className="flex flex-col justify-between flex-1 min-w-0 self-stretch py-0.5">
                     <div className="flex items-baseline justify-between gap-2">
                       <Link
                         to={`/product/${product.id}`}
@@ -322,17 +322,16 @@ export default function Home() {
                         )}
                       </div>
                     </div>
-                    <p className="font-cormorant text-[#8b827d] text-[13px] leading-snug line-clamp-2">
-                      {product.description}
-                    </p>
-                    <div className="mt-1 flex items-center justify-end">
-                      <button
-                        onClick={() => add(product)}
-                        className="text-[11px] font-cormorant font-bold tracking-wider uppercase text-[#6b1a2a] bg-[#f9d5e5]/50 hover:bg-[#f9d5e5] px-2.5 py-0.5 rounded-full transition-colors cursor-pointer"
-                        title="Add to cart"
+
+                    <div className="mt-2 flex items-center justify-end">
+                      <Link
+                        to={`/product/${product.id}`}
+                        className="text-[11px] font-cormorant font-bold tracking-wider uppercase text-[#6b1a2a] bg-[#f9d5e5]/50 hover:bg-[#f9d5e5] px-3 py-1 rounded-full transition-colors cursor-pointer inline-flex items-center gap-1"
+                        title={`View ${product.name}`}
                       >
-                        + Add
-                      </button>
+                        <span>View</span>
+                        <span aria-hidden="true">&rarr;</span>
+                      </Link>
                     </div>
                   </div>
                 </div>
