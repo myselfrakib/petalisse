@@ -2,8 +2,60 @@ rules_version = '2';
 
 service firebase.storage {
   match /b/{bucket}/o {
+
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Strict admin verification: checks if isAdmin == true in either admins or users collection in Firestore
+    function isAdmin() {
+      return isAuthenticated() && (
+        (firestore.exists(/databases/(default)/documents/admins/$(request.auth.uid)) &&
+         firestore.get(/databases/(default)/documents/admins/$(request.auth.uid)).data.isAdmin == true) ||
+        (firestore.exists(/databases/(default)/documents/users/$(request.auth.uid)) &&
+         firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.isAdmin == true)
+      );
+    }
+
+    function isImage() {
+      return request.resource.contentType.matches('image/.*');
+    }
+
+    function isUnderMaxSize() {
+      // Limit file uploads to 10MB
+      return request.resource.size < 10 * 1024 * 1024;
+    }
+
+    // 1. Boutique Storefront Assets (products, collections, site CMS banners):
+    // Public read so shoppers and visitors can view photos.
+    // Write (upload/modify/delete) restricted strictly to verified administrators (isAdmin == true).
+    match /products/{fileName} {
+      allow read: if true;
+      allow write: if isAdmin() && isImage() && isUnderMaxSize();
+    }
+
+    match /collections/{fileName} {
+      allow read: if true;
+      allow write: if isAdmin() && isImage() && isUnderMaxSize();
+    }
+
+    match /site/{fileName} {
+      allow read: if true;
+      allow write: if isAdmin() && isImage() && isUnderMaxSize();
+    }
+
+    // 2. User specific storage (avatars / user uploads):
+    // Users can only write to their own folder, admins have full management.
+    match /users/{userId}/{fileName} {
+      allow read: if true;
+      allow write: if isAuthenticated() && (request.auth.uid == userId || isAdmin()) && isImage() && isUnderMaxSize();
+    }
+
+    // Fallback: any other path requires admin authorization
     match /{allPaths=**} {
-      allow read, write: if true;
+      allow read: if true;
+      allow write: if isAdmin();
     }
   }
 }
