@@ -9,10 +9,12 @@ import {
   setDoc,
   serverTimestamp,
   query,
-  orderBy
+  orderBy,
+  where
 } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, storage } from '../lib/firebase';
+import { useAuth } from './AuthContext';
 import { Product, SiteContent, Order } from '../types';
 
 export const DEFAULT_COLLECTIONS_ORDER = [
@@ -209,6 +211,7 @@ const getDeletedProductIds = (): Set<string> => {
 };
 
 export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { currentUser, isAdmin } = useAuth();
   // 1. Initial State from localStorage (strictly live products only, no demo items)
   const [products, setProducts] = useState<Product[]>(() => {
     const deleted = getDeletedProductIds();
@@ -412,11 +415,26 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
     return () => unsub();
   }, []);
 
-  // 4. Subscribe to Orders in Firestore (proper live sync with DB)
+  // 4. Subscribe to Orders in Firestore (strict permission-aware sync)
   useEffect(() => {
     let unsub = () => {};
     try {
-      const q = query(collection(db, 'orders'), orderBy('createdAt', 'desc'));
+      let q;
+      if (isAdmin) {
+        // Verified admins can view all boutique orders
+        q = query(collection(db, 'orders'), orderBy('createdAt', 'desc'));
+      } else if (currentUser) {
+        // Authenticated users query only their own orders
+        q = query(collection(db, 'orders'), where('userId', '==', currentUser.uid));
+      } else {
+        // Guest user: restore local session orders without querying restricted collections
+        try {
+          const cached = localStorage.getItem('petalisse_orders');
+          if (cached) setOrders(JSON.parse(cached));
+        } catch {}
+        return;
+      }
+
       unsub = onSnapshot(
         q,
         (snapshot) => {
@@ -449,6 +467,8 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
                   : data.createdAt || new Date().toISOString(),
               });
             });
+            // Client-side sort descending by creation date
+            list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
             setOrders(list);
             try {
               localStorage.setItem('petalisse_orders', JSON.stringify(list));
@@ -475,7 +495,7 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
       console.warn('Could not initialize orders listener:', e);
     }
     return () => unsub();
-  }, []);
+  }, [isAdmin, currentUser]);
 
   // Product Actions
   const addProduct = async (productData: Omit<Product, 'id'>): Promise<string> => {

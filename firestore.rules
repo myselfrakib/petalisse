@@ -2,33 +2,87 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Public content & products: live access for admin and users
+
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Strict admin verification: checks if isAdmin == true in either admins or users collection
+    function isAdmin() {
+      return isAuthenticated() && (
+        (exists(/databases/$(database)/documents/admins/$(request.auth.uid)) &&
+         get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.isAdmin == true) ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true)
+      );
+    }
+
+    // 1. Boutique Products Catalog:
+    // Anyone (guests and customers) can view products.
+    // Only verified administrators (isAdmin == true) can create, update, or delete products.
     match /products/{productId} {
-      allow read, write: if true;
+      allow read: if true;
+      allow write: if isAdmin();
     }
 
+    // 2. Storefront CMS & Site Content:
+    // Anyone can view announcement banner, hero text, and site content.
+    // Only verified administrators (isAdmin == true) can modify site content.
     match /site_content/{contentId} {
-      allow read, write: if true;
+      allow read: if true;
+      allow write: if isAdmin();
     }
 
-    // Customer user profiles & addresses
+    // 3. Admin Accounts Collection:
+    // Only verified admins can list all admin applications.
+    // Authenticated users can read their own admin record to verify their approval status.
+    // Users can create a pending registration record with isAdmin == false (never true from site).
+    // Updating isAdmin to true can only be performed directly in the database (Firestore Console/Admin SDK).
+    // Admins can update/revoke status from client only if isAdmin != true.
+    match /admins/{userId} {
+      allow get: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+      allow list: if isAdmin();
+      allow create: if isAuthenticated() && request.auth.uid == userId &&
+        (!('isAdmin' in request.resource.data) || request.resource.data.isAdmin == false);
+      allow update: if isAdmin() &&
+        (!('isAdmin' in request.resource.data) || request.resource.data.isAdmin == false);
+      allow delete: if isAdmin();
+    }
+
+    // 4. User Profiles & Customer Data:
+    // Users can only view and manage their own profile; admins can view all user profiles.
+    // Users can never grant themselves isAdmin == true from the site.
     match /users/{userId} {
-      allow read, write: if true;
-      
+      allow get: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+      allow list: if isAdmin();
+      allow create: if isAuthenticated() && request.auth.uid == userId &&
+        (!('isAdmin' in request.resource.data) || request.resource.data.isAdmin == false);
+      allow update: if isAuthenticated() && (
+        (request.auth.uid == userId && (!('isAdmin' in request.resource.data) || request.resource.data.isAdmin == false)) ||
+        (isAdmin() && (!('isAdmin' in request.resource.data) || request.resource.data.isAdmin == false))
+      );
+      allow delete: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+
+      // Customer saved delivery addresses: users deal with their own addresses only
       match /addresses/{addressId} {
-        allow read, write: if true;
+        allow read, write: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
       }
     }
 
-    // Admin profiles
-    match /admins/{userId} {
-      allow read, write: if true;
-    }
-
-    // Orders: allow customers to place and admins to view/manage
+    // 5. Customer Orders:
+    // Customers can place orders (both guests and authenticated patrons).
+    // Users can only read their own orders (matching their uid or email).
+    // Admins with isAdmin == true can read, update fulfillment status, and manage all orders.
     match /orders/{orderId} {
-      allow read, write: if true;
+      allow create: if true;
+      allow read: if isAdmin() || (
+        isAuthenticated() && (
+          resource.data.userId == request.auth.uid ||
+          (resource.data.userEmail != null && resource.data.userEmail == request.auth.token.email)
+        )
+      );
+      allow update, delete: if isAdmin();
     }
   }
 }
-
