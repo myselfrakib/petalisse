@@ -180,7 +180,7 @@ export default function Profile() {
               if (currentUser) {
                 setIsEditing(!isEditing);
               } else {
-                setAuthModalOpen(true);
+                navigate('/login?redirect=/profile');
               }
             }}
             className="bg-[#f9d5e5] rounded-[12px] p-2 flex items-center justify-center hover:bg-[#f3bed3] active:scale-95 transition-all shadow-xs cursor-pointer"
@@ -206,12 +206,12 @@ export default function Profile() {
                 Access your orders, saved addresses, and small-batch charm favorites.
               </p>
             </div>
-            <button
-              onClick={() => setAuthModalOpen(true)}
-              className="w-full py-3 rounded-full bg-[#6b1a2a] text-white font-cormorant font-bold text-sm tracking-wider uppercase hover:bg-[#50131f] transition cursor-pointer shadow-sm"
+            <Link
+              to="/login?redirect=/profile"
+              className="w-full py-3 rounded-full bg-[#6b1a2a] text-white font-cormorant font-bold text-sm tracking-wider uppercase hover:bg-[#50131f] transition cursor-pointer shadow-sm text-center block"
             >
               Sign In or Create Account
-            </button>
+            </Link>
           </div>
         ) : (
           /* LOGGED IN USER PROFILE */

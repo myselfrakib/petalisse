@@ -5,6 +5,7 @@ import Shop from './pages/Shop';
 import Product from './pages/Product';
 import Cart from './pages/Cart';
 import Profile from './pages/Profile';
+import Login from './pages/Login';
 import { AdminPage } from './pages/Admin';
 
 export const router = createBrowserRouter([
@@ -19,6 +20,7 @@ export const router = createBrowserRouter([
       { path: 'checkout', Component: Cart },
       { path: 'place-order', Component: Cart },
       { path: 'profile', Component: Profile },
+      { path: 'login', Component: Login },
       { path: 'admin', Component: AdminPage },
     ],
   },

@@ -5,7 +5,7 @@ import { Product, SiteContent, Order } from '../types';
 import { CATEGORIES } from '../data/products';
 import { collection, getDocs, updateDoc, doc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
-import { Link } from 'react-router';
+import { Link, Navigate } from 'react-router';
 import { getColorHex, SUGGESTED_COLORS } from '../lib/colorUtils';
 
 export const ALL_COLLECTION_TEMPLATES = [
@@ -45,13 +45,6 @@ export const AdminPage: React.FC = () => {
     setFeaturedProducts
   } = useContent();
 
-  // Admin Auth Form State
-  const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signin');
-  const [adminEmail, setAdminEmail] = useState('');
-  const [adminPassword, setAdminPassword] = useState('');
-  const [adminName, setAdminName] = useState('');
-  const [authSubmitting, setAuthSubmitting] = useState(false);
-  const [authError, setAuthError] = useState<string | null>(null);
   const [checkingApproval, setCheckingApproval] = useState(false);
 
   // Dashboard Active Tab (persisted across refreshes)
@@ -205,34 +198,6 @@ export const AdminPage: React.FC = () => {
     }
   };
 
-  // Handle Admin Sign In / Sign Up
-  const handleAdminAuthSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setAuthError(null);
-    setAuthSubmitting(true);
-
-    try {
-      if (authMode === 'signin') {
-        await login(adminEmail, adminPassword);
-      } else {
-        if (!adminEmail || !adminPassword || !adminName) {
-          throw new Error('Please fill in all fields');
-        }
-        await adminSignup(adminEmail, adminPassword, adminName);
-      }
-    } catch (err: any) {
-      console.error(err);
-      let msg = err.message || 'Authentication failed';
-      if (err.code === 'auth/invalid-credential') {
-        msg = 'Invalid email or password.';
-      } else if (err.code === 'auth/email-already-in-use') {
-        msg = 'An account with this email exists. Please use Sign In.';
-      }
-      setAuthError(msg);
-    } finally {
-      setAuthSubmitting(false);
-    }
-  };
 
   const handleManualCheckApproval = async () => {
     setCheckingApproval(true);
@@ -637,135 +602,9 @@ export const AdminPage: React.FC = () => {
     );
   }
 
-  // 1. GATEWAY: If not logged in or NOT authorized as admin (isAdmin == false)
+  // 1. GATEWAY: If not logged in, redirect to the separate login page
   if (!currentUser && !isAdmin) {
-    return (
-      <div className="min-h-screen bg-[#F7F3EE] py-12 px-4 sm:px-6 lg:px-8 flex flex-col justify-center">
-        <div className="max-w-md w-full mx-auto">
-          {/* Header */}
-          <div className="text-center mb-8">
-            <Link to="/" className="inline-block hover:opacity-80 transition mb-2">
-              <span className="font-['Parisienne'] text-4xl text-[#8E5B59] block">
-                Petalisse
-              </span>
-            </Link>
-            <h1 className="text-2xl font-serif text-[#2C2724] font-medium tracking-tight">
-              Boutique Administration Portal
-            </h1>
-            <p className="text-xs text-[#786F66] mt-1">
-              Live catalog, customer orders, and storefront management
-            </p>
-          </div>
-
-          {/* Admin Sign In / Sign Up Form */}
-          <div className="bg-[#FAF7F2] rounded-2xl border border-[#E8E0D5] p-6 sm:p-8 shadow-xl">
-            {/* Tab Switcher */}
-            <div className="flex border-b border-[#EAE3D8] mb-6">
-              <button
-                type="button"
-                onClick={() => {
-                  setAuthMode('signin');
-                  setAuthError(null);
-                }}
-                className={`flex-1 pb-3 text-center text-xs font-medium tracking-wider uppercase border-b-2 cursor-pointer transition ${
-                  authMode === 'signin'
-                    ? 'border-[#8E5B59] text-[#8E5B59]'
-                    : 'border-transparent text-[#8C827A] hover:text-[#2C2724]'
-                }`}
-              >
-                Admin Sign In
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setAuthMode('signup');
-                  setAuthError(null);
-                }}
-                className={`flex-1 pb-3 text-center text-xs font-medium tracking-wider uppercase border-b-2 cursor-pointer transition ${
-                  authMode === 'signup'
-                    ? 'border-[#8E5B59] text-[#8E5B59]'
-                    : 'border-transparent text-[#8C827A] hover:text-[#2C2724]'
-                }`}
-              >
-                Register Admin
-              </button>
-            </div>
-
-            {authError && (
-              <div className="mb-4 p-3 rounded-lg bg-[#FAF0ED] border border-[#E8C5B8] text-[#9E3E2B] text-xs flex items-start gap-2">
-                <svg className="w-4 h-4 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <span>{authError}</span>
-              </div>
-            )}
-
-            <form onSubmit={handleAdminAuthSubmit} className="space-y-4">
-              {authMode === 'signup' && (
-                <div>
-                  <label className="block text-xs font-medium text-[#4A423B] mb-1">
-                    Full Name
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={adminName}
-                    onChange={(e) => setAdminName(e.target.value)}
-                    placeholder="e.g. Master Artisan"
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-[#DED5C9] bg-white text-sm text-[#2C2724] focus:outline-hidden focus:border-[#8E5B59]"
-                  />
-                </div>
-              )}
-
-              <div>
-                <label className="block text-xs font-medium text-[#4A423B] mb-1">
-                  Admin Email Address
-                </label>
-                <input
-                  type="email"
-                  required
-                  value={adminEmail}
-                  onChange={(e) => setAdminEmail(e.target.value)}
-                  placeholder="admin@petalisse.com"
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-[#DED5C9] bg-white text-sm text-[#2C2724] focus:outline-hidden focus:border-[#8E5B59]"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-medium text-[#4A423B] mb-1">
-                  Password
-                </label>
-                <input
-                  type="password"
-                  required
-                  value={adminPassword}
-                  onChange={(e) => setAdminPassword(e.target.value)}
-                  placeholder="••••••••"
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-[#DED5C9] bg-white text-sm text-[#2C2724] focus:outline-hidden focus:border-[#8E5B59]"
-                />
-              </div>
-
-              <button
-                type="submit"
-                disabled={authSubmitting}
-                className="w-full mt-2 py-3 px-4 rounded-xl bg-[#8E5B59] text-white text-sm font-medium tracking-wide shadow-sm hover:bg-[#784A48] transition cursor-pointer flex items-center justify-center gap-2"
-              >
-                {authSubmitting && (
-                  <span className="inline-block w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                )}
-                <span>{authMode === 'signin' ? 'Sign In as Admin' : 'Submit Admin Registration'}</span>
-              </button>
-            </form>
-
-            <div className="mt-6 pt-4 border-t border-[#EAE3D8] text-center">
-              <Link to="/" className="text-xs text-[#786F66] hover:text-[#2C2724] transition">
-                &larr; Return to Petalisse Storefront
-              </Link>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
+    return <Navigate to="/login?redirect=/admin" replace />;
   }
 
   // If user is logged in, but somehow isAdmin is false (pending approval view)

@@ -105,7 +105,7 @@ export default function Root() {
   const handleUserClick = (e: React.MouseEvent) => {
     if (!currentUser) {
       e.preventDefault();
-      setAuthModalOpen(true);
+      navigate('/login?redirect=/profile');
     } else {
       navigate('/profile');
     }
@@ -160,13 +160,14 @@ export default function Root() {
                 <span>{currentUser.displayName?.split(' ')[0] || 'Profile'}</span>
               </Link>
             ) : (
-              <button
-                type="button"
-                onClick={() => setAuthModalOpen(true)}
-                className="font-cormorant font-semibold text-sm tracking-wider uppercase text-[#8B827D] hover:text-[#6B1A2A] transition-colors cursor-pointer"
+              <Link
+                to="/login"
+                className={`font-cormorant font-semibold text-sm tracking-wider uppercase transition-colors ${
+                  pathname === '/login' ? 'text-[#6B1A2A]' : 'text-[#8B827D] hover:text-[#6B1A2A]'
+                }`}
               >
                 Sign In
-              </button>
+              </Link>
             )}
 
             {/* Admin Console Link */}
@@ -227,7 +228,7 @@ export default function Root() {
                   type="button"
                   onClick={(e) => {
                     if (isProfile && !currentUser) {
-                      setAuthModalOpen(true);
+                      navigate('/login?redirect=/profile');
                     } else {
                       navigate(item.path);
                     }
