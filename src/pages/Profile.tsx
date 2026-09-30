@@ -9,6 +9,9 @@ const imgProfileAvatar = '/figma-assets/a8ebf5939a3c12ed28690a4a48c6a6563322d7cf
 const imgShoppingBag = '/figma-assets/8aab77e6404936a9df121d7028258a27c83ee8b7.svg';
 const imgHeart = '/figma-assets/666f88cde482e4924187a9e44c22afac92ead2fc.svg';
 const imgHelpCircle = '/figma-assets/60e62dcce9cd785dd34a9a3edf90e3d426f40e0b.svg';
+const imgRose = '/figma-assets/6651ea04a82113b00c24d2d807dd1e8a69558b14.svg';
+const imgChevronLeft = '/figma-assets/a9ed62056d32eaca4682db0b3be7e08d78983400.svg';
+const imgLine = '/figma-assets/cc59bfc996c199663b36f3ef980785829799417a.svg';
 
 interface SavedAddress {
   id: string;
@@ -158,80 +161,113 @@ export default function Profile() {
     if (s === 'processing') {
       return 'bg-[#EFF6FF] text-[#1E40AF] border-[#BFDBFE]';
     }
-    return 'bg-[#FAF0ED] text-[#9E3E2B] border-[#E8C5B8]';
+    return 'bg-[#FAF0ED] text-[#6B1A2A] border-[#E8C5B8]';
   };
 
   // 1. UNCOMMITTED / NOT LOGGED IN STATE
   if (!currentUser) {
     return (
-      <div className="min-h-[calc(100vh-200px)] py-12 px-4 sm:px-6 lg:px-8 flex flex-col justify-center items-center">
-        <div className="max-w-md w-full bg-[#FAF7F2] rounded-2xl border border-[#E8E0D5] p-8 sm:p-10 text-center shadow-xl relative overflow-hidden animate-fadeIn">
-          {/* Subtle decorative flourishes */}
-          <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-bl from-[#EEDFD5]/50 to-transparent pointer-events-none rounded-tr-2xl" />
-          <div className="absolute bottom-0 left-0 w-24 h-24 bg-gradient-to-tr from-[#EEDFD5]/50 to-transparent pointer-events-none rounded-bl-2xl" />
-
-          <div className="w-16 h-16 rounded-full bg-[#FDF0ED] border border-[#E8C5B8] flex items-center justify-center mx-auto mb-4 text-[#8E5B59] shadow-xs">
-            <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-            </svg>
+      <div
+        className="min-h-screen w-full flex flex-col items-center justify-start py-6 px-4 sm:px-6 pb-28 relative bg-[#fdfbf7]"
+        style={{ backgroundColor: '#fdfbf7' }}
+      >
+        <main
+          className="w-full max-w-[430px] rounded-[24px] shadow-[0px_8px_28px_rgba(44,62,80,0.14)] p-6 sm:p-7 relative flex flex-col gap-6 items-stretch overflow-visible border border-[rgba(107,26,42,0.06)] bg-[#84c9f13a] text-center"
+          style={{ backgroundColor: '#84c9f13a' }}
+        >
+          {/* Header */}
+          <div className="flex flex-col items-center gap-2 pt-2">
+            <h1
+              className="font-meow text-[#6b1a2a] text-5xl sm:text-6xl leading-none select-none"
+              style={{ fontFamily: "'Meow Script', cursive" }}
+            >
+              Petalisse
+            </h1>
+            <p className="font-cormorant font-bold text-[#6b1a2a] text-[15px] sm:text-[16px] tracking-wider flex items-center justify-center gap-1.5 select-none">
+              <span>Boutique Patron Account</span>
+              <img alt="Rose" className="size-4 shrink-0 object-contain" src={imgRose} />
+            </p>
           </div>
 
-          <span className="font-['Parisienne'] text-3xl text-[#8E5B59] block mb-1">
-            Petalisse
-          </span>
-          <h2 className="text-2xl font-serif text-[#2C2724] font-medium tracking-tight mb-2">
-            Patron Account Portal
-          </h2>
-          <p className="text-xs text-[#786F66] leading-relaxed mb-6 max-w-xs mx-auto">
-            Sign in to track your live charm orders, manage your saved shipping addresses, and review boutique purchases.
-          </p>
+          {/* Prompt Card */}
+          <div className="bg-white/85 backdrop-blur-xs rounded-[20px] border border-[rgba(107,26,42,0.1)] p-6 shadow-xs space-y-4">
+            <div className="w-14 h-14 rounded-full bg-[#f9d5e5] border border-[#e7bec9] flex items-center justify-center mx-auto text-[#6b1a2a] shadow-2xs">
+              <svg className="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+              </svg>
+            </div>
 
-          <div className="space-y-3">
-            <Link
-              to="/login?redirect=/profile"
-              className="w-full py-3 px-4 rounded-xl bg-[#8E5B59] hover:bg-[#784A48] text-white text-xs font-semibold uppercase tracking-wider transition shadow-sm block text-center"
-            >
-              Sign In or Create Account
-            </Link>
-            <Link
-              to="/shop"
-              className="w-full py-2.5 px-4 rounded-xl border border-[#DED5C9] bg-white hover:bg-[#F3EDE2] text-[#5C534B] text-xs font-medium transition block text-center"
-            >
-              Explore Charm Boutique &rarr;
-            </Link>
+            <p className="font-cormorant text-sm sm:text-[15px] text-[#4a423b] leading-relaxed">
+              Sign in to track your live charm orders, manage your saved shipping addresses, and review handcrafted purchases.
+            </p>
+
+            <div className="space-y-2.5 pt-2">
+              <Link
+                to="/login?redirect=/profile"
+                className="w-full py-3 px-4 rounded-[14px] bg-[#6b1a2a] hover:bg-[#50131f] text-white text-xs font-semibold uppercase tracking-wider transition shadow-xs block text-center"
+              >
+                Sign In or Create Account
+              </Link>
+              <Link
+                to="/shop"
+                className="w-full py-2.5 px-4 rounded-[14px] border border-[rgba(107,26,42,0.18)] bg-white hover:bg-[#f9d5e5]/40 text-[#6b1a2a] text-xs font-medium transition block text-center"
+              >
+                Explore Charm Boutique &rarr;
+              </Link>
+            </div>
           </div>
-        </div>
+        </main>
       </div>
     );
   }
 
   // 2. LOGGED IN PATRON DASHBOARD
   return (
-    <div className="min-h-screen bg-[#FDFBF7] py-8 sm:py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-6xl mx-auto">
-        {/* Header Breadcrumbs / Title */}
-        <div className="mb-8 border-b border-[#EAE3D8] pb-6">
-          <div className="flex items-center gap-2 text-xs text-[#8C827A] mb-1">
-            <Link to="/" className="hover:text-[#6B1A2A] transition">Home</Link>
-            <span>/</span>
-            <span className="text-[#6B1A2A] font-medium">My Account</span>
-          </div>
-          <h1 className="text-3xl sm:text-4xl font-serif text-[#2C2724] font-medium tracking-tight">
-            Boutique Patron Dashboard
+    <div
+      className="min-h-screen w-full flex flex-col items-center justify-start py-5 px-4 sm:px-6 pb-28 relative bg-[#fdfbf7]"
+      style={{
+        backgroundColor: '#fdfbf7',
+      }}
+      data-name="petalisse-profile-page"
+    >
+      {/* Central Paper Panel */}
+      <main
+        className="w-full max-w-[430px] rounded-[24px] shadow-[0px_8px_28px_rgba(44,62,80,0.14)] p-4 sm:p-5 relative flex flex-col gap-5 items-stretch overflow-visible border border-[rgba(107,26,42,0.06)] bg-[#84c9f13a]"
+        style={{
+          backgroundColor: '#84c9f13a',
+        }}
+        data-name="paper-center-panel"
+      >
+        {/* ── TOP NAVBAR ── */}
+        <header
+          className="border-b border-[#6b1a2a]/10 pb-3 flex items-center justify-between w-full"
+          data-name="top-navbar"
+        >
+          <Link
+            to="/"
+            className="bg-[#f9d5e5] rounded-[12px] p-2 flex items-center justify-center hover:bg-[#f3bed3] active:scale-95 transition-all shadow-xs"
+            aria-label="Back to home"
+          >
+            <img alt="Back" className="size-3.5 block" src={imgChevronLeft} />
+          </Link>
+
+          <h1 className="font-parisienne text-[#6b1a2a] text-[30px] sm:text-[32px] leading-none">
+            My Account
           </h1>
-          <p className="text-xs text-[#786F66] mt-1">
-            Manage your personal profile, delivery locations, and handcrafted orders
-          </p>
-        </div>
+
+          <div className="flex items-center gap-1">
+            <img alt="Petalisse Rose" className="size-5 object-contain" src={imgRose} />
+          </div>
+        </header>
 
         {/* Success Alert */}
         {profileSaveSuccess && (
-          <div className="mb-6 p-4 rounded-xl bg-[#F0FDF4] border border-[#BBF7D0] text-[#166534] text-xs flex items-center justify-between shadow-2xs animate-fadeIn">
+          <div className="p-3.5 rounded-[16px] bg-[#F0FDF4] border border-[#BBF7D0] text-[#166534] text-xs flex items-center justify-between shadow-2xs animate-fadeIn">
             <div className="flex items-center gap-2">
               <svg className="w-4 h-4 shrink-0 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
               </svg>
-              <span>Your profile information has been successfully updated.</span>
+              <span>Profile details updated successfully!</span>
             </div>
             <button
               type="button"
@@ -243,589 +279,520 @@ export default function Profile() {
           </div>
         )}
 
-        {/* 2-Column Responsive Layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-          {/* ── LEFT COLUMN: Patron Identity & Quick Actions (4 cols) ── */}
-          <div className="lg:col-span-4 space-y-6">
-            {/* Identity Card */}
-            <div className="bg-[#FAF7F2] rounded-2xl border border-[#E8E0D5] p-6 shadow-sm text-center relative overflow-hidden">
-              <div className="relative mx-auto size-20 sm:size-24 rounded-full p-1 bg-gradient-to-tr from-[#E8C5B8] via-[#FAD4C0] to-[#E7BEC9] shadow-sm mb-4">
-                <img
-                  alt="Patron Avatar"
-                  src={imgProfileAvatar}
-                  className="size-full object-cover rounded-full bg-white"
-                  onError={(e) => {
-                    // Fallback to monogram
-                    e.currentTarget.style.display = 'none';
-                  }}
-                />
-                <div className="hidden size-full rounded-full bg-[#FAF0ED] text-[#8E5B59] font-serif text-2xl font-bold flex items-center justify-center">
-                  {(profileName || currentUser.displayName || 'P').charAt(0).toUpperCase()}
-                </div>
-              </div>
-
-              <h2 className="text-xl font-serif text-[#2C2724] font-medium truncate px-2">
-                {profileName || currentUser.displayName || 'Boutique Patron'}
-              </h2>
-              <p className="text-xs text-[#786F66] truncate mt-0.5 px-2">
-                {currentUser.email}
-              </p>
-
-              {/* Status Pills */}
-              <div className="mt-3 flex items-center justify-center gap-2 flex-wrap">
-                <span className="px-2.5 py-0.5 rounded-full bg-[#FAF0ED] text-[#8E5B59] border border-[#E8C5B8] text-[10px] font-semibold uppercase tracking-wider">
-                  Patron Member
-                </span>
-                {isAdmin && (
-                  <span className="px-2.5 py-0.5 rounded-full bg-[#F0FDF4] text-[#166534] border border-[#BBF7D0] text-[10px] font-semibold uppercase tracking-wider">
-                    Admin Active
-                  </span>
-                )}
-              </div>
-
-              {/* Member Since & Stats */}
-              <div className="mt-5 pt-4 border-t border-[#EAE3D8] grid grid-cols-2 gap-2 text-center">
-                <div className="p-2 rounded-xl bg-white/70 border border-[#EAE3D8]">
-                  <span className="block text-lg font-serif font-semibold text-[#8E5B59]">
-                    {myOrders.length}
-                  </span>
-                  <span className="block text-[10px] uppercase tracking-wider text-[#8C827A] font-medium">
-                    Orders
-                  </span>
-                </div>
-                <div className="p-2 rounded-xl bg-white/70 border border-[#EAE3D8]">
-                  <span className="block text-lg font-serif font-semibold text-[#8E5B59]">
-                    {addresses.length}
-                  </span>
-                  <span className="block text-[10px] uppercase tracking-wider text-[#8C827A] font-medium">
-                    Addresses
-                  </span>
-                </div>
-              </div>
-
-              {/* Admin Portal Shortcut if Admin */}
-              {isAdmin && (
-                <div className="mt-5 p-3 rounded-xl bg-[#8E5B59]/5 border border-[#8E5B59]/20 text-left">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <span className="text-[11px] font-bold text-[#8E5B59] uppercase tracking-wider block">
-                        Admin Console
-                      </span>
-                      <span className="text-[10px] text-[#6B5F55]">
-                        Products, CMS & live orders
-                      </span>
-                    </div>
-                    <Link
-                      to="/admin"
-                      className="px-3 py-1 rounded-lg bg-[#8E5B59] text-white text-[11px] font-medium hover:bg-[#784A48] transition"
-                    >
-                      Open &rarr;
-                    </Link>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Quick Navigation Card */}
-            <div className="bg-[#FAF7F2] rounded-2xl border border-[#E8E0D5] overflow-hidden shadow-xs divide-y divide-[#EAE3D8]">
-              <Link
-                to="/cart"
-                className="p-3.5 flex items-center justify-between hover:bg-white transition group"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="size-8 rounded-full bg-[#FAF0ED] text-[#8E5B59] flex items-center justify-center">
-                    <img alt="" className="size-4" src={imgShoppingBag} />
-                  </div>
-                  <div>
-                    <span className="text-xs font-semibold text-[#2C2724] group-hover:text-[#8E5B59] transition block">
-                      My Shopping Cart
-                    </span>
-                    <span className="text-[10px] text-[#8C827A]">
-                      View bag items & checkout
-                    </span>
-                  </div>
-                </div>
-                <span className="text-xs text-[#8C827A]">&rarr;</span>
-              </Link>
-
-              <Link
-                to="/shop"
-                className="p-3.5 flex items-center justify-between hover:bg-white transition group"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="size-8 rounded-full bg-[#FAF0ED] text-[#8E5B59] flex items-center justify-center">
-                    <img alt="" className="size-4" src={imgHeart} />
-                  </div>
-                  <div>
-                    <span className="text-xs font-semibold text-[#2C2724] group-hover:text-[#8E5B59] transition block">
-                      Handcrafted Catalog
-                    </span>
-                    <span className="text-[10px] text-[#8C827A]">
-                      Explore small-batch charms
-                    </span>
-                  </div>
-                </div>
-                <span className="text-xs text-[#8C827A]">&rarr;</span>
-              </Link>
-
-              <div
-                onClick={() => alert('For any order help, contact us directly at support@petalisse.com')}
-                className="p-3.5 flex items-center justify-between hover:bg-white transition group cursor-pointer"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="size-8 rounded-full bg-[#FAF0ED] text-[#8E5B59] flex items-center justify-center">
-                    <img alt="" className="size-4" src={imgHelpCircle} />
-                  </div>
-                  <div>
-                    <span className="text-xs font-semibold text-[#2C2724] group-hover:text-[#8E5B59] transition block">
-                      Concierge Support
-                    </span>
-                    <span className="text-[10px] text-[#8C827A]">
-                      Assistance with custom orders
-                    </span>
-                  </div>
-                </div>
-                <span className="text-xs text-[#8C827A]">&rarr;</span>
-              </div>
+        {/* ── PATRON IDENTITY CARD ── */}
+        <div className="bg-white/85 backdrop-blur-xs rounded-[20px] border border-[rgba(107,26,42,0.1)] p-5 shadow-xs text-center relative overflow-hidden">
+          <div className="relative mx-auto size-20 rounded-full p-1 bg-gradient-to-tr from-[#f9d5e5] via-[#fad4c0] to-[#e7bec9] shadow-xs mb-3">
+            <img
+              alt="Patron Avatar"
+              src={imgProfileAvatar}
+              className="size-full object-cover rounded-full bg-white"
+              onError={(e) => {
+                e.currentTarget.style.display = 'none';
+              }}
+            />
+            <div className="hidden size-full rounded-full bg-[#FAF0ED] text-[#6b1a2a] font-serif text-2xl font-bold flex items-center justify-center">
+              {(profileName || currentUser.displayName || 'P').charAt(0).toUpperCase()}
             </div>
           </div>
 
-          {/* ── RIGHT COLUMN: Account Information, Addresses & Orders (8 cols) ── */}
-          <div className="lg:col-span-8 space-y-8">
-            {/* 1. Account Details Card */}
-            <div className="bg-[#FAF7F2] rounded-2xl border border-[#E8E0D5] p-6 sm:p-7 shadow-xs">
-              <div className="flex items-center justify-between border-b border-[#EAE3D8] pb-4 mb-5">
-                <div>
-                  <h3 className="text-lg font-serif text-[#2C2724] font-medium">
-                    Personal Information
-                  </h3>
-                  <p className="text-xs text-[#786F66]">
-                    Your verified contact credentials for orders and delivery updates
-                  </p>
-                </div>
-                {!isEditing && (
-                  <button
-                    type="button"
-                    onClick={() => setIsEditing(true)}
-                    className="px-3.5 py-1.5 rounded-lg border border-[#DED5C9] bg-white text-xs font-medium text-[#5C534B] hover:bg-[#FAF5F0] transition shadow-2xs cursor-pointer"
-                  >
-                    Edit Details
-                  </button>
-                )}
-              </div>
+          <h2 className="font-cormorant font-bold text-[#6b1a2a] text-xl truncate px-2">
+            {profileName || currentUser.displayName || 'Boutique Patron'}
+          </h2>
+          <p className="font-cormorant text-xs text-[#786F66] truncate mt-0.5 px-2">
+            {currentUser.email}
+          </p>
 
-              {isEditing ? (
-                <form onSubmit={handleSaveProfile} className="space-y-4">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-xs font-medium text-[#4A423B] mb-1">
-                        Full Name
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        value={profileName}
-                        onChange={(e) => setProfileName(e.target.value)}
-                        placeholder="e.g. Eleanor Vance"
-                        className="w-full px-3.5 py-2.5 rounded-xl border border-[#DED5C9] bg-white text-sm text-[#2C2724] focus:outline-hidden focus:border-[#8E5B59]"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-[#4A423B] mb-1">
-                        Phone Number
-                      </label>
-                      <input
-                        type="tel"
-                        value={profilePhone}
-                        onChange={(e) => setProfilePhone(e.target.value)}
-                        placeholder="+91 98765 43210"
-                        className="w-full px-3.5 py-2.5 rounded-xl border border-[#DED5C9] bg-white text-sm text-[#2C2724] focus:outline-hidden focus:border-[#8E5B59]"
-                      />
-                    </div>
-                  </div>
+          {/* Status Pills */}
+          <div className="mt-2.5 flex items-center justify-center gap-1.5 flex-wrap">
+            <span className="px-2.5 py-0.5 rounded-full bg-[#f9d5e5] text-[#6b1a2a] border border-[#e7bec9] text-[10px] font-semibold uppercase tracking-wider">
+              Patron Member
+            </span>
+            {isAdmin && (
+              <span className="px-2.5 py-0.5 rounded-full bg-[#F0FDF4] text-[#166534] border border-[#BBF7D0] text-[10px] font-semibold uppercase tracking-wider">
+                Admin Active
+              </span>
+            )}
+          </div>
 
-                  <div>
-                    <label className="block text-xs font-medium text-[#4A423B] mb-1">
-                      Account Email
-                    </label>
-                    <input
-                      type="email"
-                      disabled
-                      value={currentUser.email || ''}
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-[#DED5C9] bg-[#F3EDE2]/60 text-sm text-[#786F66] cursor-not-allowed"
-                    />
-                    <span className="text-[10px] text-[#8C827A] mt-1 block">
-                      Account email is managed through authentication security.
-                    </span>
-                  </div>
-
-                  <div className="flex items-center justify-end gap-2.5 pt-2">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setIsEditing(false);
-                        setProfileName(userProfile?.name || currentUser.displayName || '');
-                        setProfilePhone(userProfile?.phone || '');
-                      }}
-                      className="px-4 py-2 rounded-xl border border-[#DED5C9] bg-white text-xs font-medium text-[#5C534B] hover:bg-[#F3EDE2] transition cursor-pointer"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="submit"
-                      disabled={savingProfile}
-                      className="px-5 py-2 rounded-xl bg-[#8E5B59] hover:bg-[#784A48] text-white text-xs font-medium transition cursor-pointer shadow-xs flex items-center gap-1.5"
-                    >
-                      {savingProfile && (
-                        <span className="inline-block w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                      )}
-                      <span>Save Changes</span>
-                    </button>
-                  </div>
-                </form>
-              ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-                  <div className="p-3.5 rounded-xl bg-white border border-[#EAE3D8]">
-                    <span className="text-[10px] uppercase font-semibold text-[#8C827A] tracking-wider block mb-1">
-                      Patron Name
-                    </span>
-                    <span className="text-sm font-medium text-[#2C2724] block">
-                      {profileName || 'Not specified'}
-                    </span>
-                  </div>
-
-                  <div className="p-3.5 rounded-xl bg-white border border-[#EAE3D8]">
-                    <span className="text-[10px] uppercase font-semibold text-[#8C827A] tracking-wider block mb-1">
-                      Registered Email
-                    </span>
-                    <span className="text-sm font-medium text-[#2C2724] truncate block">
-                      {currentUser.email}
-                    </span>
-                  </div>
-
-                  <div className="p-3.5 rounded-xl bg-white border border-[#EAE3D8]">
-                    <span className="text-[10px] uppercase font-semibold text-[#8C827A] tracking-wider block mb-1">
-                      Contact Phone
-                    </span>
-                    <span className="text-sm font-medium text-[#2C2724] block">
-                      {profilePhone || 'Not provided'}
-                    </span>
-                  </div>
-
-                  <div className="p-3.5 rounded-xl bg-white border border-[#EAE3D8]">
-                    <span className="text-[10px] uppercase font-semibold text-[#8C827A] tracking-wider block mb-1">
-                      Member Since
-                    </span>
-                    <span className="text-sm font-medium text-[#2C2724] block">
-                      {currentUser.metadata.creationTime
-                        ? new Date(currentUser.metadata.creationTime).toLocaleDateString('en-US', {
-                            month: 'long',
-                            year: 'numeric',
-                          })
-                        : 'Petalisse Patron'}
-                    </span>
-                  </div>
-                </div>
-              )}
+          {/* Quick Stats */}
+          <div className="mt-4 pt-3.5 border-t border-[#6b1a2a]/10 grid grid-cols-2 gap-2 text-center">
+            <div className="p-2 rounded-[14px] bg-[#fdfbf7] border border-[rgba(107,26,42,0.08)]">
+              <span className="block text-lg font-serif font-semibold text-[#6b1a2a]">
+                {myOrders.length}
+              </span>
+              <span className="block text-[10px] uppercase tracking-wider text-[#8C827A] font-medium font-cormorant">
+                Orders Placed
+              </span>
             </div>
-
-            {/* 2. Saved Delivery Addresses */}
-            <div className="bg-[#FAF7F2] rounded-2xl border border-[#E8E0D5] p-6 sm:p-7 shadow-xs">
-              <div className="flex items-center justify-between border-b border-[#EAE3D8] pb-4 mb-5">
-                <div>
-                  <h3 className="text-lg font-serif text-[#2C2724] font-medium">
-                    Saved Shipping Addresses
-                  </h3>
-                  <p className="text-xs text-[#786F66]">
-                    Addresses stored for quick, one-click checkout
-                  </p>
-                </div>
-                {!showAddAddressModal && (
-                  <button
-                    type="button"
-                    onClick={() => setShowAddAddressModal(true)}
-                    className="px-3.5 py-1.5 rounded-lg bg-[#8E5B59] hover:bg-[#784A48] text-white text-xs font-medium transition shadow-2xs cursor-pointer flex items-center gap-1.5"
-                  >
-                    <span>+</span>
-                    <span>Add Address</span>
-                  </button>
-                )}
-              </div>
-
-              {/* Add Address Form Modal/Panel */}
-              {showAddAddressModal && (
-                <form
-                  onSubmit={handleCreateAddress}
-                  className="mb-6 p-4 rounded-xl bg-white border border-[#E8C5B8] space-y-3.5 shadow-xs"
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-[#8E5B59] uppercase tracking-wider">
-                      New Delivery Location
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => setShowAddAddressModal(false)}
-                      className="text-[#8C827A] hover:text-[#2C2724] text-xs cursor-pointer"
-                    >
-                      ✕ Cancel
-                    </button>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-medium text-[#4A423B] mb-1">
-                      Address Label
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={newLabel}
-                      onChange={(e) => setNewLabel(e.target.value)}
-                      placeholder="e.g. Home, Studio, Apartment"
-                      className="w-full px-3.5 py-2 rounded-xl border border-[#DED5C9] text-xs focus:outline-hidden focus:border-[#8E5B59]"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-medium text-[#4A423B] mb-1">
-                      Full Street Address & Pincode
-                    </label>
-                    <textarea
-                      rows={2}
-                      required
-                      value={newAddressStr}
-                      onChange={(e) => setNewAddressStr(e.target.value)}
-                      placeholder="Flat/House number, Street name, City, State, PIN code"
-                      className="w-full px-3.5 py-2 rounded-xl border border-[#DED5C9] text-xs focus:outline-hidden focus:border-[#8E5B59]"
-                    />
-                  </div>
-
-                  <div className="flex justify-end gap-2 pt-1">
-                    <button
-                      type="button"
-                      onClick={() => setShowAddAddressModal(false)}
-                      className="px-3.5 py-1.5 rounded-lg border border-[#DED5C9] text-xs font-medium text-[#5C534B] hover:bg-[#FAF7F2] transition"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="submit"
-                      className="px-4 py-1.5 rounded-lg bg-[#8E5B59] hover:bg-[#784A48] text-white text-xs font-medium transition shadow-xs"
-                    >
-                      Save Location
-                    </button>
-                  </div>
-                </form>
-              )}
-
-              {/* Address List */}
-              {addresses.length === 0 && !showAddAddressModal ? (
-                <div className="p-8 text-center bg-white rounded-xl border border-dashed border-[#DED5C9]">
-                  <p className="text-xs text-[#786F66] mb-3">
-                    No shipping addresses saved yet. Add your preferred delivery address for rapid checkout.
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => setShowAddAddressModal(true)}
-                    className="px-4 py-2 rounded-xl border border-[#8E5B59] text-[#8E5B59] text-xs font-medium hover:bg-[#FAF0ED] transition cursor-pointer"
-                  >
-                    + Add Your First Address
-                  </button>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {addresses.map((addr) => (
-                    <div
-                      key={addr.id}
-                      className="p-4 rounded-xl bg-white border border-[#EAE3D8] hover:border-[#8E5B59]/40 transition shadow-2xs flex flex-col justify-between"
-                    >
-                      <div>
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="font-semibold text-xs text-[#2C2724] flex items-center gap-1.5">
-                            <span>📍</span>
-                            <span>{addr.label}</span>
-                          </span>
-                          {addr.isDefault && (
-                            <span className="px-2 py-0.5 rounded-full bg-[#FDF0ED] border border-[#E8C5B8] text-[9px] font-bold uppercase tracking-wider text-[#8E5B59]">
-                              Default
-                            </span>
-                          )}
-                        </div>
-                        <p className="text-xs text-[#6B5F55] leading-relaxed line-clamp-3">
-                          {addr.address}
-                        </p>
-                      </div>
-
-                      <div className="mt-4 pt-3 border-t border-[#FAF0ED] flex items-center justify-end">
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteAddress(addr.id)}
-                          className="text-xs text-[#9E3E2B] hover:underline cursor-pointer"
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
+            <div className="p-2 rounded-[14px] bg-[#fdfbf7] border border-[rgba(107,26,42,0.08)]">
+              <span className="block text-lg font-serif font-semibold text-[#6b1a2a]">
+                {addresses.length}
+              </span>
+              <span className="block text-[10px] uppercase tracking-wider text-[#8C827A] font-medium font-cormorant">
+                Saved Locations
+              </span>
             </div>
+          </div>
 
-            {/* 3. My Orders Section (Live Database Synced) */}
-            <div className="bg-[#FAF7F2] rounded-2xl border border-[#E8E0D5] p-6 sm:p-7 shadow-xs">
-              <div className="flex items-center justify-between border-b border-[#EAE3D8] pb-4 mb-5">
+          {/* Admin Shortcut if Admin */}
+          {isAdmin && (
+            <div className="mt-4 p-3 rounded-[14px] bg-[#f9d5e5]/50 border border-[#e7bec9] text-left">
+              <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="text-lg font-serif text-[#2C2724] font-medium flex items-center gap-2">
-                    <span>Order History</span>
-                    <span className="text-xs px-2.5 py-0.5 rounded-full bg-[#FAF0ED] text-[#8E5B59] font-sans font-semibold border border-[#E8C5B8]">
-                      {myOrders.length}
-                    </span>
-                  </h3>
-                  <p className="text-xs text-[#786F66]">
-                    Real-time status of your handmade charm purchases
-                  </p>
+                  <span className="text-[11px] font-bold text-[#6b1a2a] uppercase tracking-wider block">
+                    Admin Console
+                  </span>
+                  <span className="text-[10px] text-[#6B5F55] font-cormorant">
+                    Catalog, CMS & order management
+                  </span>
                 </div>
-
                 <Link
-                  to="/shop"
-                  className="text-xs text-[#8E5B59] hover:underline font-medium"
+                  to="/admin"
+                  className="px-3 py-1 rounded-[10px] bg-[#6b1a2a] text-white text-[11px] font-medium hover:bg-[#50131f] transition"
                 >
-                  Order New Charms &rarr;
+                  Open &rarr;
                 </Link>
               </div>
+            </div>
+          )}
+        </div>
 
-              {myOrders.length === 0 ? (
-                <div className="p-8 text-center bg-white rounded-xl border border-dashed border-[#DED5C9] space-y-3">
-                  <div className="w-12 h-12 rounded-full bg-[#FAF0ED] text-[#8E5B59] flex items-center justify-center mx-auto text-xl">
-                    🛍️
-                  </div>
+        {/* ── PERSONAL DETAILS CARD ── */}
+        <div className="bg-white/85 backdrop-blur-xs rounded-[20px] border border-[rgba(107,26,42,0.1)] p-4 sm:p-5 shadow-xs">
+          <div className="flex items-center justify-between border-b border-[#6b1a2a]/10 pb-3 mb-3.5">
+            <h2 className="font-cormorant font-bold text-[#6b1a2a] text-[16px] sm:text-[17px] uppercase tracking-wider">
+              Personal Information
+            </h2>
+            {!isEditing && (
+              <button
+                type="button"
+                onClick={() => setIsEditing(true)}
+                className="px-3 py-1 rounded-[10px] bg-[#f9d5e5] hover:bg-[#f3bed3] text-[#6b1a2a] text-xs font-semibold transition cursor-pointer"
+              >
+                Edit
+              </button>
+            )}
+          </div>
+
+          {isEditing ? (
+            <form onSubmit={handleSaveProfile} className="space-y-3.5">
+              <div>
+                <label className="block text-xs font-medium text-[#4A423B] mb-1 font-cormorant">
+                  Full Name
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={profileName}
+                  onChange={(e) => setProfileName(e.target.value)}
+                  placeholder="e.g. Eleanor Vance"
+                  className="w-full px-3.5 py-2 rounded-[12px] border border-[#DED5C9] bg-white text-xs text-[#2C2724] focus:outline-hidden focus:border-[#6b1a2a]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-[#4A423B] mb-1 font-cormorant">
+                  Phone Number
+                </label>
+                <input
+                  type="tel"
+                  value={profilePhone}
+                  onChange={(e) => setProfilePhone(e.target.value)}
+                  placeholder="+91 98765 43210"
+                  className="w-full px-3.5 py-2 rounded-[12px] border border-[#DED5C9] bg-white text-xs text-[#2C2724] focus:outline-hidden focus:border-[#6b1a2a]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-[#4A423B] mb-1 font-cormorant">
+                  Account Email
+                </label>
+                <input
+                  type="email"
+                  disabled
+                  value={currentUser.email || ''}
+                  className="w-full px-3.5 py-2 rounded-[12px] border border-[#DED5C9] bg-[#fdfbf7] text-xs text-[#786F66] cursor-not-allowed"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsEditing(false);
+                    setProfileName(userProfile?.name || currentUser.displayName || '');
+                    setProfilePhone(userProfile?.phone || '');
+                  }}
+                  className="px-3.5 py-1.5 rounded-[12px] border border-[#DED5C9] bg-white text-xs font-medium text-[#5C534B] hover:bg-[#F3EDE2] transition cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={savingProfile}
+                  className="px-4 py-1.5 rounded-[12px] bg-[#6b1a2a] hover:bg-[#50131f] text-white text-xs font-medium transition cursor-pointer shadow-2xs flex items-center gap-1.5"
+                >
+                  {savingProfile && (
+                    <span className="inline-block w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  )}
+                  <span>Save</span>
+                </button>
+              </div>
+            </form>
+          ) : (
+            <div className="space-y-2 text-xs">
+              <div className="p-3 rounded-[12px] bg-[#fdfbf7] border border-[rgba(107,26,42,0.08)] flex items-center justify-between">
+                <span className="font-cormorant font-semibold text-[#8C827A] uppercase text-[10px]">
+                  Name
+                </span>
+                <span className="font-medium text-[#2C2724]">
+                  {profileName || 'Not specified'}
+                </span>
+              </div>
+
+              <div className="p-3 rounded-[12px] bg-[#fdfbf7] border border-[rgba(107,26,42,0.08)] flex items-center justify-between">
+                <span className="font-cormorant font-semibold text-[#8C827A] uppercase text-[10px]">
+                  Email
+                </span>
+                <span className="font-medium text-[#2C2724] truncate max-w-[200px]">
+                  {currentUser.email}
+                </span>
+              </div>
+
+              <div className="p-3 rounded-[12px] bg-[#fdfbf7] border border-[rgba(107,26,42,0.08)] flex items-center justify-between">
+                <span className="font-cormorant font-semibold text-[#8C827A] uppercase text-[10px]">
+                  Phone
+                </span>
+                <span className="font-medium text-[#2C2724]">
+                  {profilePhone || 'Not provided'}
+                </span>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* ── SAVED SHIPPING ADDRESSES CARD ── */}
+        <div className="bg-white/85 backdrop-blur-xs rounded-[20px] border border-[rgba(107,26,42,0.1)] p-4 sm:p-5 shadow-xs">
+          <div className="flex items-center justify-between border-b border-[#6b1a2a]/10 pb-3 mb-3.5">
+            <h2 className="font-cormorant font-bold text-[#6b1a2a] text-[16px] sm:text-[17px] uppercase tracking-wider">
+              Shipping Addresses
+            </h2>
+            {!showAddAddressModal && (
+              <button
+                type="button"
+                onClick={() => setShowAddAddressModal(true)}
+                className="px-3 py-1 rounded-[10px] bg-[#6b1a2a] hover:bg-[#50131f] text-white text-xs font-medium transition cursor-pointer flex items-center gap-1 shadow-2xs"
+              >
+                <span>+</span>
+                <span>Add</span>
+              </button>
+            )}
+          </div>
+
+          {/* Add Address Form Modal/Panel */}
+          {showAddAddressModal && (
+            <form
+              onSubmit={handleCreateAddress}
+              className="mb-4 p-3.5 rounded-[14px] bg-[#fdfbf7] border border-[#e7bec9] space-y-3 shadow-2xs"
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold text-[#6b1a2a] uppercase tracking-wider font-cormorant">
+                  New Delivery Location
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setShowAddAddressModal(false)}
+                  className="text-[#8C827A] hover:text-[#2C2724] text-xs cursor-pointer"
+                >
+                  ✕ Cancel
+                </button>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-medium text-[#4A423B] mb-1 font-cormorant">
+                  Label
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={newLabel}
+                  onChange={(e) => setNewLabel(e.target.value)}
+                  placeholder="e.g. Home, Studio, Apartment"
+                  className="w-full px-3 py-1.5 rounded-[10px] border border-[#DED5C9] bg-white text-xs focus:outline-hidden focus:border-[#6b1a2a]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-medium text-[#4A423B] mb-1 font-cormorant">
+                  Full Street Address & Pincode
+                </label>
+                <textarea
+                  rows={2}
+                  required
+                  value={newAddressStr}
+                  onChange={(e) => setNewAddressStr(e.target.value)}
+                  placeholder="Flat/House number, Street name, City, State, PIN code"
+                  className="w-full px-3 py-1.5 rounded-[10px] border border-[#DED5C9] bg-white text-xs focus:outline-hidden focus:border-[#6b1a2a]"
+                />
+              </div>
+
+              <div className="flex justify-end gap-2 pt-0.5">
+                <button
+                  type="button"
+                  onClick={() => setShowAddAddressModal(false)}
+                  className="px-3 py-1 rounded-[10px] border border-[#DED5C9] text-xs font-medium text-[#5C534B] hover:bg-white transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-3.5 py-1 rounded-[10px] bg-[#6b1a2a] hover:bg-[#50131f] text-white text-xs font-medium transition shadow-2xs"
+                >
+                  Save Address
+                </button>
+              </div>
+            </form>
+          )}
+
+          {/* Address List */}
+          {addresses.length === 0 && !showAddAddressModal ? (
+            <div className="p-6 text-center bg-[#fdfbf7] rounded-[14px] border border-dashed border-[#DED5C9]">
+              <p className="text-xs text-[#786F66] mb-2.5 font-cormorant">
+                No shipping addresses saved yet.
+              </p>
+              <button
+                type="button"
+                onClick={() => setShowAddAddressModal(true)}
+                className="px-3.5 py-1.5 rounded-[12px] border border-[#6b1a2a] text-[#6b1a2a] text-xs font-medium hover:bg-[#f9d5e5]/40 transition cursor-pointer"
+              >
+                + Add Address
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-2.5">
+              {addresses.map((addr) => (
+                <div
+                  key={addr.id}
+                  className="p-3 rounded-[14px] bg-[#fdfbf7] border border-[rgba(107,26,42,0.1)] hover:border-[#6b1a2a]/40 transition shadow-2xs flex flex-col justify-between"
+                >
                   <div>
-                    <h4 className="text-sm font-serif font-medium text-[#2C2724]">No Orders Yet</h4>
-                    <p className="text-xs text-[#786F66] mt-0.5">
-                      Explore our small-batch handcrafted bag charms, hair accessories, and phone charms.
-                    </p>
-                  </div>
-                  <Link
-                    to="/shop"
-                    className="inline-block px-5 py-2 rounded-xl bg-[#8E5B59] hover:bg-[#784A48] text-white text-xs font-semibold uppercase tracking-wider transition shadow-2xs"
-                  >
-                    Explore Boutique Catalog
-                  </Link>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {myOrders.map((ord) => (
-                    <div
-                      key={ord.id}
-                      className="p-4 sm:p-5 rounded-xl bg-white border border-[#EAE3D8] shadow-2xs space-y-3 hover:border-[#8E5B59]/30 transition"
-                    >
-                      {/* Top Order Row */}
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#F7F3EE] pb-3">
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <span className="font-mono font-bold text-xs text-[#8E5B59]">
-                              {ord.orderNumber || (ord.id ? `#${ord.id.slice(-6).toUpperCase()}` : '#ORDER')}
-                            </span>
-                            <span className="text-[11px] text-[#8C827A]">
-                              {new Date(ord.createdAt).toLocaleDateString('en-US', {
-                                month: 'short',
-                                day: 'numeric',
-                                year: 'numeric',
-                              })}
-                            </span>
-                          </div>
-                          {ord.shippingAddress && (
-                            <p className="text-[11px] text-[#8C827A] truncate max-w-sm mt-0.5">
-                              Deliver to: {ord.customerName} ({ord.city || ord.shippingAddress})
-                            </p>
-                          )}
-                        </div>
-
-                        <span
-                          className={`self-start sm:self-auto px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border ${getStatusBadge(
-                            ord.status
-                          )}`}
-                        >
-                          {ord.status}
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="font-semibold text-xs text-[#2C2724] flex items-center gap-1.5">
+                        <span>📍</span>
+                        <span>{addr.label}</span>
+                      </span>
+                      {addr.isDefault && (
+                        <span className="px-2 py-0.5 rounded-full bg-[#f9d5e5] border border-[#e7bec9] text-[9px] font-bold uppercase tracking-wider text-[#6b1a2a]">
+                          Default
                         </span>
-                      </div>
-
-                      {/* Items Purchased */}
-                      <div className="space-y-1.5 py-1">
-                        {ord.items.map((it, idx) => (
-                          <div
-                            key={idx}
-                            className="flex items-center justify-between text-xs text-[#2C2724]"
-                          >
-                            <span className="text-[#4A423B]">
-                              {it.name}{' '}
-                              {it.selectedColor && (
-                                <span className="text-[#8C827A]">({it.selectedColor})</span>
-                              )}{' '}
-                              <span className="text-[#8C827A]">× {it.quantity}</span>
-                            </span>
-                            <span className="font-medium text-[#2C2724]">
-                              ₹{it.price * it.quantity}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-
-                      {/* Total & Payment Details */}
-                      <div className="pt-3 border-t border-[#F7F3EE] flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
-                        <div className="text-[11px] text-[#786F66]">
-                          <span>
-                            {ord.paymentMethod === 'partial_cod'
-                              ? 'Booking Confirmed (Partial COD)'
-                              : 'Online Payment'}
-                          </span>
-                          <span> • </span>
-                          <span>
-                            Shipping: {ord.shippingFee === 0 ? 'FREE' : `₹${ord.shippingFee}`}
-                          </span>
-                        </div>
-
-                        <div className="text-sm font-sans font-bold text-[#8E5B59] sm:text-right">
-                          Total: ₹{ord.total}
-                        </div>
-                      </div>
-
-                      {/* Partial COD breakdown if applicable */}
-                      {ord.paymentMethod === 'partial_cod' && (
-                        <div className="p-2.5 rounded-lg bg-[#FAF0ED] border border-[#E8C5B8] flex items-center justify-between text-[11px] text-[#8E5B59]">
-                          <span>Advance Paid: ₹{ord.amountPaid}</span>
-                          <span className="font-semibold">Due on Delivery: ₹{ord.codAmountDue}</span>
-                        </div>
                       )}
                     </div>
-                  ))}
+                    <p className="text-xs text-[#6B5F55] leading-relaxed line-clamp-3">
+                      {addr.address}
+                    </p>
+                  </div>
+
+                  <div className="mt-2.5 pt-2 border-t border-[#6b1a2a]/10 flex items-center justify-end">
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteAddress(addr.id)}
+                      className="text-[11px] text-[#9E3E2B] hover:underline cursor-pointer"
+                    >
+                      Delete
+                    </button>
+                  </div>
                 </div>
-              )}
+              ))}
             </div>
+          )}
+        </div>
+
+        {/* ── ORDER HISTORY CARD ── */}
+        <div className="bg-white/85 backdrop-blur-xs rounded-[20px] border border-[rgba(107,26,42,0.1)] p-4 sm:p-5 shadow-xs">
+          <div className="flex items-center justify-between border-b border-[#6b1a2a]/10 pb-3 mb-3.5">
+            <div className="flex items-center gap-2">
+              <h2 className="font-cormorant font-bold text-[#6b1a2a] text-[16px] sm:text-[17px] uppercase tracking-wider">
+                Order History
+              </h2>
+              <span className="text-[11px] px-2 py-0.5 rounded-full bg-[#f9d5e5] text-[#6b1a2a] font-semibold border border-[#e7bec9]">
+                {myOrders.length}
+              </span>
+            </div>
+
+            <Link
+              to="/shop"
+              className="text-xs text-[#6b1a2a] hover:underline font-cormorant font-semibold"
+            >
+              Shop &rarr;
+            </Link>
+          </div>
+
+          {myOrders.length === 0 ? (
+            <div className="p-6 text-center bg-[#fdfbf7] rounded-[14px] border border-dashed border-[#DED5C9] space-y-2.5">
+              <div className="w-10 h-10 rounded-full bg-[#f9d5e5] text-[#6b1a2a] flex items-center justify-center mx-auto text-lg">
+                🛍️
+              </div>
+              <div>
+                <h4 className="text-xs font-semibold text-[#2C2724]">No Orders Yet</h4>
+                <p className="text-[11px] text-[#786F66] mt-0.5 font-cormorant">
+                  Explore our handcrafted bag charms, hair accessories, and phone charms.
+                </p>
+              </div>
+              <Link
+                to="/shop"
+                className="inline-block px-4 py-1.5 rounded-[12px] bg-[#6b1a2a] hover:bg-[#50131f] text-white text-xs font-semibold uppercase tracking-wider transition shadow-2xs"
+              >
+                Browse Shop
+              </Link>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {myOrders.map((ord) => (
+                <div
+                  key={ord.id}
+                  className="p-3.5 rounded-[14px] bg-[#fdfbf7] border border-[rgba(107,26,42,0.1)] shadow-2xs space-y-2.5 hover:border-[#6b1a2a]/30 transition"
+                >
+                  {/* Top Order Row */}
+                  <div className="flex items-center justify-between gap-2 border-b border-[#6b1a2a]/10 pb-2">
+                    <div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-mono font-bold text-xs text-[#6b1a2a]">
+                          {ord.orderNumber || (ord.id ? `#${ord.id.slice(-6).toUpperCase()}` : '#ORDER')}
+                        </span>
+                        <span className="text-[10px] text-[#8C827A]">
+                          {new Date(ord.createdAt).toLocaleDateString('en-US', {
+                            month: 'short',
+                            day: 'numeric',
+                            year: 'numeric',
+                          })}
+                        </span>
+                      </div>
+                      {ord.shippingAddress && (
+                        <p className="text-[10px] text-[#8C827A] truncate max-w-[200px] mt-0.5 font-cormorant">
+                          To: {ord.customerName}
+                        </p>
+                      )}
+                    </div>
+
+                    <span
+                      className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider border ${getStatusBadge(
+                        ord.status
+                      )}`}
+                    >
+                      {ord.status}
+                    </span>
+                  </div>
+
+                  {/* Items Purchased */}
+                  <div className="space-y-1 py-0.5">
+                    {ord.items.map((it, idx) => (
+                      <div
+                        key={idx}
+                        className="flex items-center justify-between text-xs text-[#2C2724]"
+                      >
+                        <span className="text-[#4A423B] truncate max-w-[220px]">
+                          {it.name}{' '}
+                          {it.selectedColor && (
+                            <span className="text-[#8C827A]">({it.selectedColor})</span>
+                          )}{' '}
+                          <span className="text-[#8C827A]">× {it.quantity}</span>
+                        </span>
+                        <span className="font-medium text-[#2C2724] shrink-0">
+                          ₹{it.price * it.quantity}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Total & Payment Details */}
+                  <div className="pt-2 border-t border-[#6b1a2a]/10 flex items-center justify-between text-xs">
+                    <span className="text-[10px] text-[#786F66] font-cormorant">
+                      {ord.paymentMethod === 'partial_cod' ? 'Partial COD' : 'Online Paid'}
+                    </span>
+
+                    <span className="text-xs font-sans font-bold text-[#6b1a2a]">
+                      Total: ₹{ord.total}
+                    </span>
+                  </div>
+
+                  {/* Partial COD breakdown if applicable */}
+                  {ord.paymentMethod === 'partial_cod' && (
+                    <div className="p-2 rounded-[10px] bg-[#f9d5e5]/50 border border-[#e7bec9] flex items-center justify-between text-[10px] text-[#6b1a2a]">
+                      <span>Paid: ₹{ord.amountPaid}</span>
+                      <span className="font-semibold">Due on Delivery: ₹{ord.codAmountDue}</span>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* ── QUICK SHORTCUTS CARD ── */}
+        <div className="bg-white/85 backdrop-blur-xs rounded-[20px] border border-[rgba(107,26,42,0.1)] overflow-hidden shadow-xs divide-y divide-[#6b1a2a]/10">
+          <Link
+            to="/cart"
+            className="p-3 flex items-center justify-between hover:bg-[#f9d5e5]/20 transition group"
+          >
+            <div className="flex items-center gap-2.5">
+              <div className="size-7 rounded-full bg-[#f9d5e5] text-[#6b1a2a] flex items-center justify-center">
+                <img alt="" className="size-3.5" src={imgShoppingBag} />
+              </div>
+              <span className="text-xs font-semibold text-[#2C2724] group-hover:text-[#6b1a2a] transition">
+                Shopping Cart
+              </span>
+            </div>
+            <span className="text-xs text-[#8C827A]">&rarr;</span>
+          </Link>
+
+          <Link
+            to="/shop"
+            className="p-3 flex items-center justify-between hover:bg-[#f9d5e5]/20 transition group"
+          >
+            <div className="flex items-center gap-2.5">
+              <div className="size-7 rounded-full bg-[#f9d5e5] text-[#6b1a2a] flex items-center justify-center">
+                <img alt="" className="size-3.5" src={imgHeart} />
+              </div>
+              <span className="text-xs font-semibold text-[#2C2724] group-hover:text-[#6b1a2a] transition">
+                Handcrafted Catalog
+              </span>
+            </div>
+            <span className="text-xs text-[#8C827A]">&rarr;</span>
+          </Link>
+
+          <div
+            onClick={() => alert('For any order help, contact us directly at support@petalisse.com')}
+            className="p-3 flex items-center justify-between hover:bg-[#f9d5e5]/20 transition group cursor-pointer"
+          >
+            <div className="flex items-center gap-2.5">
+              <div className="size-7 rounded-full bg-[#f9d5e5] text-[#6b1a2a] flex items-center justify-center">
+                <img alt="" className="size-3.5" src={imgHelpCircle} />
+              </div>
+              <span className="text-xs font-semibold text-[#2C2724] group-hover:text-[#6b1a2a] transition">
+                Concierge Support
+              </span>
+            </div>
+            <span className="text-xs text-[#8C827A]">&rarr;</span>
           </div>
         </div>
 
-        {/* Bottom Sign Out Section */}
-        <div className="mt-12 pt-8 border-t border-[#EAE3D8] flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div>
-            <h3 className="text-sm font-serif font-medium text-[#2C2724]">
-              Sign Out of Boutique Account
-            </h3>
-            <p className="text-xs text-[#8C827A] mt-0.5">
-              Securely end your patron session on this browser.
-            </p>
-          </div>
+        {/* ── BOTTOM SIGN OUT SECTION ── */}
+        <div className="pt-2 pb-1 border-t border-[#6b1a2a]/10 flex flex-col items-center gap-2 text-center">
           <button
             type="button"
             onClick={() => logout()}
-            className="px-6 py-2.5 rounded-xl bg-[#FAF0ED] border border-[#E8C5B8] text-xs font-semibold text-[#9E3E2B] hover:bg-[#F5E2DC] transition cursor-pointer shadow-2xs flex items-center gap-2"
+            className="w-full py-2.5 px-4 rounded-[14px] bg-white hover:bg-[#f9d5e5]/50 border border-[rgba(107,26,42,0.18)] text-xs font-semibold text-[#6b1a2a] transition cursor-pointer shadow-2xs flex items-center justify-center gap-2 active:scale-[0.99]"
           >
-            <svg className="w-4 h-4 shrink-0 text-[#9E3E2B]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg className="w-4 h-4 shrink-0 text-[#6b1a2a]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75" />
             </svg>
-            <span>Sign Out</span>
+            <span>Sign Out of Account</span>
           </button>
+          <p className="text-[11px] text-[#8C827A] font-cormorant">
+            Handmade with love • Petalisse Boutique
+          </p>
         </div>
-      </div>
+      </main>
     </div>
   );
 }
