@@ -741,7 +741,7 @@ export default function Profile() {
                         <div>
                           <div className="flex items-center gap-2">
                             <span className="font-mono font-bold text-xs text-[#8E5B59]">
-                              {ord.orderNumber || `#${ord.id.slice(-6).toUpperCase()}`}
+                              {ord.orderNumber || (ord.id ? `#${ord.id.slice(-6).toUpperCase()}` : '#ORDER')}
                             </span>
                             <span className="text-[11px] text-[#8C827A]">
                               {new Date(ord.createdAt).toLocaleDateString('en-US', {

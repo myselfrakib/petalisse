@@ -21,6 +21,7 @@ export const ALL_COLLECTION_TEMPLATES = [
 export const AdminPage: React.FC = () => {
   const { 
     currentUser, 
+    userProfile,
     isAdmin, 
     loading: authLoading, 
     login, 
@@ -596,36 +597,90 @@ export const AdminPage: React.FC = () => {
 
   // If user is logged in, but not authorized as admin (isAdmin == false)
   if (currentUser && !isAdmin) {
+    const isApplicant = (userProfile as any)?.role === 'admin_applicant';
+
     return (
-      <div className="min-h-screen bg-[#F7F3EE] py-12 px-4 sm:px-6 lg:px-8 flex flex-col justify-center items-center">
+      <div className="min-h-screen bg-[#F7F3EE] py-12 px-4 sm:px-6 lg:px-8 flex flex-col justify-center items-center animate-fadeIn">
         <div className="max-w-md w-full mx-auto text-center">
           <div className="bg-[#FAF7F2] rounded-2xl border border-[#E8E0D5] p-8 shadow-xl">
-            <div className="w-14 h-14 rounded-full bg-[#FAF0ED] border border-[#E8C5B8] flex items-center justify-center mx-auto mb-4 text-[#9E3E2B]">
-              <svg className="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-              </svg>
-            </div>
-            <h1 className="text-2xl font-serif text-[#2C2724] font-medium mb-2">
-              Access denied
-            </h1>
-            <p className="text-xs text-[#786F66] mb-6">
-              You do not have permission to access the administration portal.
-            </p>
-            <div className="flex items-center justify-center gap-3">
-              <Link
-                to="/"
-                className="py-2.5 px-5 rounded-xl bg-[#8E5B59] hover:bg-[#784A48] text-white text-xs font-medium tracking-wide transition shadow-xs"
-              >
-                Back to Boutique Home &rarr;
-              </Link>
-              <button
-                type="button"
-                onClick={() => logout()}
-                className="py-2.5 px-4 rounded-xl border border-[#DED5C9] bg-white text-xs text-[#5C534B] hover:bg-[#F3EDE2] transition cursor-pointer"
-              >
-                Sign out
-              </button>
-            </div>
+            {isApplicant ? (
+              <>
+                <div className="w-14 h-14 rounded-full bg-[#FAF0ED] border border-[#E8C5B8] flex items-center justify-center mx-auto mb-4 text-[#8E5B59] text-2xl">
+                  ⏳
+                </div>
+                <h1 className="text-2xl font-serif text-[#2C2724] font-medium mb-2">
+                  Admin Authorization Pending
+                </h1>
+                <p className="text-xs text-[#786F66] mb-4 leading-relaxed">
+                  Your administrator account (<span className="font-semibold text-[#2C2724]">{currentUser.email}</span>) has been registered and is awaiting database authorization.
+                </p>
+                <div className="p-3.5 mb-6 rounded-xl bg-white border border-[#E8E0D5] text-[11px] text-[#6B5F55] text-left space-y-2 shadow-2xs">
+                  <div className="flex justify-between items-center text-[#8C827A]">
+                    <span>Account UID:</span>
+                    <span className="font-mono text-[10px] text-[#2C2724] select-all">{currentUser.uid}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-[#8C827A]">
+                    <span>Approval Status:</span>
+                    <span className="px-2 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-200 font-semibold text-[10px]">
+                      Pending Database Approval
+                    </span>
+                  </div>
+                  <div className="pt-2 text-[#8C827A] border-t border-[#F0EAE1] leading-relaxed">
+                    An existing admin must set <span className="font-mono font-semibold text-[#8E5B59]">isAdmin: true</span> in the Firestore <span className="font-mono">admins</span> collection to grant console access.
+                  </div>
+                </div>
+                <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      const approved = await checkAdminStatus();
+                      if (!approved) {
+                        alert('Your admin account is still pending approval. Once isAdmin: true is set in Firestore, click this button to unlock the console.');
+                      }
+                    }}
+                    className="w-full sm:w-auto py-2.5 px-5 rounded-xl bg-[#8E5B59] hover:bg-[#784A48] text-white text-xs font-medium tracking-wide transition shadow-xs cursor-pointer"
+                  >
+                    Check Approval Status
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => logout()}
+                    className="w-full sm:w-auto py-2.5 px-4 rounded-xl border border-[#DED5C9] bg-white text-xs text-[#5C534B] hover:bg-[#F3EDE2] transition cursor-pointer"
+                  >
+                    Sign out
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="w-14 h-14 rounded-full bg-[#FAF0ED] border border-[#E8C5B8] flex items-center justify-center mx-auto mb-4 text-[#9E3E2B]">
+                  <svg className="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                  </svg>
+                </div>
+                <h1 className="text-2xl font-serif text-[#2C2724] font-medium mb-2">
+                  Access denied
+                </h1>
+                <p className="text-xs text-[#786F66] mb-6">
+                  You do not have permission to access the administration portal.
+                </p>
+                <div className="flex items-center justify-center gap-3">
+                  <Link
+                    to="/"
+                    className="py-2.5 px-5 rounded-xl bg-[#8E5B59] hover:bg-[#784A48] text-white text-xs font-medium tracking-wide transition shadow-xs"
+                  >
+                    Back to Boutique Home &rarr;
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={() => logout()}
+                    className="py-2.5 px-4 rounded-xl border border-[#DED5C9] bg-white text-xs text-[#5C534B] hover:bg-[#F3EDE2] transition cursor-pointer"
+                  >
+                    Sign out
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       </div>

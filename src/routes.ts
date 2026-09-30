@@ -21,6 +21,7 @@ export const router = createBrowserRouter([
       { path: 'place-order', Component: Cart },
       { path: 'profile', Component: Profile },
       { path: 'login', Component: Login },
+      { path: 'admin/login', Component: Login },
       { path: 'admin', Component: AdminPage },
     ],
   },

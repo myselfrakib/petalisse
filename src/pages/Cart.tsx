@@ -3,7 +3,7 @@ import { Link } from 'react-router';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { useContent } from '../context/ContentContext';
-import { OrderItem } from '../types';
+import { Order, OrderItem } from '../types';
 import { getColorHex } from '../lib/colorUtils';
 
 const imgGinghamBg = '/figma-assets/772e8e7b4c0d39ad6752261452ccca607e718dc3.png';

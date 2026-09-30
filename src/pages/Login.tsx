@@ -1,19 +1,21 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router';
+import { Link, useNavigate, useSearchParams, useLocation } from 'react-router';
 import { useAuth } from '../context/AuthContext';
 
 export default function Login() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const { currentUser, isAdmin, login, signup, adminSignup, resetPassword } = useAuth();
 
   const redirectParam = searchParams.get('redirect');
-  const isAdminIntent = redirectParam?.startsWith('/admin') || searchParams.get('role') === 'admin';
+  const isAdminIntent =
+    location.pathname.startsWith('/admin') ||
+    redirectParam?.startsWith('/admin') ||
+    searchParams.get('role') === 'admin';
 
   // Mode: signin, signup, forgot
   const [mode, setMode] = useState<'signin' | 'signup' | 'forgot'>('signin');
-  // Sub-type for signup: 'customer' or 'admin'
-  const [signupType, setSignupType] = useState<'customer' | 'admin'>(isAdminIntent ? 'admin' : 'customer');
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -37,6 +39,12 @@ export default function Login() {
     }
   }, [currentUser, isAdmin, redirectParam, navigate]);
 
+  // Reset errors and messages when portal mode changes
+  useEffect(() => {
+    setError(null);
+    setSuccessMsg(null);
+  }, [isAdminIntent]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -52,20 +60,22 @@ export default function Login() {
         // Successful login: navigate to redirect or appropriate page
         if (redirectParam) {
           navigate(redirectParam, { replace: true });
+        } else if (isAdminIntent) {
+          navigate('/admin', { replace: true });
         } else {
-          // If admin, go to /admin, else /profile
           navigate('/profile', { replace: true });
         }
       } else if (mode === 'signup') {
         if (!email || !password || !name) {
           throw new Error('Please provide your name, email, and password.');
         }
-        if (signupType === 'admin') {
-          // Admin signup creates record with isAdmin: false (pending direct database approval)
+
+        if (isAdminIntent) {
+          // Admin signup only available through the admin login page
           await adminSignup(email, password, name);
           navigate('/admin', { replace: true });
         } else {
-          // Standard customer signup
+          // Standard customer signup only through patron login page
           await signup(email, password, name, phone);
           if (redirectParam) {
             navigate(redirectParam, { replace: true });
@@ -131,7 +141,7 @@ export default function Login() {
             <div>
               <span className="font-semibold block text-[#6B1A2A]">Admin Access Verification</span>
               <span className="text-[11px] text-[#6B5F55] leading-relaxed">
-                Sign in with your administrator account. Admin authorization (<span className="font-mono font-medium">isAdmin: true</span>) is strictly verified against the database.
+                Sign in with your administrator account or register for console access. Administrator authorization (<span className="font-mono font-medium text-[#8E5B59]">isAdmin: true</span>) is strictly verified against the database.
               </span>
             </div>
           </div>
@@ -159,7 +169,7 @@ export default function Login() {
                     : 'border-transparent text-[#8C827A] hover:text-[#2C2724]'
                 }`}
               >
-                Sign In
+                {isAdminIntent ? 'Admin Sign In' : 'Sign In'}
               </button>
               <button
                 type="button"
@@ -174,7 +184,7 @@ export default function Login() {
                     : 'border-transparent text-[#8C827A] hover:text-[#2C2724]'
                 }`}
               >
-                Create Account
+                {isAdminIntent ? 'Register Admin' : 'Create Account'}
               </button>
             </div>
           ) : (
@@ -215,38 +225,13 @@ export default function Login() {
             </div>
           )}
 
-          {/* Signup Sub-type Switcher (Customer vs Admin Applicant) */}
-          {mode === 'signup' && (
-            <div className="mb-5 p-1 rounded-xl bg-[#F3EDE2] flex gap-1">
-              <button
-                type="button"
-                onClick={() => setSignupType('customer')}
-                className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-medium transition cursor-pointer ${
-                  signupType === 'customer'
-                    ? 'bg-white text-[#2C2724] shadow-xs'
-                    : 'text-[#786F66] hover:text-[#2C2724]'
-                }`}
-              >
-                Patron Customer
-              </button>
-              <button
-                type="button"
-                onClick={() => setSignupType('admin')}
-                className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-medium transition cursor-pointer ${
-                  signupType === 'admin'
-                    ? 'bg-white text-[#8E5B59] shadow-xs font-semibold'
-                    : 'text-[#786F66] hover:text-[#2C2724]'
-                }`}
-              >
-                Admin Applicant
-              </button>
-            </div>
-          )}
-
-          {mode === 'signup' && signupType === 'admin' && (
-            <div className="mb-4 p-3 rounded-lg bg-[#FAF0ED] border border-[#E8C5B8] text-[11px] text-[#6B5F55] leading-relaxed">
-              <span className="font-semibold text-[#8E5B59] block mb-0.5">ℹ️ Database Authorization Required</span>
-              Admin applications are submitted with pending status. Live admin rights (<span className="font-mono text-[#8E5B59]">isAdmin: true</span>) must be approved directly in the Firestore database.
+          {/* Admin Registration Notice - only visible on Admin Sign Up */}
+          {isAdminIntent && mode === 'signup' && (
+            <div className="mb-5 p-3.5 rounded-xl bg-[#FAF0ED] border border-[#E8C5B8] text-[11px] text-[#6B5F55] leading-relaxed">
+              <span className="font-semibold text-[#8E5B59] block mb-1">ℹ️ Database Authorization Required</span>
+              <span>
+                Administrator accounts are submitted with pending status. Live admin rights (<span className="font-mono text-[#8E5B59] font-medium">isAdmin: true</span>) must be approved directly in the Firestore database under the <span className="font-mono text-[#2C2724]">admins</span> collection before console access is granted.
+              </span>
             </div>
           )}
 
@@ -255,14 +240,15 @@ export default function Login() {
             {mode === 'signup' && (
               <div>
                 <label className="block text-xs font-medium text-[#4A423B] mb-1">
-                  Full Name <span className="text-[#9E3E2B]">*</span>
+                  {isAdminIntent ? 'Administrator Full Name' : 'Full Name'}{' '}
+                  <span className="text-[#9E3E2B]">*</span>
                 </label>
                 <input
                   type="text"
                   required
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  placeholder={signupType === 'admin' ? 'Master Artisan' : 'Eleanor Vance'}
+                  placeholder={isAdminIntent ? 'Master Artisan / Admin' : 'Eleanor Vance'}
                   className="w-full px-3.5 py-2.5 rounded-xl border border-[#DED5C9] bg-white text-sm text-[#2C2724] placeholder-[#A89E94] focus:outline-hidden focus:border-[#8E5B59] focus:ring-1 focus:ring-[#8E5B59] transition"
                 />
               </div>
@@ -270,23 +256,21 @@ export default function Login() {
 
             <div>
               <label className="block text-xs font-medium text-[#4A423B] mb-1">
-                Email Address <span className="text-[#9E3E2B]">*</span>
+                {isAdminIntent ? 'Admin Work Email' : 'Email Address'}{' '}
+                <span className="text-[#9E3E2B]">*</span>
               </label>
               <input
                 type="email"
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder={
-                  signupType === 'admin' || isAdminIntent
-                    ? 'admin@petalisse.com'
-                    : 'patron@example.com'
-                }
+                placeholder={isAdminIntent ? 'admin@petalisse.com' : 'patron@example.com'}
                 className="w-full px-3.5 py-2.5 rounded-xl border border-[#DED5C9] bg-white text-sm text-[#2C2724] placeholder-[#A89E94] focus:outline-hidden focus:border-[#8E5B59] focus:ring-1 focus:ring-[#8E5B59] transition"
               />
             </div>
 
-            {mode === 'signup' && signupType === 'customer' && (
+            {/* Phone Number only for Customer Signup */}
+            {!isAdminIntent && mode === 'signup' && (
               <div>
                 <label className="block text-xs font-medium text-[#4A423B] mb-1">
                   Phone Number <span className="text-[11px] text-[#8C827A]">(optional)</span>
@@ -295,7 +279,7 @@ export default function Login() {
                   type="tel"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
-                  placeholder="+91 98765 43210"
+                  placeholder="+1 (555) 019-2834"
                   className="w-full px-3.5 py-2.5 rounded-xl border border-[#DED5C9] bg-white text-sm text-[#2C2724] placeholder-[#A89E94] focus:outline-hidden focus:border-[#8E5B59] focus:ring-1 focus:ring-[#8E5B59] transition"
                 />
               </div>
@@ -361,8 +345,8 @@ export default function Login() {
               )}
               <span>
                 {mode === 'signin' && (isAdminIntent ? 'Sign In to Admin Console' : 'Sign In to Boutique')}
-                {mode === 'signup' && (signupType === 'admin' ? 'Submit Admin Application' : 'Create Customer Account')}
-                {mode === 'forgot' && 'Send Password Recovery Link'}
+                {mode === 'signup' && (isAdminIntent ? 'Register Admin Account' : 'Create Customer Account')}
+                {mode === 'forgot' && (isAdminIntent ? 'Send Admin Password Recovery Link' : 'Send Password Recovery Link')}
               </span>
             </button>
           </form>
@@ -371,7 +355,7 @@ export default function Login() {
           <div className="mt-6 pt-5 border-t border-[#EAE3D8] text-center space-y-3">
             {mode === 'signin' && (
               <p className="text-xs text-[#786F66]">
-                New to Petalisse?{' '}
+                {isAdminIntent ? 'Need to register an admin account? ' : 'New to Petalisse? '}
                 <button
                   type="button"
                   onClick={() => {
@@ -381,14 +365,14 @@ export default function Login() {
                   }}
                   className="font-medium text-[#8E5B59] hover:underline cursor-pointer"
                 >
-                  Create an account
+                  {isAdminIntent ? 'Register admin account' : 'Create an account'}
                 </button>
               </p>
             )}
 
             {mode === 'signup' && (
               <p className="text-xs text-[#786F66]">
-                Already have an account?{' '}
+                {isAdminIntent ? 'Already have an administrator account? ' : 'Already have an account? '}
                 <button
                   type="button"
                   onClick={() => {
@@ -398,19 +382,19 @@ export default function Login() {
                   }}
                   className="font-medium text-[#8E5B59] hover:underline cursor-pointer"
                 >
-                  Sign in here
+                  {isAdminIntent ? 'Sign in to console' : 'Sign in here'}
                 </button>
               </p>
             )}
 
-            {/* Admin Toggle Shortcut */}
+            {/* Portal Switcher Shortcut */}
             {!isAdminIntent ? (
               <div>
                 <Link
-                  to="/login?redirect=/admin"
+                  to="/admin/login"
                   className="text-[11px] text-[#A89E94] hover:text-[#6D635B] underline transition"
                 >
-                  Store administrator? Access Admin Sign In &rarr;
+                  Store administrator? Access Admin Portal &rarr;
                 </Link>
               </div>
             ) : (
@@ -440,3 +424,4 @@ export default function Login() {
     </div>
   );
 }
+
