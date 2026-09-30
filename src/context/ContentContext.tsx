@@ -57,7 +57,19 @@ const DEFAULT_SITE_CONTENT: SiteContent = {
     { title: 'Hand-Molded Clay', desc: 'Sculpted petals baked to gentle perfection', img: '/figma-assets/a53065cbd3c94f32f92edb4e749a2fac1e370cbe.png' },
     { title: 'Artisan Glass Beads', desc: 'Light-catching crystal, pearl & lampwork beads', img: '/figma-assets/aac1d8d4d024ee6d6c049df2d059dfd80fda2226.png' },
     { title: 'Silk & Velvet Ribbons', desc: 'Soft-touch french ribbons for an heirloom feel', img: '/figma-assets/c985c36ff39bdb6b9a8d2827b0a9f08ad612b3b1.png' },
-  ]
+  ],
+  splashScreen: {
+    enabled: false,
+    mediaType: 'gif',
+    mediaUrl: '',
+    duration: 3,
+    autoDismiss: true,
+    showSkipButton: true,
+    title: 'Petalisse',
+    subtitle: 'Handcrafted Charms & Keepsakes',
+    backgroundColor: '#FDFBF7',
+    showOncePerSession: true,
+  },
 };
 
 // No demo orders - orders will only be populated by live customer checkouts
@@ -86,6 +98,12 @@ function sanitizeSiteContent(content: SiteContent): SiteContent {
     ? content.bestSellerProductIds
     : (Array.isArray(content?.featuredProductIds) ? content.featuredProductIds : []);
   sanitized.featuredProductIds = sanitized.bestSellerProductIds;
+  if (content?.splashScreen) {
+    sanitized.splashScreen = {
+      ...DEFAULT_SITE_CONTENT.splashScreen!,
+      ...content.splashScreen,
+    };
+  }
   return sanitized;
 }
 
@@ -171,6 +189,7 @@ interface ContentContextType {
   deleteProduct: (id: string) => Promise<void>;
   updateSiteContent: (content: Partial<SiteContent>) => Promise<void>;
   uploadImage: (file: File, folder?: string) => Promise<string>;
+  uploadMedia: (file: File, folder?: string) => Promise<string>;
   seedInitialProductsToFirestore: () => Promise<void>;
   createOrder: (orderData: Omit<Order, 'id'>) => Promise<string>;
   updateOrderStatus: (orderId: string, status: Order['status']) => Promise<void>;
@@ -613,6 +632,25 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
   };
 
+  const uploadMedia = async (file: File, folder = 'splash'): Promise<string> => {
+    try {
+      const timestamp = Date.now();
+      const safeName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+      const storageRef = ref(storage, `${folder}/${timestamp}_${safeName}`);
+      const snapshot = await uploadBytes(storageRef, file);
+      const downloadUrl = await getDownloadURL(snapshot.ref);
+      return downloadUrl;
+    } catch (err) {
+      console.warn('Firebase storage media upload fallback to DataURL:', err);
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = (error) => reject(error);
+        reader.readAsDataURL(file);
+      });
+    }
+  };
+
   const seedInitialProductsToFirestore = async () => {
     // Purge any legacy demo products from Firestore & local state
     for (const demoId of DEMO_PRODUCT_IDS) {
@@ -705,6 +743,7 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
         deleteProduct,
         updateSiteContent,
         uploadImage,
+        uploadMedia,
         seedInitialProductsToFirestore,
         createOrder,
         updateOrderStatus,

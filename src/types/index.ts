@@ -68,6 +68,20 @@ export interface Order {
   createdAt: any;
 }
 
+export interface SplashScreenConfig {
+  enabled: boolean;
+  mediaType: 'video' | 'gif' | 'lottie';
+  mediaUrl: string;
+  lottieData?: string;
+  duration?: number; // duration in seconds
+  autoDismiss?: boolean;
+  showSkipButton?: boolean;
+  title?: string;
+  subtitle?: string;
+  backgroundColor?: string;
+  showOncePerSession?: boolean;
+}
+
 export interface SiteContent {
   announcementText?: string;
   heroTagline?: string;
@@ -87,4 +101,5 @@ export interface SiteContent {
   craftsmanshipTitle?: string;
   craftsmanshipText?: string;
   fabricItems?: Array<{ title: string; desc: string; img: string }>;
+  splashScreen?: SplashScreenConfig;
 }

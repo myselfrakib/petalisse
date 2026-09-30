@@ -1,12 +1,14 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useContent } from '../context/ContentContext';
-import { Product, SiteContent, Order } from '../types';
+import { Product, SiteContent, Order, SplashScreenConfig } from '../types';
 import { CATEGORIES } from '../data/products';
 import { collection, getDocs, updateDoc, doc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { Link, Navigate } from 'react-router';
 import { getColorHex, SUGGESTED_COLORS } from '../lib/colorUtils';
+import { SplashScreen } from '../components/SplashScreen';
+import { ImageCropModal } from '../components/ImageCropModal';
 
 export const ALL_COLLECTION_TEMPLATES = [
   { key: 'Mobile Charms', label: 'Mobile Charms', defaultImg: '/figma-assets/2416c5a3da640dcea42f85f7a71067eac0c58ca9.png' },
@@ -17,6 +19,76 @@ export const ALL_COLLECTION_TEMPLATES = [
   { key: 'Desk & Room Decor', label: 'Desk & Room Decor', defaultImg: '/figma-assets/e8a9f4c7977ea3291af5fdf421b0c3f7801f21ed.png' },
   { key: 'Cute Functional Things', label: 'Cute Functional Things', defaultImg: '/figma-assets/a53065cbd3c94f32f92edb4e749a2fac1e370cbe.png' },
 ];
+
+const LottiePreview: React.FC<{ mediaUrl?: string; lottieData?: string }> = ({ mediaUrl, lottieData }) => {
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    let anim: any = null;
+    let isCancelled = false;
+
+    const init = async () => {
+      try {
+        let lottie = (window as any).lottie;
+        if (!lottie) {
+          await new Promise<void>((resolve, reject) => {
+            const existing = document.querySelector('script[src*="lottie-web"]');
+            if (existing) {
+              existing.addEventListener('load', () => resolve());
+              return;
+            }
+            const script = document.createElement('script');
+            script.src = 'https://cdnjs.cloudflare.com/ajax/libs/lottie-web/5.12.2/lottie.min.js';
+            script.async = true;
+            script.onload = () => resolve();
+            script.onerror = reject;
+            document.head.appendChild(script);
+          });
+          lottie = (window as any).lottie;
+        }
+
+        if (isCancelled || !containerRef.current || !lottie) return;
+        containerRef.current.innerHTML = '';
+
+        let animData: any = undefined;
+        let animPath: string | undefined = undefined;
+
+        if (lottieData) {
+          try {
+            animData = typeof lottieData === 'string' ? JSON.parse(lottieData) : lottieData;
+          } catch {
+            animPath = mediaUrl;
+          }
+        } else {
+          animPath = mediaUrl;
+        }
+
+        anim = lottie.loadAnimation({
+          container: containerRef.current,
+          renderer: 'svg',
+          loop: true,
+          autoplay: true,
+          ...(animData ? { animationData: animData } : { path: animPath }),
+        });
+      } catch (e) {
+        console.warn('Lottie preview err:', e);
+      }
+    };
+
+    init();
+
+    return () => {
+      isCancelled = true;
+      if (anim) {
+        try {
+          anim.destroy();
+        } catch {}
+      }
+    };
+  }, [mediaUrl, lottieData]);
+
+  return <div ref={containerRef} className="size-full flex items-center justify-center" />;
+};
 
 export const AdminPage: React.FC = () => {
   const { 
@@ -39,6 +111,7 @@ export const AdminPage: React.FC = () => {
     deleteProduct, 
     updateSiteContent, 
     uploadImage, 
+    uploadMedia,
     updateOrderStatus,
     deleteOrder,
     toggleProductFavorite,
@@ -47,10 +120,10 @@ export const AdminPage: React.FC = () => {
 
 
   // Dashboard Active Tab (persisted across refreshes)
-  const [activeTab, setActiveTab] = useState<'products' | 'cms' | 'orders' | 'admins'>(() => {
+  const [activeTab, setActiveTab] = useState<'products' | 'cms' | 'orders' | 'admins' | 'splash'>(() => {
     try {
       const saved = localStorage.getItem('petalisse_admin_tab');
-      if (saved === 'products' || saved === 'cms' || saved === 'orders' || saved === 'admins') {
+      if (saved === 'products' || saved === 'cms' || saved === 'orders' || saved === 'admins' || saved === 'splash') {
         return saved;
       }
     } catch {}
@@ -62,6 +135,180 @@ export const AdminPage: React.FC = () => {
       localStorage.setItem('petalisse_admin_tab', activeTab);
     } catch {}
   }, [activeTab]);
+
+  // Splash Screen Tab State
+  const [splashConfig, setSplashConfig] = useState<SplashScreenConfig>(() => {
+    return siteContent.splashScreen || {
+      enabled: false,
+      mediaType: 'gif',
+      mediaUrl: '',
+      lottieData: '',
+      duration: 3.5,
+      autoDismiss: true,
+      showSkipButton: true,
+      title: 'Petalisse',
+      subtitle: 'Handcrafted Charms & Keepsakes',
+      backgroundColor: '#FDFBF7',
+      showOncePerSession: true,
+    };
+  });
+
+  const [savingSplash, setSavingSplash] = useState(false);
+  const [splashSaveMsg, setSplashSaveMsg] = useState<string | null>(null);
+  const [uploadingSplashMedia, setUploadingSplashMedia] = useState(false);
+  const [testingSplash, setTestingSplash] = useState(false);
+  const [jsonInputOpen, setJsonInputOpen] = useState(false);
+
+  // Sync state if siteContent.splashScreen updates from Firestore/broadcast
+  useEffect(() => {
+    if (siteContent.splashScreen) {
+      setSplashConfig((prev) => ({
+        ...siteContent.splashScreen!,
+        ...prev,
+      }));
+    }
+  }, [siteContent.splashScreen]);
+
+  const handleSplashMediaUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadingSplashMedia(true);
+    setSplashSaveMsg(null);
+
+    try {
+      // 1. Lottie JSON File
+      if (file.name.endsWith('.json') || file.type === 'application/json') {
+        const text = await file.text();
+        try {
+          JSON.parse(text);
+        } catch {
+          throw new Error('The selected file is not valid JSON format.');
+        }
+
+        const uploadedUrl = await uploadMedia(file, 'splash');
+        setSplashConfig((prev) => ({
+          ...prev,
+          mediaType: 'lottie',
+          mediaUrl: uploadedUrl,
+          lottieData: text,
+        }));
+      } else if (file.type.startsWith('video/')) {
+        // 2. Video file (.mp4, .webm, .mov)
+        const uploadedUrl = await uploadMedia(file, 'splash');
+        setSplashConfig((prev) => ({
+          ...prev,
+          mediaType: 'video',
+          mediaUrl: uploadedUrl,
+        }));
+      } else {
+        // 3. GIF / Image file
+        const uploadedUrl = await uploadMedia(file, 'splash');
+        setSplashConfig((prev) => ({
+          ...prev,
+          mediaType: 'gif',
+          mediaUrl: uploadedUrl,
+        }));
+      }
+      setSplashSaveMsg('Media uploaded successfully! Click "Save Splash Screen" to apply changes.');
+    } catch (err: any) {
+      alert('Upload failed: ' + (err.message || 'Unknown error'));
+    } finally {
+      setUploadingSplashMedia(false);
+      e.target.value = '';
+    }
+  };
+
+  const handleSaveSplashSettings = async (override?: Partial<SplashScreenConfig>) => {
+    const toSave = { ...splashConfig, ...override };
+    setSavingSplash(true);
+    setSplashSaveMsg(null);
+    try {
+      await updateSiteContent({ splashScreen: toSave });
+      setSplashSaveMsg('Splash screen settings saved and broadcast live!');
+      setTimeout(() => setSplashSaveMsg(null), 4000);
+    } catch (err: any) {
+      alert('Failed to save splash screen settings: ' + err.message);
+    } finally {
+      setSavingSplash(false);
+    }
+  };
+
+  const applySplashPreset = (presetType: 'lottie' | 'gif' | 'video') => {
+    if (presetType === 'lottie') {
+      setSplashConfig((prev) => ({
+        ...prev,
+        mediaType: 'lottie',
+        mediaUrl: 'https://assets2.lottiefiles.com/packages/lf20_5njp3vgg.json',
+        lottieData: '',
+        title: 'Petalisse',
+        subtitle: 'Handcrafted Charms & Keepsakes',
+        duration: 3.5,
+        backgroundColor: '#FDFBF7',
+      }));
+    } else if (presetType === 'gif') {
+      setSplashConfig((prev) => ({
+        ...prev,
+        mediaType: 'gif',
+        mediaUrl: 'https://media.giphy.com/media/26AHONQ79FdWZhAI0/giphy.gif',
+        title: 'Petalisse Atelier',
+        subtitle: 'Slow Crafts & Delicate Charms',
+        duration: 3.5,
+        backgroundColor: '#FDFBF7',
+      }));
+    } else if (presetType === 'video') {
+      setSplashConfig((prev) => ({
+        ...prev,
+        mediaType: 'video',
+        mediaUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
+        title: 'Petalisse Boutique',
+        subtitle: 'Opening Collection',
+        duration: 4,
+        backgroundColor: '#FAF0ED',
+      }));
+    }
+  };
+
+  // Unified Interactive Crop Queue State for All Photo Uploads
+  interface ActiveCropSession {
+    file: File;
+    dataUrl: string;
+    title: string;
+    defaultAspectRatio: number;
+    aspectRatioLabel: string;
+    onConfirm: (croppedFile: File) => Promise<void>;
+    onSkip?: (originalFile: File) => Promise<void>;
+  }
+
+  const [cropQueue, setCropQueue] = useState<ActiveCropSession[]>([]);
+  const [cropTotalCount, setCropTotalCount] = useState(1);
+  const [cropCurrentIndex, setCropCurrentIndex] = useState(1);
+  const currentCropItem = cropQueue[0] || null;
+
+  const handleAdvanceCropQueue = async (croppedFile: File) => {
+    if (!currentCropItem) return;
+    const item = currentCropItem;
+    URL.revokeObjectURL(item.dataUrl);
+    await item.onConfirm(croppedFile);
+    setCropQueue((prev) => prev.slice(1));
+    setCropCurrentIndex((prev) => prev + 1);
+  };
+
+  const handleSkipCurrentCrop = async () => {
+    if (!currentCropItem) return;
+    const item = currentCropItem;
+    URL.revokeObjectURL(item.dataUrl);
+    if (item.onSkip) {
+      await item.onSkip(item.file);
+    }
+    setCropQueue((prev) => prev.slice(1));
+    setCropCurrentIndex((prev) => prev + 1);
+  };
+
+  const handleCancelCropQueue = () => {
+    cropQueue.forEach((item) => URL.revokeObjectURL(item.dataUrl));
+    setCropQueue([]);
+  };
 
   // Product Form State
   const [editingProductId, setEditingProductId] = useState<string | null>(null);
@@ -352,24 +599,55 @@ export const AdminPage: React.FC = () => {
     }));
   };
 
-  const handleCollectionCoverUpload = async (category: string, e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleCollectionCoverUpload = (category: string, e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    setUploadingCollectionCover(category);
-    try {
-      const url = await uploadImage(file, 'collections');
-      setCmsContent((prev) => ({
-        ...prev,
-        collectionCovers: {
-          ...(prev.collectionCovers || {}),
-          [category]: url,
-        },
-      }));
-    } catch (err: any) {
-      alert('Cover upload failed: ' + err.message);
-    } finally {
-      setUploadingCollectionCover(null);
-    }
+    const dataUrl = URL.createObjectURL(file);
+
+    setCropQueue([{
+      file,
+      dataUrl,
+      title: `Crop ${category} Cover Photo`,
+      defaultAspectRatio: 1, // 1:1 Square
+      aspectRatioLabel: '1:1 Square (Collection Cover)',
+      onConfirm: async (croppedFile) => {
+        setUploadingCollectionCover(category);
+        try {
+          const url = await uploadImage(croppedFile, 'collections');
+          setCmsContent((prev) => ({
+            ...prev,
+            collectionCovers: {
+              ...(prev.collectionCovers || {}),
+              [category]: url,
+            },
+          }));
+        } catch (err: any) {
+          alert('Cover upload failed: ' + err.message);
+        } finally {
+          setUploadingCollectionCover(null);
+        }
+      },
+      onSkip: async (originalFile) => {
+        setUploadingCollectionCover(category);
+        try {
+          const url = await uploadImage(originalFile, 'collections');
+          setCmsContent((prev) => ({
+            ...prev,
+            collectionCovers: {
+              ...(prev.collectionCovers || {}),
+              [category]: url,
+            },
+          }));
+        } catch (err: any) {
+          alert('Cover upload failed: ' + err.message);
+        } finally {
+          setUploadingCollectionCover(null);
+        }
+      },
+    }]);
+    setCropTotalCount(1);
+    setCropCurrentIndex(1);
+    e.target.value = '';
   };
 
   // Best Sellers sequence and selection handlers
@@ -428,7 +706,7 @@ export const AdminPage: React.FC = () => {
 
   const handleToggleFeaturedInCms = handleToggleBestSeller;
 
-  const handleProductImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleProductImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
@@ -440,29 +718,57 @@ export const AdminPage: React.FC = () => {
     }
 
     const selectedFiles = Array.from(files).slice(0, remainingSlots);
-    setUploadingImage(true);
-    setUploadingImagesCount(selectedFiles.length);
-
-    try {
-      const uploadedUrls: string[] = [];
-      for (const file of selectedFiles) {
-        const url = await uploadImage(file, 'products');
-        if (url) uploadedUrls.push(url);
-      }
-      setProdImages((prev) => {
-        const combined = [...prev, ...uploadedUrls].slice(0, 5);
-        if (combined.length > 0) {
-          setProdImgUrl(combined[0]);
+    const sessions: ActiveCropSession[] = selectedFiles.map((file, idx) => ({
+      file,
+      dataUrl: URL.createObjectURL(file),
+      title: 'Crop & Preview Product Photo',
+      defaultAspectRatio: 1, // 1:1 Square matching product display ratio
+      aspectRatioLabel: '1:1 Square (Product Photo)',
+      onConfirm: async (croppedFile) => {
+        setUploadingImage(true);
+        setUploadingImagesCount((prev) => Math.max(0, prev - 1));
+        try {
+          const url = await uploadImage(croppedFile, 'products');
+          if (url) {
+            setProdImages((prev) => {
+              const combined = [...prev, url].slice(0, 5);
+              if (combined.length > 0) {
+                setProdImgUrl(combined[0]);
+              }
+              return combined;
+            });
+          }
+        } catch (err: any) {
+          alert('Upload failed: ' + err.message);
+        } finally {
+          setUploadingImage(false);
         }
-        return combined;
-      });
-    } catch (err: any) {
-      alert('Upload failed: ' + err.message);
-    } finally {
-      setUploadingImage(false);
-      setUploadingImagesCount(0);
-      e.target.value = '';
-    }
+      },
+      onSkip: async (originalFile) => {
+        setUploadingImage(true);
+        try {
+          const url = await uploadImage(originalFile, 'products');
+          if (url) {
+            setProdImages((prev) => {
+              const combined = [...prev, url].slice(0, 5);
+              if (combined.length > 0) {
+                setProdImgUrl(combined[0]);
+              }
+              return combined;
+            });
+          }
+        } catch (err: any) {
+          alert('Upload failed: ' + err.message);
+        } finally {
+          setUploadingImage(false);
+        }
+      },
+    }));
+
+    setCropTotalCount(sessions.length);
+    setCropCurrentIndex(1);
+    setCropQueue(sessions);
+    e.target.value = '';
   };
 
   const handleAddImageUrl = () => {
@@ -501,46 +807,121 @@ export const AdminPage: React.FC = () => {
     });
   };
 
-  const handleHeroImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleHeroImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    setUploadingHeroImg(true);
-    try {
-      const url = await uploadImage(file, 'site');
-      setCmsContent((prev) => ({ ...prev, heroBannerUrl: url }));
-    } catch (err: any) {
-      alert('Upload failed: ' + err.message);
-    } finally {
-      setUploadingHeroImg(false);
-    }
+    const dataUrl = URL.createObjectURL(file);
+
+    setCropQueue([{
+      file,
+      dataUrl,
+      title: 'Crop & Preview Hero Banner Photo',
+      defaultAspectRatio: 16 / 9, // 16:9 Banner ratio
+      aspectRatioLabel: '16:9 Banner (Hero Banner)',
+      onConfirm: async (croppedFile) => {
+        setUploadingHeroImg(true);
+        try {
+          const url = await uploadImage(croppedFile, 'site');
+          setCmsContent((prev) => ({ ...prev, heroBannerUrl: url }));
+        } catch (err: any) {
+          alert('Upload failed: ' + err.message);
+        } finally {
+          setUploadingHeroImg(false);
+        }
+      },
+      onSkip: async (originalFile) => {
+        setUploadingHeroImg(true);
+        try {
+          const url = await uploadImage(originalFile, 'site');
+          setCmsContent((prev) => ({ ...prev, heroBannerUrl: url }));
+        } catch (err: any) {
+          alert('Upload failed: ' + err.message);
+        } finally {
+          setUploadingHeroImg(false);
+        }
+      },
+    }]);
+    setCropTotalCount(1);
+    setCropCurrentIndex(1);
+    e.target.value = '';
   };
 
-  const handlePromoImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePromoImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    setUploadingPromoImg(true);
-    try {
-      const url = await uploadImage(file, 'site');
-      setCmsContent((prev) => ({ ...prev, promoBannerUrl: url }));
-    } catch (err: any) {
-      alert('Upload failed: ' + err.message);
-    } finally {
-      setUploadingPromoImg(false);
-    }
+    const dataUrl = URL.createObjectURL(file);
+
+    setCropQueue([{
+      file,
+      dataUrl,
+      title: 'Crop & Preview Promo Story Cover',
+      defaultAspectRatio: 16 / 9, // 16:9 Banner ratio
+      aspectRatioLabel: '16:9 Banner (Promo Story)',
+      onConfirm: async (croppedFile) => {
+        setUploadingPromoImg(true);
+        try {
+          const url = await uploadImage(croppedFile, 'site');
+          setCmsContent((prev) => ({ ...prev, promoBannerUrl: url }));
+        } catch (err: any) {
+          alert('Upload failed: ' + err.message);
+        } finally {
+          setUploadingPromoImg(false);
+        }
+      },
+      onSkip: async (originalFile) => {
+        setUploadingPromoImg(true);
+        try {
+          const url = await uploadImage(originalFile, 'site');
+          setCmsContent((prev) => ({ ...prev, promoBannerUrl: url }));
+        } catch (err: any) {
+          alert('Upload failed: ' + err.message);
+        } finally {
+          setUploadingPromoImg(false);
+        }
+      },
+    }]);
+    setCropTotalCount(1);
+    setCropCurrentIndex(1);
+    e.target.value = '';
   };
 
-  const handleAboutImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAboutImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    setUploadingAboutImg(true);
-    try {
-      const url = await uploadImage(file, 'site');
-      setCmsContent((prev) => ({ ...prev, aboutImageUrl: url }));
-    } catch (err: any) {
-      alert('Upload failed: ' + err.message);
-    } finally {
-      setUploadingAboutImg(false);
-    }
+    const dataUrl = URL.createObjectURL(file);
+
+    setCropQueue([{
+      file,
+      dataUrl,
+      title: 'Crop & Preview Atelier Image',
+      defaultAspectRatio: 4 / 3, // 4:3 Ratio for about section
+      aspectRatioLabel: '4:3 Classic (About Atelier)',
+      onConfirm: async (croppedFile) => {
+        setUploadingAboutImg(true);
+        try {
+          const url = await uploadImage(croppedFile, 'site');
+          setCmsContent((prev) => ({ ...prev, aboutImageUrl: url }));
+        } catch (err: any) {
+          alert('Upload failed: ' + err.message);
+        } finally {
+          setUploadingAboutImg(false);
+        }
+      },
+      onSkip: async (originalFile) => {
+        setUploadingAboutImg(true);
+        try {
+          const url = await uploadImage(originalFile, 'site');
+          setCmsContent((prev) => ({ ...prev, aboutImageUrl: url }));
+        } catch (err: any) {
+          alert('Upload failed: ' + err.message);
+        } finally {
+          setUploadingAboutImg(false);
+        }
+      },
+    }]);
+    setCropTotalCount(1);
+    setCropCurrentIndex(1);
+    e.target.value = '';
   };
 
   const handleSaveCMS = async (e: React.FormEvent) => {
@@ -773,6 +1154,20 @@ export const AdminPage: React.FC = () => {
             }`}
           >
             Site CMS & Imagery
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('splash')}
+            className={`py-3 px-4 text-xs font-medium uppercase tracking-wider border-b-2 cursor-pointer transition shrink-0 flex items-center gap-1.5 ${
+              activeTab === 'splash'
+                ? 'border-[#8E5B59] text-[#8E5B59] font-bold'
+                : 'border-transparent text-[#786F66] hover:text-[#2C2724]'
+            }`}
+          >
+            <span>Splash Screen</span>
+            {siteContent.splashScreen?.enabled && (
+              <span className="size-2 rounded-full bg-emerald-500 animate-pulse" title="Splash screen is active" />
+            )}
           </button>
           <button
             type="button"
@@ -1715,6 +2110,55 @@ export const AdminPage: React.FC = () => {
                     className="w-full px-3.5 py-2 rounded-xl border border-[#DED5C9] bg-white text-sm text-[#2C2724] focus:outline-hidden focus:border-[#8E5B59]"
                   />
                 </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-[#4A423B] mb-1">
+                    Hero Banner Photo (16:9 Aspect Ratio)
+                  </label>
+                  <div className="flex gap-2 mb-2">
+                    <label className="cursor-pointer px-3 py-2 rounded-xl bg-white border border-[#DED5C9] text-xs font-medium text-[#4A423B] hover:bg-[#F3EDE2] transition inline-flex items-center gap-1.5">
+                      <svg className="w-4 h-4 text-[#8E5B59]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                      <span>{uploadingHeroImg ? 'Optimizing...' : 'Upload & Crop Banner'}</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleHeroImageUpload}
+                        disabled={uploadingHeroImg}
+                        className="hidden"
+                      />
+                    </label>
+
+                    <input
+                      type="text"
+                      value={cmsContent.heroBannerUrl || ''}
+                      onChange={(e) => setCmsContent({ ...cmsContent, heroBannerUrl: e.target.value })}
+                      placeholder="Or paste banner image URL"
+                      className="flex-1 px-3.5 py-2 rounded-xl border border-[#DED5C9] bg-white text-xs text-[#2C2724] focus:outline-hidden focus:border-[#8E5B59]"
+                    />
+
+                    {cmsContent.heroBannerUrl && (
+                      <button
+                        type="button"
+                        onClick={() => setCmsContent((prev) => ({ ...prev, heroBannerUrl: '' }))}
+                        className="px-3 py-2 rounded-xl border border-[#DED5C9] bg-white text-xs text-[#A89E94] hover:text-[#8E5B59] hover:bg-[#FAF0ED] transition cursor-pointer"
+                      >
+                        Clear
+                      </button>
+                    )}
+                  </div>
+
+                  {cmsContent.heroBannerUrl && (
+                    <div className="h-32 max-w-md rounded-xl border border-[#E8E0D5] overflow-hidden bg-white shadow-2xs">
+                      <img
+                        src={cmsContent.heroBannerUrl}
+                        alt="Hero Banner Preview"
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                  )}
+                </div>
               </div>
 
               {/* 1. Our Collections Sequence & Cover Photos Section */}
@@ -2387,6 +2831,510 @@ export const AdminPage: React.FC = () => {
               )}
             </div>
           </div>
+        )}
+
+        {/* ── 5. SPLASH SCREEN SETTINGS PANEL ── */}
+        {activeTab === 'splash' && (
+          <div className="space-y-8 animate-fadeIn">
+            {/* Top Info Bar */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-[#FAF7F2] rounded-2xl border border-[#E8E0D5] p-6 shadow-sm">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xl">🎬</span>
+                  <h2 className="text-xl font-serif text-[#2C2724] font-medium">
+                    Storefront Splash Screen
+                  </h2>
+                  <span
+                    className={`px-2.5 py-0.5 rounded-full text-[11px] font-semibold tracking-wide border ${
+                      splashConfig.enabled
+                        ? 'bg-[#F0FDF4] text-[#166534] border-[#BBF7D0]'
+                        : 'bg-[#FAF0ED] text-[#9E3E2B] border-[#E8C5B8]'
+                    }`}
+                  >
+                    {splashConfig.enabled ? '● Active on Site' : '○ Disabled'}
+                  </span>
+                </div>
+                <p className="text-xs text-[#786F66] mt-1 max-w-xl">
+                  Display an animated welcome screen (video, animated GIF, or Lottie animation) when visitors first open the boutique website.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-3 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setTestingSplash(true)}
+                  className="px-4 py-2.5 rounded-xl border border-[#DED5C9] bg-white hover:bg-[#F3EDE2] text-[#5C534B] text-xs font-medium transition cursor-pointer flex items-center gap-1.5 shadow-2xs"
+                  title="Test full-screen splash animation"
+                >
+                  <span>👁️</span>
+                  <span>Preview Splash</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleSaveSplashSettings()}
+                  disabled={savingSplash}
+                  className="px-5 py-2.5 rounded-xl bg-[#8E5B59] hover:bg-[#784A48] text-white text-xs font-medium tracking-wide transition shadow-xs cursor-pointer flex items-center gap-2 disabled:opacity-60"
+                >
+                  {savingSplash && (
+                    <span className="size-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  )}
+                  <span>Save Splash Screen</span>
+                </button>
+              </div>
+            </div>
+
+            {splashSaveMsg && (
+              <div className="p-4 rounded-xl bg-[#F0FDF4] border border-[#BBF7D0] text-[#166534] text-xs flex items-center justify-between shadow-2xs animate-fadeIn">
+                <div className="flex items-center gap-2">
+                  <svg className="size-4 shrink-0 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                  <span>{splashSaveMsg}</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setSplashSaveMsg(null)}
+                  className="text-emerald-700 hover:opacity-75 text-xs font-bold cursor-pointer"
+                >
+                  ✕
+                </button>
+              </div>
+            )}
+
+            {/* Main Configuration Grid */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+              {/* Left Column: Media & Upload Options (7 cols) */}
+              <div className="lg:col-span-7 space-y-6">
+                {/* 1. Media Type & Upload Card */}
+                <div className="bg-[#FAF7F2] rounded-2xl border border-[#E8E0D5] p-6 shadow-sm space-y-5">
+                  <h3 className="text-base font-serif text-[#2C2724] font-medium border-b border-[#EAE3D8] pb-3">
+                    1. Animation Media
+                  </h3>
+
+                  {/* Media Type Selector */}
+                  <div>
+                    <label className="block text-xs font-medium text-[#4A423B] mb-2">
+                      Choose Media Format
+                    </label>
+                    <div className="grid grid-cols-3 gap-2.5">
+                      {[
+                        { type: 'video' as const, label: 'Video', icon: '🎬', desc: '.mp4, .webm' },
+                        { type: 'gif' as const, label: 'GIF / Image', icon: '🖼️', desc: '.gif, .webp' },
+                        { type: 'lottie' as const, label: 'Lottie File', icon: '✨', desc: '.json animation' },
+                      ].map((item) => (
+                        <button
+                          key={item.type}
+                          type="button"
+                          onClick={() => setSplashConfig((prev) => ({ ...prev, mediaType: item.type }))}
+                          className={`p-3 rounded-xl border text-left cursor-pointer transition ${
+                            splashConfig.mediaType === item.type
+                              ? 'border-[#8E5B59] bg-[#FAF0ED] text-[#8E5B59] shadow-xs'
+                              : 'border-[#DED5C9] bg-white text-[#786F66] hover:bg-[#FAF7F2]'
+                          }`}
+                        >
+                          <div className="text-lg mb-1">{item.icon}</div>
+                          <div className="font-semibold text-xs text-[#2C2724]">{item.label}</div>
+                          <div className="text-[10px] text-[#8C827A]">{item.desc}</div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Upload Dropzone */}
+                  <div>
+                    <label className="block text-xs font-medium text-[#4A423B] mb-2">
+                      Upload File ({splashConfig.mediaType === 'video' ? 'Video (.mp4, .webm)' : splashConfig.mediaType === 'gif' ? 'Animated GIF (.gif)' : 'Lottie Animation (.json)'})
+                    </label>
+                    <div className="border-2 border-dashed border-[#DED5C9] hover:border-[#8E5B59] bg-white/70 hover:bg-white rounded-2xl p-6 text-center transition group relative">
+                      <input
+                        type="file"
+                        accept="video/mp4,video/webm,video/ogg,image/gif,image/png,image/webp,application/json,.json"
+                        onChange={handleSplashMediaUpload}
+                        disabled={uploadingSplashMedia}
+                        className="absolute inset-0 size-full opacity-0 cursor-pointer z-10"
+                      />
+                      <div className="flex flex-col items-center justify-center gap-2">
+                        <div className="size-12 rounded-full bg-[#FAF0ED] text-[#8E5B59] flex items-center justify-center text-xl group-hover:scale-105 transition-transform">
+                          {uploadingSplashMedia ? '⏳' : '📁'}
+                        </div>
+                        {uploadingSplashMedia ? (
+                          <div className="space-y-1">
+                            <p className="text-xs font-medium text-[#8E5B59] animate-pulse">
+                              Uploading & processing media...
+                            </p>
+                            <p className="text-[10px] text-[#8C827A]">Please wait a moment</p>
+                          </div>
+                        ) : (
+                          <div className="space-y-1">
+                            <p className="text-xs font-medium text-[#2C2724]">
+                              <span className="text-[#8E5B59] underline">Click to upload</span> or drag and drop
+                            </p>
+                            <p className="text-[11px] text-[#8C827A]">
+                              Supports MP4, WebM, GIF, or Lottie JSON files
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Media URL Input */}
+                  <div>
+                    <label className="block text-xs font-medium text-[#4A423B] mb-1">
+                      Or Direct Media URL
+                    </label>
+                    <input
+                      type="url"
+                      value={splashConfig.mediaUrl}
+                      onChange={(e) => setSplashConfig((prev) => ({ ...prev, mediaUrl: e.target.value }))}
+                      placeholder={
+                        splashConfig.mediaType === 'video'
+                          ? 'https://example.com/splash-video.mp4'
+                          : splashConfig.mediaType === 'gif'
+                          ? 'https://example.com/animation.gif'
+                          : 'https://assets.lottiefiles.com/animation.json'
+                      }
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-[#DED5C9] bg-white text-xs text-[#2C2724] placeholder-[#A89E94] focus:outline-hidden focus:border-[#8E5B59] transition"
+                    />
+                  </div>
+
+                  {/* Lottie Raw JSON Input (optional toggle) */}
+                  {splashConfig.mediaType === 'lottie' && (
+                    <div className="pt-2 border-t border-[#EAE3D8]">
+                      <button
+                        type="button"
+                        onClick={() => setJsonInputOpen(!jsonInputOpen)}
+                        className="text-xs text-[#8E5B59] hover:underline flex items-center gap-1 cursor-pointer font-medium"
+                      >
+                        <span>{jsonInputOpen ? '▼ Hide' : '▶ Paste Raw Lottie JSON Code'}</span>
+                      </button>
+                      {jsonInputOpen && (
+                        <div className="mt-2.5 space-y-1">
+                          <textarea
+                            rows={4}
+                            value={splashConfig.lottieData || ''}
+                            onChange={(e) => setSplashConfig((prev) => ({ ...prev, lottieData: e.target.value }))}
+                            placeholder='{"v":"5.7.4","fr":30,"ip":0,"op":60,"w":500,"h":500,"layers":[...]}'
+                            className="w-full p-3 font-mono text-[11px] rounded-xl border border-[#DED5C9] bg-white text-[#2C2724] focus:outline-hidden focus:border-[#8E5B59]"
+                          />
+                          <p className="text-[10px] text-[#8C827A]">
+                            Paste valid Lottie JSON exported from Adobe After Effects / Bodymovin or LottieFiles.
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Ready-to-use Sample Presets */}
+                  <div className="pt-4 border-t border-[#EAE3D8]">
+                    <span className="text-[11px] font-semibold text-[#6D635B] uppercase tracking-wider block mb-2">
+                      Quick Sample Presets (Click to Load)
+                    </span>
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={() => applySplashPreset('lottie')}
+                        className="px-3 py-1.5 rounded-lg border border-[#DED5C9] bg-white hover:bg-[#FAF0ED] text-[11px] text-[#5C534B] hover:text-[#8E5B59] font-medium transition cursor-pointer flex items-center gap-1"
+                      >
+                        <span>✨</span>
+                        <span>Sparkling Heart (Lottie)</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => applySplashPreset('gif')}
+                        className="px-3 py-1.5 rounded-lg border border-[#DED5C9] bg-white hover:bg-[#FAF0ED] text-[11px] text-[#5C534B] hover:text-[#8E5B59] font-medium transition cursor-pointer flex items-center gap-1"
+                      >
+                        <span>🌸</span>
+                        <span>Blooming Rose (GIF)</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => applySplashPreset('video')}
+                        className="px-3 py-1.5 rounded-lg border border-[#DED5C9] bg-white hover:bg-[#FAF0ED] text-[11px] text-[#5C534B] hover:text-[#8E5B59] font-medium transition cursor-pointer flex items-center gap-1"
+                      >
+                        <span>🎬</span>
+                        <span>Atelier Video</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 2. Display & Branding Customization */}
+                <div className="bg-[#FAF7F2] rounded-2xl border border-[#E8E0D5] p-6 shadow-sm space-y-4">
+                  <h3 className="text-base font-serif text-[#2C2724] font-medium border-b border-[#EAE3D8] pb-3">
+                    2. Branding & Display Behavior
+                  </h3>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-medium text-[#4A423B] mb-1">
+                        Brand Title
+                      </label>
+                      <input
+                        type="text"
+                        value={splashConfig.title || ''}
+                        onChange={(e) => setSplashConfig((prev) => ({ ...prev, title: e.target.value }))}
+                        placeholder="Petalisse"
+                        className="w-full px-3 py-2 rounded-xl border border-[#DED5C9] bg-white text-xs text-[#2C2724] focus:outline-hidden focus:border-[#8E5B59]"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-[#4A423B] mb-1">
+                        Tagline / Subtitle
+                      </label>
+                      <input
+                        type="text"
+                        value={splashConfig.subtitle || ''}
+                        onChange={(e) => setSplashConfig((prev) => ({ ...prev, subtitle: e.target.value }))}
+                        placeholder="Handcrafted Charms & Keepsakes"
+                        className="w-full px-3 py-2 rounded-xl border border-[#DED5C9] bg-white text-xs text-[#2C2724] focus:outline-hidden focus:border-[#8E5B59]"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="flex justify-between items-center mb-1">
+                      <label className="text-xs font-medium text-[#4A423B]">
+                        Display Duration
+                      </label>
+                      <span className="text-xs font-bold font-mono text-[#8E5B59]">
+                        {splashConfig.duration || 3.5}s
+                      </span>
+                    </div>
+                    <input
+                      type="range"
+                      min="1.5"
+                      max="8"
+                      step="0.5"
+                      value={splashConfig.duration || 3.5}
+                      onChange={(e) => setSplashConfig((prev) => ({ ...prev, duration: parseFloat(e.target.value) }))}
+                      className="w-full accent-[#8E5B59] cursor-pointer"
+                    />
+                    <div className="flex justify-between text-[10px] text-[#8C827A]">
+                      <span>1.5s (Quick)</span>
+                      <span>3.5s (Recommended)</span>
+                      <span>8.0s (Showcase)</span>
+                    </div>
+                  </div>
+
+                  {/* Background Color */}
+                  <div>
+                    <label className="block text-xs font-medium text-[#4A423B] mb-1.5">
+                      Splash Background Color
+                    </label>
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="color"
+                        value={splashConfig.backgroundColor || '#FDFBF7'}
+                        onChange={(e) => setSplashConfig((prev) => ({ ...prev, backgroundColor: e.target.value }))}
+                        className="size-9 rounded-lg border border-[#DED5C9] cursor-pointer"
+                      />
+                      <input
+                        type="text"
+                        value={splashConfig.backgroundColor || '#FDFBF7'}
+                        onChange={(e) => setSplashConfig((prev) => ({ ...prev, backgroundColor: e.target.value }))}
+                        className="w-28 px-2.5 py-1.5 font-mono text-xs rounded-lg border border-[#DED5C9] bg-white text-[#2C2724]"
+                      />
+                      <div className="flex gap-1.5">
+                        {[
+                          { color: '#FDFBF7', label: 'Cream' },
+                          { color: '#FAF0ED', label: 'Blush' },
+                          { color: '#FFFFFF', label: 'White' },
+                          { color: '#1E1A18', label: 'Noir' },
+                        ].map((sw) => (
+                          <button
+                            key={sw.color}
+                            type="button"
+                            onClick={() => setSplashConfig((prev) => ({ ...prev, backgroundColor: sw.color }))}
+                            className="size-7 rounded-md border border-black/10 cursor-pointer shadow-2xs hover:scale-110 transition-transform"
+                            style={{ backgroundColor: sw.color }}
+                            title={sw.label}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Behavior Checkboxes */}
+                  <div className="pt-3 border-t border-[#EAE3D8] space-y-2.5">
+                    <label className="flex items-center gap-2.5 text-xs text-[#2C2724] cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={splashConfig.showOncePerSession !== false}
+                        onChange={(e) => setSplashConfig((prev) => ({ ...prev, showOncePerSession: e.target.checked }))}
+                        className="size-4 accent-[#8E5B59] rounded"
+                      />
+                      <span>
+                        <strong className="font-medium">Show only once per visitor session</strong> (Recommended: ensures repeat page browsing is smooth)
+                      </span>
+                    </label>
+
+                    <label className="flex items-center gap-2.5 text-xs text-[#2C2724] cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={splashConfig.showSkipButton !== false}
+                        onChange={(e) => setSplashConfig((prev) => ({ ...prev, showSkipButton: e.target.checked }))}
+                        className="size-4 accent-[#8E5B59] rounded"
+                      />
+                      <span>Show &quot;Enter Boutique&quot; skip button</span>
+                    </label>
+
+                    <label className="flex items-center gap-2.5 text-xs text-[#2C2724] cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={splashConfig.autoDismiss !== false}
+                        onChange={(e) => setSplashConfig((prev) => ({ ...prev, autoDismiss: e.target.checked }))}
+                        className="size-4 accent-[#8E5B59] rounded"
+                      />
+                      <span>Auto-dismiss into storefront when timer finishes</span>
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+              {/* Right Column: Live Mini Preview Card (5 cols) */}
+              <div className="lg:col-span-5 space-y-6">
+                <div className="bg-[#FAF7F2] rounded-2xl border border-[#E8E0D5] p-6 shadow-sm">
+                  <div className="flex items-center justify-between border-b border-[#EAE3D8] pb-3 mb-4">
+                    <h3 className="text-base font-serif text-[#2C2724] font-medium">
+                      Live In-Panel Preview
+                    </h3>
+                    <button
+                      type="button"
+                      onClick={() => setTestingSplash(true)}
+                      className="text-xs text-[#8E5B59] hover:underline cursor-pointer font-medium"
+                    >
+                      Full-Screen Test &rarr;
+                    </button>
+                  </div>
+
+                  {/* Frame */}
+                  <div
+                    className="relative w-full aspect-4/5 rounded-2xl border border-black/10 overflow-hidden shadow-inner flex flex-col items-center justify-between p-6 transition-colors duration-300"
+                    style={{ backgroundColor: splashConfig.backgroundColor || '#FDFBF7' }}
+                  >
+                    {/* Mock Skip */}
+                    <div className="w-full flex justify-end">
+                      {splashConfig.showSkipButton !== false && (
+                        <span className="px-2.5 py-0.5 rounded-full bg-black/5 text-[9px] uppercase tracking-wider text-[#6B5F55] font-medium">
+                          Enter Boutique &rarr;
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Media Showcase */}
+                    <div className="size-44 flex items-center justify-center my-auto">
+                      {!splashConfig.mediaUrl && !splashConfig.lottieData ? (
+                        <div className="text-center p-4">
+                          <div className="text-2xl mb-1">🎬</div>
+                          <p className="text-[11px] text-[#8C827A]">
+                            No media uploaded yet. Upload a video, GIF, or Lottie animation to preview.
+                          </p>
+                        </div>
+                      ) : splashConfig.mediaType === 'video' ? (
+                        <video
+                          src={splashConfig.mediaUrl}
+                          autoPlay
+                          muted
+                          loop
+                          playsInline
+                          className="max-h-full max-w-full object-contain rounded-xl drop-shadow-sm"
+                        />
+                      ) : splashConfig.mediaType === 'gif' ? (
+                        <img
+                          src={splashConfig.mediaUrl}
+                          alt="Preview"
+                          className="max-h-full max-w-full object-contain rounded-xl drop-shadow-sm"
+                        />
+                      ) : (
+                        <div className="size-full flex items-center justify-center">
+                          <LottiePreview
+                            mediaUrl={splashConfig.mediaUrl}
+                            lottieData={splashConfig.lottieData}
+                          />
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Titles */}
+                    <div className="text-center w-full">
+                      {splashConfig.title && (
+                        <p className="font-['Parisienne'] text-2xl text-[#6B1A2A] leading-tight">
+                          {splashConfig.title}
+                        </p>
+                      )}
+                      {splashConfig.subtitle && (
+                        <p className="font-cormorant text-[10px] uppercase tracking-widest text-[#8C827A] mt-0.5">
+                          {splashConfig.subtitle}
+                        </p>
+                      )}
+                      <div className="w-full h-1 bg-black/5 rounded-full mt-3 overflow-hidden">
+                        <div className="w-2/3 h-full bg-[#8E5B59] rounded-full animate-pulse" />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Activation Toggle Card */}
+                  <div className="mt-5 p-4 rounded-xl bg-white border border-[#E8E0D5] flex items-center justify-between">
+                    <div>
+                      <span className="text-xs font-semibold text-[#2C2724] block">
+                        Enable Splash Screen
+                      </span>
+                      <span className="text-[11px] text-[#786F66]">
+                        {splashConfig.enabled
+                          ? 'Active: displayed when website opens'
+                          : 'Disabled: visitors go straight to storefront'}
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const newEnabled = !splashConfig.enabled;
+                        setSplashConfig((prev) => ({ ...prev, enabled: newEnabled }));
+                        handleSaveSplashSettings({ enabled: newEnabled });
+                      }}
+                      className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden ${
+                        splashConfig.enabled ? 'bg-[#8E5B59]' : 'bg-[#DED5C9]'
+                      }`}
+                    >
+                      <span
+                        className={`pointer-events-none inline-block size-5 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${
+                          splashConfig.enabled ? 'translate-x-5' : 'translate-x-0'
+                        }`}
+                      />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+        {testingSplash && (
+          <SplashScreen
+            forcePreview={true}
+            previewConfig={splashConfig}
+            onClosePreview={() => setTestingSplash(false)}
+          />
+        )}
+
+        {/* Global Photo Crop & Preview Modal */}
+        {currentCropItem && (
+          <ImageCropModal
+            isOpen={true}
+            imageSrc={currentCropItem.dataUrl}
+            fileName={currentCropItem.file.name}
+            title={currentCropItem.title}
+            defaultAspectRatio={currentCropItem.defaultAspectRatio}
+            aspectRatioLabel={currentCropItem.aspectRatioLabel}
+            stepInfo={
+              cropTotalCount > 1
+                ? { current: cropCurrentIndex, total: cropTotalCount }
+                : undefined
+            }
+            onCropComplete={handleAdvanceCropQueue}
+            onSkipCrop={handleSkipCurrentCrop}
+            onCancel={handleCancelCropQueue}
+          />
         )}
       </main>
     </div>

@@ -5,6 +5,7 @@ import { useAuth } from './context/AuthContext';
 import { useContent } from './context/ContentContext';
 import { RoseIcon } from './components/Icons';
 import { AuthModal } from './components/AuthModal';
+import { SplashScreen } from './components/SplashScreen';
 
 const imgHome = '/figma-assets/dffa408d6d19e91d6b056849cc2f0972b6a36cdd.svg';
 const imgShoppingBag = '/figma-assets/083e4c888f3568dd2146ebd73c535dfaacf6999c.svg';
@@ -113,6 +114,9 @@ export default function Root() {
 
   return (
     <div className="font-body text-ink min-h-screen flex flex-col bg-[#FDFBF7]">
+      {/* Dynamic Splash Screen on Website Open */}
+      <SplashScreen />
+
       {/* Announcement Bar */}
       {!isAdminPage && siteContent.announcementText && (
         <div className="bg-[#6B1A2A] text-white py-1.5 px-4 text-center text-xs tracking-wider font-light flex items-center justify-center gap-2">
@@ -169,20 +173,6 @@ export default function Root() {
                 Sign In
               </Link>
             )}
-
-            {/* Admin Console Link */}
-            <Link
-              to="/admin"
-              className={`px-2.5 py-1 rounded-full text-xs font-semibold uppercase tracking-wider transition flex items-center gap-1.5 ${
-                isAdmin
-                  ? 'bg-[#8E5B59] text-white hover:bg-[#784A48] shadow-xs'
-                  : 'bg-[#8E5B59]/10 text-[#8E5B59] hover:bg-[#8E5B59]/20'
-              }`}
-              title="Open Admin Management Console"
-            >
-              <span>⚙️</span>
-              <span>{isAdmin ? 'Admin Console' : 'Admin'}</span>
-            </Link>
 
             {/* Cart Icon */}
             <Link
