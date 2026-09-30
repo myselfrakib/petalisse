@@ -1,23 +1,13 @@
-import { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router';
+import { collection, doc, deleteDoc, onSnapshot } from 'firebase/firestore';
+import { db } from '../lib/firebase';
 import { useAuth } from '../context/AuthContext';
 import { useContent } from '../context/ContentContext';
-import { AuthModal } from '../components/AuthModal';
 
-const imgGinghamBg = '/figma-assets/772e8e7b4c0d39ad6752261452ccca607e718dc3.png';
 const imgProfileAvatar = '/figma-assets/a8ebf5939a3c12ed28690a4a48c6a6563322d7cf.png';
-const imgCircleX = '/figma-assets/5a66c0a2d0b50c9d1548ebdfdc85098bb8367ffa.svg';
-const imgChevronLeft = '/figma-assets/ea6787a2823f7b919d2420cf2824fb286cb04b28.svg';
-const imgSettings = '/figma-assets/17023efcb18e35cf16cc9b4df6b6045d86e8bda6.svg';
-const imgMiniDivider = '/figma-assets/cc9419692a4be4709cfc03d50a67eb67d9795b7c.svg';
-const imgPlus = '/figma-assets/372e303eb5c2cc92b7991cc3222919df812e0f86.svg';
-const imgLine = '/figma-assets/98f5fcaded7840d5043a963b68149d03ba9aef43.svg';
-const imgRibbonBow = '/figma-assets/4b272eaf692874269c4fc3830231dc75075f4a49.svg';
 const imgShoppingBag = '/figma-assets/8aab77e6404936a9df121d7028258a27c83ee8b7.svg';
-const imgChevronRight = '/figma-assets/5a90fe9bea2a729fe052c18fc63a5946fc2bc133.svg';
 const imgHeart = '/figma-assets/666f88cde482e4924187a9e44c22afac92ead2fc.svg';
-const imgCreditCard = '/figma-assets/93c735a6726e1385305c37d890bb134159ac4817.svg';
-const imgBell = '/figma-assets/5be2e4c78425e4ce3b10754cf32267c2683efb67.svg';
 const imgHelpCircle = '/figma-assets/60e62dcce9cd785dd34a9a3edf90e3d426f40e0b.svg';
 
 interface SavedAddress {
@@ -28,10 +18,11 @@ interface SavedAddress {
 }
 
 export default function Profile() {
-  const { currentUser, userProfile, updateUserProfileData, logout, isAdmin } = useAuth();
+  const { currentUser, userProfile, updateUserProfileData, logout, isAdmin, saveAddress } = useAuth();
   const { orders } = useContent();
   const navigate = useNavigate();
 
+  // Filter orders for the logged-in user
   const myOrders = useMemo(() => {
     if (!currentUser) return [];
     return orders.filter(
@@ -41,38 +32,80 @@ export default function Profile() {
     );
   }, [orders, currentUser]);
 
-  const [authModalOpen, setAuthModalOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [profileName, setProfileName] = useState('');
   const [profilePhone, setProfilePhone] = useState('');
   const [savingProfile, setSavingProfile] = useState(false);
+  const [profileSaveSuccess, setProfileSaveSuccess] = useState(false);
 
   const [addresses, setAddresses] = useState<SavedAddress[]>([]);
-
   const [showAddAddressModal, setShowAddAddressModal] = useState(false);
   const [newLabel, setNewLabel] = useState('Home');
   const [newAddressStr, setNewAddressStr] = useState('');
 
-  // Sync state with current authenticated user
+  // Sync profile data when currentUser or userProfile loads
   useEffect(() => {
     if (currentUser) {
-      if (userProfile?.name || currentUser.displayName) {
-        setProfileName(userProfile?.name || currentUser.displayName || '');
-      }
-      if (userProfile?.phone) {
-        setProfilePhone(userProfile.phone);
-      }
+      setProfileName(userProfile?.name || currentUser.displayName || '');
+      setProfilePhone(userProfile?.phone || '');
     }
   }, [currentUser, userProfile]);
 
-  const handleSaveProfile = async () => {
+  // Sync saved addresses with Firestore & cache
+  useEffect(() => {
+    if (!currentUser) {
+      setAddresses([]);
+      return;
+    }
+    const q = collection(db, 'users', currentUser.uid, 'addresses');
+    const unsub = onSnapshot(
+      q,
+      (snap) => {
+        if (!snap.empty) {
+          const list: SavedAddress[] = [];
+          snap.forEach((d) => {
+            const data = d.data();
+            list.push({
+              id: d.id,
+              label: data.label || 'Home',
+              address: data.address || '',
+              isDefault: !!data.isDefault,
+            });
+          });
+          setAddresses(list);
+          try {
+            localStorage.setItem(`petalisse_addresses_${currentUser.uid}`, JSON.stringify(list));
+          } catch {}
+        } else {
+          try {
+            const cached = localStorage.getItem(`petalisse_addresses_${currentUser.uid}`);
+            if (cached) setAddresses(JSON.parse(cached));
+          } catch {}
+        }
+      },
+      (err) => {
+        console.warn('Address listener notice:', err);
+        try {
+          const cached = localStorage.getItem(`petalisse_addresses_${currentUser.uid}`);
+          if (cached) setAddresses(JSON.parse(cached));
+        } catch {}
+      }
+    );
+    return () => unsub();
+  }, [currentUser]);
+
+  const handleSaveProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
     setSavingProfile(true);
+    setProfileSaveSuccess(false);
     try {
       await updateUserProfileData({
         name: profileName,
         phone: profilePhone,
       });
       setIsEditing(false);
+      setProfileSaveSuccess(true);
+      setTimeout(() => setProfileSaveSuccess(false), 4000);
     } catch (err: any) {
       alert('Error updating profile: ' + err.message);
     } finally {
@@ -80,581 +113,715 @@ export default function Profile() {
     }
   };
 
-  const handleDeleteAddress = (id: string) => {
+  const handleDeleteAddress = async (id: string) => {
     setAddresses((prev) => prev.filter((a) => a.id !== id));
+    if (currentUser) {
+      try {
+        await deleteDoc(doc(db, 'users', currentUser.uid, 'addresses', id));
+      } catch (e) {
+        console.warn('Error deleting address:', e);
+      }
+    }
   };
 
-  const handleCreateAddress = (e: React.FormEvent) => {
+  const handleCreateAddress = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newAddressStr) return;
-    const newId = `addr-${Date.now()}`;
-    setAddresses((prev) => [
-      ...prev,
-      {
-        id: newId,
-        label: newLabel,
-        address: newAddressStr,
-        isDefault: prev.length === 0,
-      },
-    ]);
+    if (!newAddressStr.trim()) return;
+    const newId = `addr_${Date.now()}`;
+    const newAddr: SavedAddress = {
+      id: newId,
+      label: newLabel.trim() || 'Home',
+      address: newAddressStr.trim(),
+      isDefault: addresses.length === 0,
+    };
+    setAddresses((prev) => [...prev, newAddr]);
+    if (currentUser) {
+      try {
+        await saveAddress(newAddr as any);
+      } catch (e) {
+        console.warn('Error saving address:', e);
+      }
+    }
     setNewAddressStr('');
     setShowAddAddressModal(false);
   };
 
-  return (
-    <div
-      className="min-h-screen w-full flex flex-col items-center justify-start py-5 px-4 sm:px-6 pb-28 relative bg-[#fdfbf7]"
-      style={{
-        backgroundColor: '#fdfbf7',
-      }}
-      data-node-id="9:341"
-      data-name="petalisse-profile"
-    >
-      {/* Central Paper Panel */}
-      <main
-        className="w-full max-w-[430px] rounded-[24px] shadow-[0px_8px_28px_rgba(44,62,80,0.14)] px-4 sm:px-5 py-6 relative flex flex-col gap-7 items-stretch overflow-visible border border-[rgba(107,26,42,0.06)] bg-[#84c9f13a]"
-        style={{
-          backgroundColor: '#84c9f13a',
-        }}
-        data-node-id="9:342"
-        data-name="paper-center-panel"
-      >
-        {/* Flourish: Top Left */}
-        <div
-          className="absolute -top-1.5 -left-1.5 opacity-85 size-6 pointer-events-none z-10"
-          data-node-id="9:343"
-          data-name="corner-flourish"
-        >
-          <img alt="" className="size-full block" src={imgCircleX} />
-        </div>
+  // Status badge styling helper
+  const getStatusBadge = (status: string) => {
+    const s = status.toLowerCase();
+    if (s === 'delivered') {
+      return 'bg-[#F0FDF4] text-[#166534] border-[#BBF7D0]';
+    }
+    if (s === 'shipped') {
+      return 'bg-[#FAF5FF] text-[#6B21A8] border-[#E9D5FF]';
+    }
+    if (s === 'processing') {
+      return 'bg-[#EFF6FF] text-[#1E40AF] border-[#BFDBFE]';
+    }
+    return 'bg-[#FAF0ED] text-[#9E3E2B] border-[#E8C5B8]';
+  };
 
-        {/* Flourish: Top Right */}
-        <div
-          className="absolute -top-1.5 -right-1.5 opacity-85 size-6 rotate-90 pointer-events-none z-10"
-          data-node-id="9:346"
-        >
-          <img alt="" className="size-full block" src={imgCircleX} />
-        </div>
+  // 1. UNCOMMITTED / NOT LOGGED IN STATE
+  if (!currentUser) {
+    return (
+      <div className="min-h-[calc(100vh-200px)] py-12 px-4 sm:px-6 lg:px-8 flex flex-col justify-center items-center">
+        <div className="max-w-md w-full bg-[#FAF7F2] rounded-2xl border border-[#E8E0D5] p-8 sm:p-10 text-center shadow-xl relative overflow-hidden animate-fadeIn">
+          {/* Subtle decorative flourishes */}
+          <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-bl from-[#EEDFD5]/50 to-transparent pointer-events-none rounded-tr-2xl" />
+          <div className="absolute bottom-0 left-0 w-24 h-24 bg-gradient-to-tr from-[#EEDFD5]/50 to-transparent pointer-events-none rounded-bl-2xl" />
 
-        {/* Flourish: Bottom Left */}
-        <div
-          className="absolute -bottom-1.5 -left-1.5 opacity-85 size-6 rotate-180 pointer-events-none z-10"
-          data-node-id="9:349"
-        >
-          <img alt="" className="size-full block" src={imgCircleX} />
-        </div>
+          <div className="w-16 h-16 rounded-full bg-[#FDF0ED] border border-[#E8C5B8] flex items-center justify-center mx-auto mb-4 text-[#8E5B59] shadow-xs">
+            <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+            </svg>
+          </div>
 
-        {/* Flourish: Bottom Right */}
-        <div
-          className="absolute -bottom-1.5 -right-1.5 opacity-85 size-6 -rotate-90 pointer-events-none z-10"
-          data-node-id="9:352"
-        >
-          <img alt="" className="size-full block" src={imgCircleX} />
-        </div>
+          <span className="font-['Parisienne'] text-3xl text-[#8E5B59] block mb-1">
+            Petalisse
+          </span>
+          <h2 className="text-2xl font-serif text-[#2C2724] font-medium tracking-tight mb-2">
+            Patron Account Portal
+          </h2>
+          <p className="text-xs text-[#786F66] leading-relaxed mb-6 max-w-xs mx-auto">
+            Sign in to track your live charm orders, manage your saved shipping addresses, and review boutique purchases.
+          </p>
 
-        {/* ── TOP NAVBAR ── */}
-        <header
-          className="border-b border-[#6b1a2a]/10 pb-3 flex items-center justify-between w-full"
-          data-node-id="9:355"
-          data-name="top-navbar"
-        >
-          <Link
-            to="/shop"
-            className="bg-[#f9d5e5] rounded-[12px] p-2 flex items-center justify-center hover:bg-[#f3bed3] active:scale-95 transition-all shadow-xs"
-            data-node-id="9:356"
-            data-name="nav-back-button"
-            aria-label="Back to shop"
-          >
-            <img alt="Back" className="size-3.5 block" src={imgChevronLeft} />
-          </Link>
-
-          <h1
-            className="font-parisienne text-[#6b1a2a] text-[32px] leading-none"
-            data-node-id="9:359"
-          >
-            My Account
-          </h1>
-
-          <button
-            onClick={() => {
-              if (currentUser) {
-                setIsEditing(!isEditing);
-              } else {
-                navigate('/login?redirect=/profile');
-              }
-            }}
-            className="bg-[#f9d5e5] rounded-[12px] p-2 flex items-center justify-center hover:bg-[#f3bed3] active:scale-95 transition-all shadow-xs cursor-pointer"
-            data-node-id="9:360"
-            data-name="nav-settings-button"
-            aria-label="Settings"
-          >
-            <img alt="Settings" className="size-3.5 block" src={imgSettings} />
-          </button>
-        </header>
-
-        {/* NOT LOGGED IN STATE */}
-        {!currentUser ? (
-          <div className="bg-[#FAF7F2] rounded-2xl border border-[#E8E0D5] p-6 text-center space-y-4">
-            <div className="w-16 h-16 rounded-full bg-[#f9d5e5] flex items-center justify-center mx-auto text-[#6b1a2a]">
-              <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-              </svg>
-            </div>
-            <div>
-              <h2 className="font-cormorant font-bold text-[#6b1a2a] text-xl">Sign in to Petalisse</h2>
-              <p className="font-cormorant text-[#8b827d] text-sm mt-1">
-                Access your orders, saved addresses, and small-batch charm favorites.
-              </p>
-            </div>
+          <div className="space-y-3">
             <Link
               to="/login?redirect=/profile"
-              className="w-full py-3 rounded-full bg-[#6b1a2a] text-white font-cormorant font-bold text-sm tracking-wider uppercase hover:bg-[#50131f] transition cursor-pointer shadow-sm text-center block"
+              className="w-full py-3 px-4 rounded-xl bg-[#8E5B59] hover:bg-[#784A48] text-white text-xs font-semibold uppercase tracking-wider transition shadow-sm block text-center"
             >
               Sign In or Create Account
             </Link>
-          </div>
-        ) : (
-          /* LOGGED IN USER PROFILE */
-          <>
-            {/* ── PROFILE HEADER SECTION ── */}
-            <section
-              className="flex flex-col gap-3 items-center w-full text-center"
-              data-node-id="9:363"
-              data-name="profile-header-section"
+            <Link
+              to="/shop"
+              className="w-full py-2.5 px-4 rounded-xl border border-[#DED5C9] bg-white hover:bg-[#F3EDE2] text-[#5C534B] text-xs font-medium transition block text-center"
             >
-              {/* Avatar with Pink Border */}
-              <div
-                className="bg-[#f9d5e5] p-1 rounded-full shadow-xs"
-                data-node-id="9:364"
-                data-name="avatar-border"
-              >
-                <div
-                  className="size-[88px] rounded-full overflow-hidden"
-                  data-node-id="9:365"
-                  data-name="profile-avatar"
-                >
-                  <img
-                    alt="Profile Avatar"
-                    className="size-full object-cover"
-                    src={imgProfileAvatar}
-                  />
+              Explore Charm Boutique &rarr;
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // 2. LOGGED IN PATRON DASHBOARD
+  return (
+    <div className="min-h-screen bg-[#FDFBF7] py-8 sm:py-12 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-6xl mx-auto">
+        {/* Header Breadcrumbs / Title */}
+        <div className="mb-8 flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-b border-[#EAE3D8] pb-6">
+          <div>
+            <div className="flex items-center gap-2 text-xs text-[#8C827A] mb-1">
+              <Link to="/" className="hover:text-[#6B1A2A] transition">Home</Link>
+              <span>/</span>
+              <span className="text-[#6B1A2A] font-medium">My Account</span>
+            </div>
+            <h1 className="text-3xl sm:text-4xl font-serif text-[#2C2724] font-medium tracking-tight">
+              Boutique Patron Dashboard
+            </h1>
+            <p className="text-xs text-[#786F66] mt-1">
+              Manage your personal profile, delivery locations, and handcrafted orders
+            </p>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <Link
+              to="/shop"
+              className="px-4 py-2 rounded-xl border border-[#DED5C9] bg-white text-xs font-medium text-[#5C534B] hover:bg-[#FAF7F2] transition shadow-2xs"
+            >
+              Browse Shop &rarr;
+            </Link>
+            <button
+              type="button"
+              onClick={() => logout()}
+              className="px-4 py-2 rounded-xl bg-[#FAF0ED] border border-[#E8C5B8] text-xs font-medium text-[#9E3E2B] hover:bg-[#F5E2DC] transition cursor-pointer"
+            >
+              Sign Out
+            </button>
+          </div>
+        </div>
+
+        {/* Success Alert */}
+        {profileSaveSuccess && (
+          <div className="mb-6 p-4 rounded-xl bg-[#F0FDF4] border border-[#BBF7D0] text-[#166534] text-xs flex items-center justify-between shadow-2xs animate-fadeIn">
+            <div className="flex items-center gap-2">
+              <svg className="w-4 h-4 shrink-0 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+              <span>Your profile information has been successfully updated.</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setProfileSaveSuccess(false)}
+              className="text-[#166534] hover:opacity-70 text-xs cursor-pointer font-bold ml-2"
+            >
+              ✕
+            </button>
+          </div>
+        )}
+
+        {/* 2-Column Responsive Layout */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+          {/* ── LEFT COLUMN: Patron Identity & Quick Actions (4 cols) ── */}
+          <div className="lg:col-span-4 space-y-6">
+            {/* Identity Card */}
+            <div className="bg-[#FAF7F2] rounded-2xl border border-[#E8E0D5] p-6 shadow-sm text-center relative overflow-hidden">
+              <div className="relative mx-auto size-20 sm:size-24 rounded-full p-1 bg-gradient-to-tr from-[#E8C5B8] via-[#FAD4C0] to-[#E7BEC9] shadow-sm mb-4">
+                <img
+                  alt="Patron Avatar"
+                  src={imgProfileAvatar}
+                  className="size-full object-cover rounded-full bg-white"
+                  onError={(e) => {
+                    // Fallback to monogram
+                    e.currentTarget.style.display = 'none';
+                  }}
+                />
+                <div className="hidden size-full rounded-full bg-[#FAF0ED] text-[#8E5B59] font-serif text-2xl font-bold flex items-center justify-center">
+                  {(profileName || currentUser.displayName || 'P').charAt(0).toUpperCase()}
                 </div>
               </div>
 
-              {/* Name & Email */}
-              <div
-                className="flex flex-col gap-1 items-center w-full"
-                data-node-id="9:366"
-                data-name="profile-meta"
-              >
-                {isEditing ? (
-                  <div className="flex flex-col gap-2 items-center w-full max-w-xs">
-                    <input
-                      type="text"
-                      value={profileName}
-                      onChange={(e) => setProfileName(e.target.value)}
-                      placeholder="Your Name"
-                      className="w-full font-cormorant font-bold text-[#6b1a2a] text-lg text-center border-b border-[#6b1a2a] outline-none px-2 py-1 bg-transparent"
-                    />
-                    <input
-                      type="tel"
-                      value={profilePhone}
-                      onChange={(e) => setProfilePhone(e.target.value)}
-                      placeholder="Phone Number"
-                      className="w-full font-cormorant text-[#8b827d] text-sm text-center border-b border-[#6b1a2a]/40 outline-none px-2 py-1 bg-transparent"
-                    />
-                    <div className="flex gap-2 mt-2">
-                      <button
-                        onClick={handleSaveProfile}
-                        disabled={savingProfile}
-                        className="text-xs bg-[#6b1a2a] text-white px-4 py-1.5 rounded-full font-medium hover:bg-[#50131f] cursor-pointer"
-                      >
-                        {savingProfile ? 'Saving...' : 'Save Changes'}
-                      </button>
-                      <button
-                        onClick={() => setIsEditing(false)}
-                        className="text-xs border border-[#8b827d] text-[#8b827d] px-3 py-1.5 rounded-full hover:bg-white cursor-pointer"
-                      >
-                        Cancel
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <>
-                    <h2
-                      className="font-cormorant font-bold text-[#6b1a2a] text-[22px] leading-tight"
-                      data-node-id="9:367"
-                    >
-                      {profileName || 'Boutique Patron'}
-                    </h2>
-                    <p
-                      className="font-cormorant text-[#8b827d] text-[14px]"
-                      data-node-id="9:368"
-                    >
-                      {currentUser.email}
-                    </p>
-                    <button
-                      onClick={() => setIsEditing(true)}
-                      className="font-cormorant font-semibold text-[#6b1a2a] text-[14px] underline hover:opacity-80 transition-opacity cursor-pointer mt-0.5"
-                      data-node-id="9:370"
-                    >
-                      Edit Profile
-                    </button>
-                  </>
+              <h2 className="text-xl font-serif text-[#2C2724] font-medium truncate px-2">
+                {profileName || currentUser.displayName || 'Boutique Patron'}
+              </h2>
+              <p className="text-xs text-[#786F66] truncate mt-0.5 px-2">
+                {currentUser.email}
+              </p>
+
+              {/* Status Pills */}
+              <div className="mt-3 flex items-center justify-center gap-2 flex-wrap">
+                <span className="px-2.5 py-0.5 rounded-full bg-[#FAF0ED] text-[#8E5B59] border border-[#E8C5B8] text-[10px] font-semibold uppercase tracking-wider">
+                  Patron Member
+                </span>
+                {isAdmin && (
+                  <span className="px-2.5 py-0.5 rounded-full bg-[#F0FDF4] text-[#166534] border border-[#BBF7D0] text-[10px] font-semibold uppercase tracking-wider">
+                    Admin Active
+                  </span>
                 )}
               </div>
-            </section>
 
-            {/* If user is an approved admin, show quick shortcut banner */}
-            {isAdmin && (
-              <div className="p-3.5 rounded-2xl bg-[#FAF0ED] border border-[#E8C5B8] flex items-center justify-between">
-                <div>
-                  <div className="text-xs font-bold text-[#9E3E2B] uppercase tracking-wider">
-                    Admin Privileges Active
-                  </div>
-                  <div className="text-[11px] text-[#6B5F55]">Manage products & visual copy</div>
+              {/* Member Since & Stats */}
+              <div className="mt-5 pt-4 border-t border-[#EAE3D8] grid grid-cols-2 gap-2 text-center">
+                <div className="p-2 rounded-xl bg-white/70 border border-[#EAE3D8]">
+                  <span className="block text-lg font-serif font-semibold text-[#8E5B59]">
+                    {myOrders.length}
+                  </span>
+                  <span className="block text-[10px] uppercase tracking-wider text-[#8C827A] font-medium">
+                    Orders
+                  </span>
                 </div>
-                <Link
-                  to="/admin"
-                  className="px-3 py-1.5 rounded-lg bg-[#8E5B59] text-white text-xs font-medium hover:bg-[#784A48] transition"
-                >
-                  Open Admin &rarr;
-                </Link>
-              </div>
-            )}
-
-            {/* ── ACCOUNT DETAILS CARD ── */}
-            <section
-              className="bg-white border border-[rgba(107,26,42,0.1)] rounded-[20px] p-[18px] shadow-[0px_4px_6px_rgba(44,62,80,0.06)] flex flex-col gap-1.5 w-full text-left"
-              data-node-id="9:371"
-              data-name="account-details-card"
-            >
-              {/* Phone */}
-              <div
-                className="border-b border-[rgba(107,26,42,0.1)] py-2 flex items-center justify-between"
-                data-node-id="9:372"
-                data-name="detail-row"
-              >
-                <span className="font-cormorant text-[#8b827d] text-[15px]">Phone</span>
-                <span className="font-cormorant font-semibold text-[#6b1a2a] text-[16px]">
-                  {profilePhone || 'Not provided'}
-                </span>
-              </div>
-
-              {/* Email */}
-              <div
-                className="border-b border-[rgba(107,26,42,0.1)] py-2 flex items-center justify-between"
-                data-name="detail-row"
-              >
-                <span className="font-cormorant text-[#8b827d] text-[15px]">Account Email</span>
-                <span className="font-cormorant font-semibold text-[#6b1a2a] text-[15px] truncate max-w-[200px]">
-                  {currentUser.email}
-                </span>
-              </div>
-
-              {/* Member Since */}
-              <div
-                className="border-b border-[rgba(107,26,42,0.1)] py-2 flex items-center justify-between"
-                data-node-id="9:375"
-                data-name="detail-row"
-              >
-                <span className="font-cormorant text-[#8b827d] text-[15px]">Member Since</span>
-                <span className="font-cormorant font-semibold text-[#6b1a2a] text-[16px]">
-                  {currentUser.metadata.creationTime ? new Date(currentUser.metadata.creationTime).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) : '2024'}
-                </span>
-              </div>
-
-              {/* Wishlist Saves */}
-              <div
-                className="py-2 flex items-center justify-between"
-                data-node-id="9:381"
-                data-name="detail-row"
-              >
-                <span className="font-cormorant text-[#8b827d] text-[15px]">Wishlist Saves</span>
-                <span className="font-cormorant font-semibold text-[#6b1a2a] text-[16px]">
-                  Handmade Charms
-                </span>
-              </div>
-            </section>
-
-            {/* ── SAVED ADDRESSES SECTION ── */}
-            <section className="flex flex-col gap-3.5 w-full">
-              {/* Header */}
-              <div
-                className="flex flex-col gap-1 items-center text-center w-full"
-                data-node-id="9:384"
-                data-name="addresses-heading-container"
-              >
-                <h3
-                  className="font-parisienne text-[#6b1a2a] text-[28px] leading-tight"
-                  data-node-id="9:385"
-                >
-                  Saved Addresses
-                </h3>
-                <div className="h-2 w-24 relative flex items-center justify-center">
-                  <img alt="" className="h-full w-auto block" src={imgMiniDivider} />
+                <div className="p-2 rounded-xl bg-white/70 border border-[#EAE3D8]">
+                  <span className="block text-lg font-serif font-semibold text-[#8E5B59]">
+                    {addresses.length}
+                  </span>
+                  <span className="block text-[10px] uppercase tracking-wider text-[#8C827A] font-medium">
+                    Addresses
+                  </span>
                 </div>
               </div>
 
-              {/* Addresses Stack */}
-              <div
-                className="flex flex-col gap-3.5 w-full"
-                data-node-id="9:390"
-                data-name="addresses-stack"
-              >
-                {addresses.map((addr) => (
-                  <div
-                    key={addr.id}
-                    className="bg-white border border-[#6b1a2a] rounded-[16px] p-4 flex flex-col gap-3 w-full shadow-xs text-left"
-                    data-name="address-card"
-                  >
-                    <div className="flex items-center justify-between w-full">
-                      <span className="font-cormorant font-bold text-[#6b1a2a] text-[18px]">
-                        {addr.label}
+              {/* Admin Portal Shortcut if Admin */}
+              {isAdmin && (
+                <div className="mt-5 p-3 rounded-xl bg-[#8E5B59]/5 border border-[#8E5B59]/20 text-left">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <span className="text-[11px] font-bold text-[#8E5B59] uppercase tracking-wider block">
+                        Admin Console
                       </span>
-                      {addr.isDefault && (
-                        <span
-                          className="bg-[#f9d5e5] text-[#6b1a2a] font-cormorant font-bold text-[11px] px-2.5 py-0.5 rounded-[10px] uppercase tracking-wider"
-                          data-name="default-badge"
-                        >
-                          DEFAULT
-                        </span>
-                      )}
+                      <span className="text-[10px] text-[#6B5F55]">
+                        Products, CMS & live orders
+                      </span>
                     </div>
-
-                    <p className="font-cormorant text-[#8b827d] text-[14px] leading-[1.4]">
-                      {addr.address}
-                    </p>
-
-                    <div className="flex gap-3.5 justify-end font-cormorant font-semibold text-[#6b1a2a] text-[14px]">
-                      <button
-                        onClick={() => handleDeleteAddress(addr.id)}
-                        className="underline hover:text-[#c82333] transition-colors cursor-pointer"
-                      >
-                        Delete
-                      </button>
-                    </div>
+                    <Link
+                      to="/admin"
+                      className="px-3 py-1 rounded-lg bg-[#8E5B59] text-white text-[11px] font-medium hover:bg-[#784A48] transition"
+                    >
+                      Open &rarr;
+                    </Link>
                   </div>
-                ))}
+                </div>
+              )}
+            </div>
+
+            {/* Quick Navigation Card */}
+            <div className="bg-[#FAF7F2] rounded-2xl border border-[#E8E0D5] overflow-hidden shadow-xs divide-y divide-[#EAE3D8]">
+              <Link
+                to="/cart"
+                className="p-3.5 flex items-center justify-between hover:bg-white transition group"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="size-8 rounded-full bg-[#FAF0ED] text-[#8E5B59] flex items-center justify-center">
+                    <img alt="" className="size-4" src={imgShoppingBag} />
+                  </div>
+                  <div>
+                    <span className="text-xs font-semibold text-[#2C2724] group-hover:text-[#8E5B59] transition block">
+                      My Shopping Cart
+                    </span>
+                    <span className="text-[10px] text-[#8C827A]">
+                      View bag items & checkout
+                    </span>
+                  </div>
+                </div>
+                <span className="text-xs text-[#8C827A]">&rarr;</span>
+              </Link>
+
+              <Link
+                to="/shop"
+                className="p-3.5 flex items-center justify-between hover:bg-white transition group"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="size-8 rounded-full bg-[#FAF0ED] text-[#8E5B59] flex items-center justify-center">
+                    <img alt="" className="size-4" src={imgHeart} />
+                  </div>
+                  <div>
+                    <span className="text-xs font-semibold text-[#2C2724] group-hover:text-[#8E5B59] transition block">
+                      Handcrafted Catalog
+                    </span>
+                    <span className="text-[10px] text-[#8C827A]">
+                      Explore small-batch charms
+                    </span>
+                  </div>
+                </div>
+                <span className="text-xs text-[#8C827A]">&rarr;</span>
+              </Link>
+
+              <div
+                onClick={() => alert('For any order help, contact us directly at support@petalisse.com')}
+                className="p-3.5 flex items-center justify-between hover:bg-white transition group cursor-pointer"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="size-8 rounded-full bg-[#FAF0ED] text-[#8E5B59] flex items-center justify-center">
+                    <img alt="" className="size-4" src={imgHelpCircle} />
+                  </div>
+                  <div>
+                    <span className="text-xs font-semibold text-[#2C2724] group-hover:text-[#8E5B59] transition block">
+                      Concierge Support
+                    </span>
+                    <span className="text-[10px] text-[#8C827A]">
+                      Assistance with custom orders
+                    </span>
+                  </div>
+                </div>
+                <span className="text-xs text-[#8C827A]">&rarr;</span>
+              </div>
+            </div>
+          </div>
+
+          {/* ── RIGHT COLUMN: Account Information, Addresses & Orders (8 cols) ── */}
+          <div className="lg:col-span-8 space-y-8">
+            {/* 1. Account Details Card */}
+            <div className="bg-[#FAF7F2] rounded-2xl border border-[#E8E0D5] p-6 sm:p-7 shadow-xs">
+              <div className="flex items-center justify-between border-b border-[#EAE3D8] pb-4 mb-5">
+                <div>
+                  <h3 className="text-lg font-serif text-[#2C2724] font-medium">
+                    Personal Information
+                  </h3>
+                  <p className="text-xs text-[#786F66]">
+                    Your verified contact credentials for orders and delivery updates
+                  </p>
+                </div>
+                {!isEditing && (
+                  <button
+                    type="button"
+                    onClick={() => setIsEditing(true)}
+                    className="px-3.5 py-1.5 rounded-lg border border-[#DED5C9] bg-white text-xs font-medium text-[#5C534B] hover:bg-[#FAF5F0] transition shadow-2xs cursor-pointer"
+                  >
+                    Edit Details
+                  </button>
+                )}
               </div>
 
-              {/* Add New Address Form Modal / Toggle */}
-              {showAddAddressModal ? (
-                <form onSubmit={handleCreateAddress} className="bg-white border border-[#6b1a2a]/30 rounded-[16px] p-4 space-y-3">
-                  <div className="font-cormorant font-bold text-[#6b1a2a] text-base">Add New Address</div>
+              {isEditing ? (
+                <form onSubmit={handleSaveProfile} className="space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-medium text-[#4A423B] mb-1">
+                        Full Name
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={profileName}
+                        onChange={(e) => setProfileName(e.target.value)}
+                        placeholder="e.g. Eleanor Vance"
+                        className="w-full px-3.5 py-2.5 rounded-xl border border-[#DED5C9] bg-white text-sm text-[#2C2724] focus:outline-hidden focus:border-[#8E5B59]"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-[#4A423B] mb-1">
+                        Phone Number
+                      </label>
+                      <input
+                        type="tel"
+                        value={profilePhone}
+                        onChange={(e) => setProfilePhone(e.target.value)}
+                        placeholder="+91 98765 43210"
+                        className="w-full px-3.5 py-2.5 rounded-xl border border-[#DED5C9] bg-white text-sm text-[#2C2724] focus:outline-hidden focus:border-[#8E5B59]"
+                      />
+                    </div>
+                  </div>
+
                   <div>
-                    <label className="block text-[11px] font-medium text-[#786F66] mb-1">Address Label</label>
+                    <label className="block text-xs font-medium text-[#4A423B] mb-1">
+                      Account Email
+                    </label>
                     <input
-                      type="text"
-                      required
-                      value={newLabel}
-                      onChange={(e) => setNewLabel(e.target.value)}
-                      placeholder="Home, Studio, Office..."
-                      className="w-full px-3 py-1.5 rounded-lg border border-[#DED5C9] text-xs font-serif"
+                      type="email"
+                      disabled
+                      value={currentUser.email || ''}
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-[#DED5C9] bg-[#F3EDE2]/60 text-sm text-[#786F66] cursor-not-allowed"
                     />
+                    <span className="text-[10px] text-[#8C827A] mt-1 block">
+                      Account email is managed through authentication security.
+                    </span>
                   </div>
-                  <div>
-                    <label className="block text-[11px] font-medium text-[#786F66] mb-1">Full Street Address</label>
-                    <textarea
-                      rows={2}
-                      required
-                      value={newAddressStr}
-                      onChange={(e) => setNewAddressStr(e.target.value)}
-                      placeholder="House/Apartment number, Street, City, State, PIN"
-                      className="w-full px-3 py-1.5 rounded-lg border border-[#DED5C9] text-xs font-serif"
-                    />
-                  </div>
-                  <div className="flex gap-2 justify-end">
+
+                  <div className="flex items-center justify-end gap-2.5 pt-2">
                     <button
                       type="button"
-                      onClick={() => setShowAddAddressModal(false)}
-                      className="px-3 py-1 text-xs text-[#8b827d]"
+                      onClick={() => {
+                        setIsEditing(false);
+                        setProfileName(userProfile?.name || currentUser.displayName || '');
+                        setProfilePhone(userProfile?.phone || '');
+                      }}
+                      className="px-4 py-2 rounded-xl border border-[#DED5C9] bg-white text-xs font-medium text-[#5C534B] hover:bg-[#F3EDE2] transition cursor-pointer"
                     >
                       Cancel
                     </button>
                     <button
                       type="submit"
-                      className="px-4 py-1.5 rounded-full bg-[#6b1a2a] text-white text-xs font-medium"
+                      disabled={savingProfile}
+                      className="px-5 py-2 rounded-xl bg-[#8E5B59] hover:bg-[#784A48] text-white text-xs font-medium transition cursor-pointer shadow-xs flex items-center gap-1.5"
                     >
-                      Save Address
+                      {savingProfile && (
+                        <span className="inline-block w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      )}
+                      <span>Save Changes</span>
                     </button>
                   </div>
                 </form>
               ) : (
-                <button
-                  onClick={() => setShowAddAddressModal(true)}
-                  className="bg-white border-[#6b1a2a] border-[1.5px] border-dashed rounded-full py-3.5 px-4 flex items-center justify-center gap-1.5 text-[#6b1a2a] font-cormorant font-bold text-base hover:bg-[#faf5f0] transition-colors cursor-pointer w-full"
-                  data-node-id="9:407"
-                  data-name="add-address-button"
-                >
-                  <img alt="" className="size-3.5 block" src={imgPlus} />
-                  <span>Add New Address</span>
-                </button>
-              )}
-            </section>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                  <div className="p-3.5 rounded-xl bg-white border border-[#EAE3D8]">
+                    <span className="text-[10px] uppercase font-semibold text-[#8C827A] tracking-wider block mb-1">
+                      Patron Name
+                    </span>
+                    <span className="text-sm font-medium text-[#2C2724] block">
+                      {profileName || 'Not specified'}
+                    </span>
+                  </div>
 
-            {/* ── MY RECENT ORDERS (SYNCED WITH DB) ── */}
-            <section className="flex flex-col gap-3 w-full text-left">
-              <div className="flex items-center justify-between">
-                <h3 className="font-parisienne text-[#6b1a2a] text-[28px] leading-tight">
-                  My Orders ({myOrders.length})
-                </h3>
-                <span className="text-[11px] font-sans text-[#8b827d]">
-                  Live Synchronized
-                </span>
+                  <div className="p-3.5 rounded-xl bg-white border border-[#EAE3D8]">
+                    <span className="text-[10px] uppercase font-semibold text-[#8C827A] tracking-wider block mb-1">
+                      Registered Email
+                    </span>
+                    <span className="text-sm font-medium text-[#2C2724] truncate block">
+                      {currentUser.email}
+                    </span>
+                  </div>
+
+                  <div className="p-3.5 rounded-xl bg-white border border-[#EAE3D8]">
+                    <span className="text-[10px] uppercase font-semibold text-[#8C827A] tracking-wider block mb-1">
+                      Contact Phone
+                    </span>
+                    <span className="text-sm font-medium text-[#2C2724] block">
+                      {profilePhone || 'Not provided'}
+                    </span>
+                  </div>
+
+                  <div className="p-3.5 rounded-xl bg-white border border-[#EAE3D8]">
+                    <span className="text-[10px] uppercase font-semibold text-[#8C827A] tracking-wider block mb-1">
+                      Member Since
+                    </span>
+                    <span className="text-sm font-medium text-[#2C2724] block">
+                      {currentUser.metadata.creationTime
+                        ? new Date(currentUser.metadata.creationTime).toLocaleDateString('en-US', {
+                            month: 'long',
+                            year: 'numeric',
+                          })
+                        : 'Petalisse Patron'}
+                    </span>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* 2. Saved Delivery Addresses */}
+            <div className="bg-[#FAF7F2] rounded-2xl border border-[#E8E0D5] p-6 sm:p-7 shadow-xs">
+              <div className="flex items-center justify-between border-b border-[#EAE3D8] pb-4 mb-5">
+                <div>
+                  <h3 className="text-lg font-serif text-[#2C2724] font-medium">
+                    Saved Shipping Addresses
+                  </h3>
+                  <p className="text-xs text-[#786F66]">
+                    Addresses stored for quick, one-click checkout
+                  </p>
+                </div>
+                {!showAddAddressModal && (
+                  <button
+                    type="button"
+                    onClick={() => setShowAddAddressModal(true)}
+                    className="px-3.5 py-1.5 rounded-lg bg-[#8E5B59] hover:bg-[#784A48] text-white text-xs font-medium transition shadow-2xs cursor-pointer flex items-center gap-1.5"
+                  >
+                    <span>+</span>
+                    <span>Add Address</span>
+                  </button>
+                )}
+              </div>
+
+              {/* Add Address Form Modal/Panel */}
+              {showAddAddressModal && (
+                <form
+                  onSubmit={handleCreateAddress}
+                  className="mb-6 p-4 rounded-xl bg-white border border-[#E8C5B8] space-y-3.5 shadow-xs"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-[#8E5B59] uppercase tracking-wider">
+                      New Delivery Location
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setShowAddAddressModal(false)}
+                      className="text-[#8C827A] hover:text-[#2C2724] text-xs cursor-pointer"
+                    >
+                      ✕ Cancel
+                    </button>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-medium text-[#4A423B] mb-1">
+                      Address Label
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={newLabel}
+                      onChange={(e) => setNewLabel(e.target.value)}
+                      placeholder="e.g. Home, Studio, Apartment"
+                      className="w-full px-3.5 py-2 rounded-xl border border-[#DED5C9] text-xs focus:outline-hidden focus:border-[#8E5B59]"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-medium text-[#4A423B] mb-1">
+                      Full Street Address & Pincode
+                    </label>
+                    <textarea
+                      rows={2}
+                      required
+                      value={newAddressStr}
+                      onChange={(e) => setNewAddressStr(e.target.value)}
+                      placeholder="Flat/House number, Street name, City, State, PIN code"
+                      className="w-full px-3.5 py-2 rounded-xl border border-[#DED5C9] text-xs focus:outline-hidden focus:border-[#8E5B59]"
+                    />
+                  </div>
+
+                  <div className="flex justify-end gap-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => setShowAddAddressModal(false)}
+                      className="px-3.5 py-1.5 rounded-lg border border-[#DED5C9] text-xs font-medium text-[#5C534B] hover:bg-[#FAF7F2] transition"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      className="px-4 py-1.5 rounded-lg bg-[#8E5B59] hover:bg-[#784A48] text-white text-xs font-medium transition shadow-xs"
+                    >
+                      Save Location
+                    </button>
+                  </div>
+                </form>
+              )}
+
+              {/* Address List */}
+              {addresses.length === 0 && !showAddAddressModal ? (
+                <div className="p-8 text-center bg-white rounded-xl border border-dashed border-[#DED5C9]">
+                  <p className="text-xs text-[#786F66] mb-3">
+                    No shipping addresses saved yet. Add your preferred delivery address for rapid checkout.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setShowAddAddressModal(true)}
+                    className="px-4 py-2 rounded-xl border border-[#8E5B59] text-[#8E5B59] text-xs font-medium hover:bg-[#FAF0ED] transition cursor-pointer"
+                  >
+                    + Add Your First Address
+                  </button>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {addresses.map((addr) => (
+                    <div
+                      key={addr.id}
+                      className="p-4 rounded-xl bg-white border border-[#EAE3D8] hover:border-[#8E5B59]/40 transition shadow-2xs flex flex-col justify-between"
+                    >
+                      <div>
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="font-semibold text-xs text-[#2C2724] flex items-center gap-1.5">
+                            <span>📍</span>
+                            <span>{addr.label}</span>
+                          </span>
+                          {addr.isDefault && (
+                            <span className="px-2 py-0.5 rounded-full bg-[#FDF0ED] border border-[#E8C5B8] text-[9px] font-bold uppercase tracking-wider text-[#8E5B59]">
+                              Default
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs text-[#6B5F55] leading-relaxed line-clamp-3">
+                          {addr.address}
+                        </p>
+                      </div>
+
+                      <div className="mt-4 pt-3 border-t border-[#FAF0ED] flex items-center justify-end">
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteAddress(addr.id)}
+                          className="text-xs text-[#9E3E2B] hover:underline cursor-pointer"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* 3. My Orders Section (Live Database Synced) */}
+            <div className="bg-[#FAF7F2] rounded-2xl border border-[#E8E0D5] p-6 sm:p-7 shadow-xs">
+              <div className="flex items-center justify-between border-b border-[#EAE3D8] pb-4 mb-5">
+                <div>
+                  <h3 className="text-lg font-serif text-[#2C2724] font-medium flex items-center gap-2">
+                    <span>Order History</span>
+                    <span className="text-xs px-2.5 py-0.5 rounded-full bg-[#FAF0ED] text-[#8E5B59] font-sans font-semibold border border-[#E8C5B8]">
+                      {myOrders.length}
+                    </span>
+                  </h3>
+                  <p className="text-xs text-[#786F66]">
+                    Real-time status of your handmade charm purchases
+                  </p>
+                </div>
+
+                <Link
+                  to="/shop"
+                  className="text-xs text-[#8E5B59] hover:underline font-medium"
+                >
+                  Order New Charms &rarr;
+                </Link>
               </div>
 
               {myOrders.length === 0 ? (
-                <div className="bg-white border border-[rgba(107,26,42,0.1)] rounded-[20px] p-5 text-center shadow-xs">
-                  <p className="font-cormorant text-[#8b827d] text-sm">
-                    No orders placed yet. Explore our handcrafted charm collection!
-                  </p>
+                <div className="p-8 text-center bg-white rounded-xl border border-dashed border-[#DED5C9] space-y-3">
+                  <div className="w-12 h-12 rounded-full bg-[#FAF0ED] text-[#8E5B59] flex items-center justify-center mx-auto text-xl">
+                    🛍️
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-serif font-medium text-[#2C2724]">No Orders Yet</h4>
+                    <p className="text-xs text-[#786F66] mt-0.5">
+                      Explore our small-batch handcrafted bag charms, hair accessories, and phone charms.
+                    </p>
+                  </div>
                   <Link
                     to="/shop"
-                    className="inline-block mt-3 px-5 py-2 rounded-full bg-[#6b1a2a] text-white text-xs font-cormorant font-bold uppercase tracking-wider hover:bg-[#50131f] transition"
+                    className="inline-block px-5 py-2 rounded-xl bg-[#8E5B59] hover:bg-[#784A48] text-white text-xs font-semibold uppercase tracking-wider transition shadow-2xs"
                   >
-                    Start Shopping &rarr;
+                    Explore Boutique Catalog
                   </Link>
                 </div>
               ) : (
-                <div className="space-y-3">
+                <div className="space-y-4">
                   {myOrders.map((ord) => (
                     <div
                       key={ord.id}
-                      className="bg-white border border-[rgba(107,26,42,0.12)] rounded-[20px] p-4 shadow-xs space-y-2.5"
+                      className="p-4 sm:p-5 rounded-xl bg-white border border-[#EAE3D8] shadow-2xs space-y-3 hover:border-[#8E5B59]/30 transition"
                     >
-                      <div className="flex justify-between items-center text-xs pb-2 border-b border-[#FAF0ED]">
+                      {/* Top Order Row */}
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#F7F3EE] pb-3">
                         <div>
-                          <span className="font-mono font-bold text-[#6b1a2a]">
-                            {ord.orderNumber || `#${ord.id?.slice(-6).toUpperCase()}`}
-                          </span>
-                          <span className="text-[#8b827d] text-[11px] ml-2">
-                            {new Date(ord.createdAt).toLocaleDateString()}
-                          </span>
+                          <div className="flex items-center gap-2">
+                            <span className="font-mono font-bold text-xs text-[#8E5B59]">
+                              {ord.orderNumber || `#${ord.id.slice(-6).toUpperCase()}`}
+                            </span>
+                            <span className="text-[11px] text-[#8C827A]">
+                              {new Date(ord.createdAt).toLocaleDateString('en-US', {
+                                month: 'short',
+                                day: 'numeric',
+                                year: 'numeric',
+                              })}
+                            </span>
+                          </div>
+                          {ord.shippingAddress && (
+                            <p className="text-[11px] text-[#8C827A] truncate max-w-sm mt-0.5">
+                              Deliver to: {ord.customerName} ({ord.city || ord.shippingAddress})
+                            </p>
+                          )}
                         </div>
-                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-[#f9d5e5] text-[#6b1a2a]">
+
+                        <span
+                          className={`self-start sm:self-auto px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border ${getStatusBadge(
+                            ord.status
+                          )}`}
+                        >
                           {ord.status}
                         </span>
                       </div>
 
-                      {/* Items */}
-                      <div className="space-y-1">
-                        {ord.items.map((item, idx) => (
-                          <div key={idx} className="flex justify-between text-xs text-[#2C2724]">
-                            <span>
-                              {item.name} {item.selectedColor ? `(${item.selectedColor})` : ''} × {item.quantity}
+                      {/* Items Purchased */}
+                      <div className="space-y-1.5 py-1">
+                        {ord.items.map((it, idx) => (
+                          <div
+                            key={idx}
+                            className="flex items-center justify-between text-xs text-[#2C2724]"
+                          >
+                            <span className="text-[#4A423B]">
+                              {it.name}{' '}
+                              {it.selectedColor && (
+                                <span className="text-[#8C827A]">({it.selectedColor})</span>
+                              )}{' '}
+                              <span className="text-[#8C827A]">× {it.quantity}</span>
                             </span>
-                            <span className="font-semibold">₹{item.price * item.quantity}</span>
+                            <span className="font-medium text-[#2C2724]">
+                              ₹{it.price * it.quantity}
+                            </span>
                           </div>
                         ))}
                       </div>
 
-                      {/* Financial info */}
-                      <div className="pt-2 border-t border-[#FAF0ED] flex justify-between items-center text-xs">
-                        <span className="text-[11px] text-[#8b827d]">
-                          {ord.paymentMethod === 'partial_cod' ? 'Partial COD' : 'Online Paid'} • Shipping:{' '}
-                          {ord.shippingFee === 0 ? 'FREE' : `₹${ord.shippingFee}`}
-                        </span>
-                        <span className="font-sans font-bold text-[#6b1a2a] text-sm">
+                      {/* Total & Payment Details */}
+                      <div className="pt-3 border-t border-[#F7F3EE] flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+                        <div className="text-[11px] text-[#786F66]">
+                          <span>
+                            {ord.paymentMethod === 'partial_cod'
+                              ? 'Booking Confirmed (Partial COD)'
+                              : 'Online Payment'}
+                          </span>
+                          <span> • </span>
+                          <span>
+                            Shipping: {ord.shippingFee === 0 ? 'FREE' : `₹${ord.shippingFee}`}
+                          </span>
+                        </div>
+
+                        <div className="text-sm font-sans font-bold text-[#8E5B59] sm:text-right">
                           Total: ₹{ord.total}
-                        </span>
+                        </div>
                       </div>
 
+                      {/* Partial COD breakdown if applicable */}
                       {ord.paymentMethod === 'partial_cod' && (
-                        <div className="text-[11px] bg-amber-50 p-2 rounded-lg text-amber-900 border border-amber-200/60 flex justify-between">
-                          <span>Paid: ₹{ord.amountPaid}</span>
-                          <span>Due on delivery: ₹{ord.codAmountDue}</span>
+                        <div className="p-2.5 rounded-lg bg-[#FAF0ED] border border-[#E8C5B8] flex items-center justify-between text-[11px] text-[#8E5B59]">
+                          <span>Advance Paid: ₹{ord.amountPaid}</span>
+                          <span className="font-semibold">Due on Delivery: ₹{ord.codAmountDue}</span>
                         </div>
                       )}
                     </div>
                   ))}
                 </div>
               )}
-            </section>
-
-            {/* ── QUICK ACTIONS LIST ── */}
-            <section
-              className="bg-white border border-[rgba(107,26,42,0.1)] rounded-[20px] overflow-hidden shadow-[0px_4px_6px_rgba(44,62,80,0.06)] flex flex-col w-full"
-              data-node-id="9:411"
-              data-name="quick-actions-card"
-            >
-              {/* Order History */}
-              <Link
-                to="/cart"
-                className="p-4 flex items-center justify-between border-b border-[rgba(107,26,42,0.08)] hover:bg-[#faf5f0] transition-colors"
-                data-node-id="9:412"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="size-8 rounded-full bg-[#f9d5e5] flex items-center justify-center">
-                    <img alt="" className="size-4 block" src={imgShoppingBag} />
-                  </div>
-                  <span className="font-cormorant font-semibold text-[#6b1a2a] text-[16px]">
-                    My Orders & Cart
-                  </span>
-                </div>
-                <img alt="" className="size-3.5 opacity-50 block" src={imgChevronRight} />
-              </Link>
-
-              {/* Wishlist */}
-              <Link
-                to="/shop"
-                className="p-4 flex items-center justify-between border-b border-[rgba(107,26,42,0.08)] hover:bg-[#faf5f0] transition-colors"
-                data-node-id="9:420"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="size-8 rounded-full bg-[#f9d5e5] flex items-center justify-center">
-                    <img alt="" className="size-4 block" src={imgHeart} />
-                  </div>
-                  <span className="font-cormorant font-semibold text-[#6b1a2a] text-[16px]">
-                    Explore Charm Shop
-                  </span>
-                </div>
-                <img alt="" className="size-3.5 opacity-50 block" src={imgChevronRight} />
-              </Link>
-
-              {/* Help & Support */}
-              <div
-                className="p-4 flex items-center justify-between hover:bg-[#faf5f0] transition-colors cursor-pointer"
-                data-node-id="9:444"
-                onClick={() => alert('For order inquiries, contact support@petalisse.com')}
-              >
-                <div className="flex items-center gap-3">
-                  <div className="size-8 rounded-full bg-[#f9d5e5] flex items-center justify-center">
-                    <img alt="" className="size-4 block" src={imgHelpCircle} />
-                  </div>
-                  <span className="font-cormorant font-semibold text-[#6b1a2a] text-[16px]">
-                    Customer Care & FAQs
-                  </span>
-                </div>
-                <img alt="" className="size-3.5 opacity-50 block" src={imgChevronRight} />
-              </div>
-            </section>
-
-            {/* Logout Button */}
-            <div className="pt-2">
-              <button
-                onClick={() => logout()}
-                className="w-full py-3 rounded-full border border-[#9E3E2B] text-[#9E3E2B] font-cormorant font-bold text-sm uppercase tracking-wider hover:bg-[#FAF0ED] transition cursor-pointer"
-              >
-                Sign Out of Account
-              </button>
             </div>
-          </>
-        )}
-
-        {/* ── FOOTER FLOURISH ── */}
-        <footer className="pt-2 flex flex-col gap-2 items-center text-center">
-          <div className="h-4 w-16 relative flex items-center justify-center opacity-70">
-            <img alt="" className="h-full w-auto block" src={imgRibbonBow} />
           </div>
-          <p className="font-cormorant text-[#8b827d] text-xs">
-            © Petalisse 2024. Handcrafted in our studio.
-          </p>
-        </footer>
-      </main>
-
-      {/* Customer Auth Modal */}
-      <AuthModal isOpen={authModalOpen} onClose={() => setAuthModalOpen(false)} />
+        </div>
+      </div>
     </div>
   );
 }
