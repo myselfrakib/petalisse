@@ -38,7 +38,6 @@ export const AdminPage: React.FC = () => {
     deleteProduct, 
     updateSiteContent, 
     uploadImage, 
-    seedInitialProductsToFirestore,
     updateOrderStatus,
     deleteOrder,
     toggleProductFavorite,
@@ -746,17 +745,6 @@ export const AdminPage: React.FC = () => {
                 <p className="text-xs text-[#786F66]">
                   Add new charms, update pricing, apply badges, and upload custom images. All changes broadcast live instantly!
                 </p>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => seedInitialProductsToFirestore()}
-                  className="px-3 py-2 rounded-xl border border-[#DED5C9] bg-white text-xs font-medium text-[#5C534B] hover:bg-[#F3EDE2] transition cursor-pointer shadow-xs"
-                  title="Uploads seed catalogue items into live Firestore database if needed"
-                >
-                  ⚡ Sync Default Catalog to Firestore
-                </button>
               </div>
             </div>
 
