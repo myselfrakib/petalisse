@@ -25,38 +25,7 @@ export default function Product() {
     return products.find((p) => p.id === id);
   }, [id, products]);
 
-  // Catalog navigation between products
-  const currentIndex = useMemo(() => {
-    return products.findIndex((p) => p.id === id);
-  }, [products, id]);
 
-  const prevProduct = useMemo(() => {
-    if (products.length <= 1) return null;
-    const prevIdx = (currentIndex - 1 + products.length) % products.length;
-    return products[prevIdx];
-  }, [products, currentIndex]);
-
-  const nextProduct = useMemo(() => {
-    if (products.length <= 1) return null;
-    const nextIdx = (currentIndex + 1) % products.length;
-    return products[nextIdx];
-  }, [products, currentIndex]);
-
-  const [slideAnim, setSlideAnim] = useState<'left' | 'right' | null>(null);
-
-  const goToProduct = useCallback(
-    (targetProduct: (typeof products)[0] | null, direction: 'left' | 'right') => {
-      if (!targetProduct || targetProduct.id === product?.id) return;
-      setSlideAnim(direction);
-      setTimeout(() => {
-        navigate(`/product/${targetProduct.id}`);
-        setActiveImageIndex(0);
-        setQty(1);
-        setSlideAnim(null);
-      }, 160);
-    },
-    [navigate, product?.id]
-  );
 
   // Gallery thumbnails
   const gallery = useMemo(() => {
@@ -102,19 +71,17 @@ export default function Product() {
     const diffY = clientY - (touchStartYRef.current ?? clientY);
 
     if (Math.abs(diffX) > 40 && Math.abs(diffX) > Math.abs(diffY)) {
-      if (diffX < 0) {
-        // Swiped left -> next
-        if (gallery.length > 1 && activeImageIndex < gallery.length - 1) {
-          setActiveImageIndex((i) => i + 1);
-        } else if (nextProduct) {
-          goToProduct(nextProduct, 'left');
-        }
-      } else {
-        // Swiped right -> prev
-        if (gallery.length > 1 && activeImageIndex > 0) {
-          setActiveImageIndex((i) => i - 1);
-        } else if (prevProduct) {
-          goToProduct(prevProduct, 'right');
+      if (gallery.length > 1) {
+        if (diffX < 0) {
+          // Swiped left -> next photo of current product only
+          if (activeImageIndex < gallery.length - 1) {
+            setActiveImageIndex((i) => i + 1);
+          }
+        } else {
+          // Swiped right -> prev photo of current product only
+          if (activeImageIndex > 0) {
+            setActiveImageIndex((i) => i - 1);
+          }
         }
       }
     }
@@ -122,27 +89,23 @@ export default function Product() {
     touchStartYRef.current = null;
   };
 
-  // Keyboard left/right arrow navigation
+  // Keyboard left/right arrow navigation for current product gallery
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
       if (e.key === 'ArrowLeft') {
         if (gallery.length > 1 && activeImageIndex > 0) {
           setActiveImageIndex((i) => i - 1);
-        } else if (prevProduct) {
-          goToProduct(prevProduct, 'right');
         }
       } else if (e.key === 'ArrowRight') {
         if (gallery.length > 1 && activeImageIndex < gallery.length - 1) {
           setActiveImageIndex((i) => i + 1);
-        } else if (nextProduct) {
-          goToProduct(nextProduct, 'left');
         }
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [gallery.length, activeImageIndex, prevProduct, nextProduct, goToProduct]);
+  }, [gallery.length, activeImageIndex]);
 
   // Related products horizontal scrolling
   const relatedScrollRef = useRef<HTMLDivElement>(null);
@@ -278,13 +241,7 @@ export default function Product() {
 
         {/* ── IMAGE CAROUSEL SECTION (TOUCH & ARROW SLIDABLE) ── */}
         <section
-          className={`flex flex-col gap-4 items-center w-full transition-all duration-200 ${
-            slideAnim === 'left'
-              ? '-translate-x-6 opacity-40'
-              : slideAnim === 'right'
-              ? 'translate-x-6 opacity-40'
-              : 'translate-x-0 opacity-100'
-          }`}
+          className="flex flex-col gap-4 items-center w-full"
           data-node-id="9:199"
           data-name="image-carousel-section"
         >
