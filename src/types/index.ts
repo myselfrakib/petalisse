@@ -21,6 +21,7 @@ export interface UserProfile {
   name?: string;
   phone?: string;
   isAdmin?: boolean;
+  wishlist?: string[];
   createdAt?: any;
   updatedAt?: any;
 }

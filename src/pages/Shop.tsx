@@ -5,6 +5,7 @@ import { useContent } from '../context/ContentContext';
 import { Product } from '../types';
 import { getColorHex } from '../lib/colorUtils';
 import { LazyImage } from '../components/LazyImage';
+import { useWishlist } from '../context/WishlistContext';
 
 const imgGinghamBg = '/figma-assets/772e8e7b4c0d39ad6752261452ccca607e718dc3.png';
 const imgChevronLeft = '/figma-assets/de70edd513d91ef52fc2c1fa9af3cbf0656b675a.svg';
@@ -26,21 +27,8 @@ export default function Shop() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { add, count } = useCart();
   const { products } = useContent();
+  const { isWishlisted: checkWishlisted, toggleWishlist } = useWishlist();
   const [addedId, setAddedId] = useState<string | null>(null);
-  const [favorites, setFavorites] = useState<Record<string, boolean>>(() => {
-    try {
-      const saved = localStorage.getItem('petalisse_favorites');
-      return saved ? JSON.parse(saved) : {};
-    } catch {
-      return {};
-    }
-  });
-
-  useEffect(() => {
-    try {
-      localStorage.setItem('petalisse_favorites', JSON.stringify(favorites));
-    } catch {}
-  }, [favorites]);
 
   const [displayCount, setDisplayCount] = useState<number>(() => {
     try {
@@ -152,13 +140,10 @@ export default function Shop() {
     }, 1200);
   };
 
-  const toggleFavorite = (e: React.MouseEvent, id: string) => {
+  const handleFavoriteClick = (e: React.MouseEvent, id: string) => {
     e.preventDefault();
     e.stopPropagation();
-    setFavorites((prev) => ({
-      ...prev,
-      [id]: !prev[id],
-    }));
+    toggleWishlist(id);
   };
 
   const handleLoadMore = () => {
@@ -299,7 +284,7 @@ export default function Shop() {
             data-name="product-grid"
           >
           {displayedProducts.map((product, idx) => {
-            const isFav = !!favorites[product.id];
+            const isFav = checkWishlisted(product.id);
             const isAdded = addedId === product.id;
 
             return (
@@ -348,21 +333,32 @@ export default function Shop() {
 
                   {/* Favorite Button */}
                   <button
-                    onClick={(e) => toggleFavorite(e, product.id)}
+                    type="button"
+                    onClick={(e) => handleFavoriteClick(e, product.id)}
                     className="absolute top-2 right-2 bg-[rgba(253,251,247,0.94)] backdrop-blur-xs size-7 rounded-[14px] shadow-[0px_2px_6px_rgba(107,26,42,0.14)] flex items-center justify-center transition-transform hover:scale-110 active:scale-95 cursor-pointer z-10"
                     data-name="favorite-overlay"
-                    aria-label="Add to wishlist"
+                    aria-label={isFav ? "Remove from wishlist" : "Add to wishlist"}
                   >
-                    <img
-                      alt="Favorite"
-                      src={imgHeart}
-                      className={`size-3.5 transition-all ${isFav ? 'filter brightness-75 scale-110 drop-shadow-xs' : 'opacity-85'}`}
-                      style={{
-                        filter: isFav
-                          ? 'drop-shadow(0 0 2px rgba(200,35,51,0.8)) hue-rotate(-10deg) saturate(2)'
-                          : undefined,
-                      }}
-                    />
+                    {isFav ? (
+                      <svg
+                        className="size-3.5 text-[#6b1a2a] fill-[#6b1a2a] transition-transform scale-110"
+                        viewBox="0 0 24 24"
+                      >
+                        <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+                      </svg>
+                    ) : (
+                      <svg
+                        className="size-3.5 text-[#6b1a2a] transition-transform opacity-85 hover:opacity-100"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+                      </svg>
+                    )}
                   </button>
                 </div>
 

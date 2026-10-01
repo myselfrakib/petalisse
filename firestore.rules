@@ -68,6 +68,11 @@ service cloud.firestore {
       match /addresses/{addressId} {
         allow read, write: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
       }
+
+      // Customer wishlist items
+      match /wishlist/{wishlistId} {
+        allow read, write: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+      }
     }
 
     // 5. Customer Orders:

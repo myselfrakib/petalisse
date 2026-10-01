@@ -4,6 +4,7 @@ import { useCart } from '../context/CartContext';
 import { useContent } from '../context/ContentContext';
 import { getColorHex } from '../lib/colorUtils';
 import { LazyImage } from '../components/LazyImage';
+import { useWishlist } from '../context/WishlistContext';
 
 const imgGinghamBg = '/figma-assets/772e8e7b4c0d39ad6752261452ccca607e718dc3.png';
 const imgChevronLeft = '/figma-assets/de70edd513d91ef52fc2c1fa9af3cbf0656b675a.svg';
@@ -70,7 +71,8 @@ export default function Product() {
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [qty, setQty] = useState(1);
   const [selectedColor, setSelectedColor] = useState<string>('');
-  const [isWishlisted, setIsWishlisted] = useState(false);
+  const { isWishlisted: checkWishlisted, toggleWishlist } = useWishlist();
+  const isWishlisted = product ? checkWishlisted(product.id) : false;
   const [addedNotice, setAddedNotice] = useState(false);
 
   useEffect(() => {
@@ -241,21 +243,36 @@ export default function Product() {
           </Link>
 
           <button
-            onClick={() => setIsWishlisted(!isWishlisted)}
-            className={`rounded-[12px] p-2 size-8 flex items-center justify-center transition-all active:scale-95 shadow-xs cursor-pointer ${
-              isWishlisted ? 'bg-[#6b1a2a] text-white' : 'bg-[#f9d5e5] hover:bg-[#f3bed3]'
+            type="button"
+            onClick={() => product && toggleWishlist(product.id)}
+            className={`rounded-[12px] p-2 size-8 flex items-center justify-center transition-all active:scale-90 shadow-xs cursor-pointer ${
+              isWishlisted ? 'bg-[#f9d5e5] text-[#6b1a2a] ring-1 ring-[#6b1a2a]/20' : 'bg-[#f9d5e5] hover:bg-[#f3bed3] text-[#6b1a2a]'
             }`}
             data-node-id="9:197"
             data-name="nav-wishlist-button"
-            aria-label="Toggle wishlist"
+            aria-label={isWishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
+            title={isWishlisted ? 'In Wishlist' : 'Add to Wishlist'}
           >
-            <img
-              alt="Wishlist"
-              className={`size-3.5 block transition-all ${
-                isWishlisted ? 'filter invert brightness-200' : ''
-              }`}
-              src={imgHeartOff}
-            />
+            {isWishlisted ? (
+              <svg
+                className="size-4 text-[#6b1a2a] fill-[#6b1a2a] transition-transform duration-200 scale-110 drop-shadow-2xs"
+                viewBox="0 0 24 24"
+              >
+                <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+              </svg>
+            ) : (
+              <svg
+                className="size-4 text-[#6b1a2a] transition-transform duration-200 hover:scale-105"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+              </svg>
+            )}
           </button>
         </header>
 

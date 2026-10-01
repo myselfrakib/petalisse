@@ -4,6 +4,9 @@ import { collection, doc, deleteDoc, onSnapshot } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth } from '../context/AuthContext';
 import { useContent } from '../context/ContentContext';
+import { useWishlist } from '../context/WishlistContext';
+import { useCart } from '../context/CartContext';
+import { LazyImage } from '../components/LazyImage';
 
 const imgProfileAvatar = '/figma-assets/a8ebf5939a3c12ed28690a4a48c6a6563322d7cf.png';
 const imgShoppingBag = '/figma-assets/8aab77e6404936a9df121d7028258a27c83ee8b7.svg';
@@ -22,8 +25,17 @@ interface SavedAddress {
 
 export default function Profile() {
   const { currentUser, userProfile, updateUserProfileData, logout, isAdmin, saveAddress } = useAuth();
-  const { orders } = useContent();
+  const { products, orders } = useContent();
+  const { wishlist, removeFromWishlist } = useWishlist();
+  const { add } = useCart();
   const navigate = useNavigate();
+  const [isWishlistExpanded, setIsWishlistExpanded] = useState(false);
+  const [addedWishlistId, setAddedWishlistId] = useState<string | null>(null);
+
+  // Products in current wishlist
+  const wishlistProducts = useMemo(() => {
+    return products.filter((p) => wishlist.includes(p.id));
+  }, [products, wishlist]);
 
   // Filter orders for the logged-in user
   const myOrders = useMemo(() => {
@@ -315,21 +327,32 @@ export default function Profile() {
           </div>
 
           {/* Quick Stats */}
-          <div className="mt-4 pt-3.5 border-t border-[#6b1a2a]/10 grid grid-cols-2 gap-2 text-center">
+          <div className="mt-4 pt-3.5 border-t border-[#6b1a2a]/10 grid grid-cols-3 gap-2 text-center">
             <div className="p-2 rounded-[14px] bg-[#fdfbf7] border border-[rgba(107,26,42,0.08)]">
               <span className="block text-lg font-serif font-semibold text-[#6b1a2a]">
                 {myOrders.length}
               </span>
               <span className="block text-[10px] uppercase tracking-wider text-[#8C827A] font-medium font-cormorant">
-                Orders Placed
+                Orders
               </span>
             </div>
+            <a
+              href="#wishlist-card"
+              className="p-2 rounded-[14px] bg-[#fdfbf7] border border-[rgba(107,26,42,0.08)] hover:border-[#6b1a2a]/40 transition group cursor-pointer block"
+            >
+              <span className="block text-lg font-serif font-semibold text-[#6b1a2a] group-hover:scale-105 transition-transform">
+                {wishlistProducts.length}
+              </span>
+              <span className="block text-[10px] uppercase tracking-wider text-[#8C827A] font-medium font-cormorant">
+                Wishlist
+              </span>
+            </a>
             <div className="p-2 rounded-[14px] bg-[#fdfbf7] border border-[rgba(107,26,42,0.08)]">
               <span className="block text-lg font-serif font-semibold text-[#6b1a2a]">
                 {addresses.length}
               </span>
               <span className="block text-[10px] uppercase tracking-wider text-[#8C827A] font-medium font-cormorant">
-                Saved Locations
+                Locations
               </span>
             </div>
           </div>
@@ -353,6 +376,131 @@ export default function Profile() {
                   Open &rarr;
                 </Link>
               </div>
+            </div>
+          )}
+        </div>
+
+        {/* ── WISHLIST CARD (BEFORE PERSONAL INFORMATION) ── */}
+        <div id="wishlist-card" className="bg-white/85 backdrop-blur-xs rounded-[20px] border border-[rgba(107,26,42,0.1)] p-4 sm:p-5 shadow-xs">
+          <div className="flex items-center justify-between border-b border-[#6b1a2a]/10 pb-3 mb-3.5">
+            <div className="flex items-center gap-2">
+              <svg className="size-4 text-[#6b1a2a] fill-[#6b1a2a]" viewBox="0 0 24 24">
+                <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+              </svg>
+              <h2 className="font-cormorant font-bold text-[#6b1a2a] text-[16px] sm:text-[17px] uppercase tracking-wider">
+                My Wishlist
+              </h2>
+              <span className="text-[11px] px-2 py-0.5 rounded-full bg-[#f9d5e5] text-[#6b1a2a] font-semibold border border-[#e7bec9]">
+                {wishlistProducts.length}
+              </span>
+            </div>
+
+            <div className="flex items-center gap-2">
+              {wishlistProducts.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setIsWishlistExpanded(!isWishlistExpanded)}
+                  className="px-3 py-1 rounded-[10px] bg-[#f9d5e5] hover:bg-[#f3bed3] text-[#6b1a2a] text-xs font-semibold transition cursor-pointer"
+                >
+                  {isWishlistExpanded ? 'Collapse' : 'View All'}
+                </button>
+              )}
+              <Link
+                to="/shop"
+                className="text-xs text-[#6b1a2a] hover:underline font-cormorant font-semibold"
+              >
+                Shop &rarr;
+              </Link>
+            </div>
+          </div>
+
+          {wishlistProducts.length === 0 ? (
+            <div className="p-6 text-center bg-[#fdfbf7] rounded-[14px] border border-dashed border-[#DED5C9] space-y-2.5">
+              <div className="w-10 h-10 rounded-full bg-[#f9d5e5] text-[#6b1a2a] flex items-center justify-center mx-auto text-lg">
+                ❤️
+              </div>
+              <div>
+                <h4 className="text-xs font-semibold text-[#2C2724]">Your Wishlist is Empty</h4>
+                <p className="text-[11px] text-[#786F66] mt-0.5 font-cormorant">
+                  Save your favorite handcrafted charms and keepsakes to view them here anytime.
+                </p>
+              </div>
+              <Link
+                to="/shop"
+                className="inline-block px-4 py-1.5 rounded-[12px] bg-[#6b1a2a] hover:bg-[#50131f] text-white text-xs font-semibold uppercase tracking-wider transition shadow-2xs"
+              >
+                Explore Boutique
+              </Link>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {(isWishlistExpanded ? wishlistProducts : wishlistProducts.slice(0, 3)).map((prod) => (
+                <div
+                  key={prod.id}
+                  className="p-3 rounded-[14px] bg-[#fdfbf7] border border-[rgba(107,26,42,0.08)] shadow-2xs flex items-center gap-3 hover:border-[#6b1a2a]/30 transition group"
+                >
+                  <Link to={`/product/${prod.id}`} className="size-16 rounded-[10px] overflow-hidden shrink-0 border border-[rgba(107,26,42,0.1)] bg-white block">
+                    <LazyImage
+                      alt={prod.name}
+                      src={prod.img || prod.images?.[0] || ''}
+                      priority={false}
+                      containerClassName="size-full"
+                      className="size-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    />
+                  </Link>
+
+                  <div className="flex-1 min-w-0">
+                    <Link
+                      to={`/product/${prod.id}`}
+                      className="font-cormorant font-bold text-[#6b1a2a] text-sm block truncate hover:underline"
+                    >
+                      {prod.name}
+                    </Link>
+                    <span className="font-sans font-bold text-xs text-[#2C2724] mt-0.5 block">
+                      ₹{prod.discountedPrice ?? prod.price}
+                    </span>
+                    <span className="text-[10px] text-[#8C827A] font-cormorant">
+                      {prod.category}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        add(prod);
+                        setAddedWishlistId(prod.id);
+                        setTimeout(() => setAddedWishlistId(null), 1200);
+                      }}
+                      className="px-2.5 py-1 rounded-[8px] bg-[#6b1a2a] hover:bg-[#50131f] text-white text-[11px] font-semibold transition active:scale-95 shadow-2xs cursor-pointer"
+                    >
+                      {addedWishlistId === prod.id ? '✓ Added' : 'Add to Cart'}
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => removeFromWishlist(prod.id)}
+                      className="p-1 text-[#8C827A] hover:text-[#c82333] transition cursor-pointer"
+                      title="Remove from wishlist"
+                      aria-label="Remove from wishlist"
+                    >
+                      <svg className="size-4 text-[#c82333] fill-[#c82333]" viewBox="0 0 24 24">
+                        <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+              ))}
+
+              {wishlistProducts.length > 3 && !isWishlistExpanded && (
+                <button
+                  type="button"
+                  onClick={() => setIsWishlistExpanded(true)}
+                  className="w-full py-1.5 text-center text-xs font-cormorant font-bold text-[#6b1a2a] hover:underline cursor-pointer"
+                >
+                  + {wishlistProducts.length - 3} more items in wishlist &rarr;
+                </button>
+              )}
             </div>
           )}
         </div>
