@@ -3,6 +3,7 @@ import { useParams, Link, useNavigate } from 'react-router';
 import { useCart } from '../context/CartContext';
 import { useContent } from '../context/ContentContext';
 import { getColorHex } from '../lib/colorUtils';
+import { LazyImage } from '../components/LazyImage';
 
 const imgGinghamBg = '/figma-assets/772e8e7b4c0d39ad6752261452ccca607e718dc3.png';
 const imgChevronLeft = '/figma-assets/de70edd513d91ef52fc2c1fa9af3cbf0656b675a.svg';
@@ -289,9 +290,11 @@ export default function Product() {
             >
               {gallery.map((imgSrc, idx) => (
                 <div key={idx} className="size-full shrink-0 relative">
-                  <img
-                    alt={`${product.name} - Photo ${idx + 1}`}
+                  <LazyImage
+                    alt={`${product?.name || 'Product'} - Photo ${idx + 1}`}
                     src={imgSrc}
+                    priority={idx === 0}
+                    containerClassName="size-full"
                     className="size-full object-cover select-none pointer-events-none"
                     draggable={false}
                   />
@@ -343,9 +346,11 @@ export default function Product() {
                     }`}
                     data-name={`thumb-${idx}`}
                   >
-                    <img
+                    <LazyImage
                       alt=""
                       src={thumb}
+                      priority={false}
+                      containerClassName="size-full"
                       className="size-full object-cover"
                     />
                   </button>
@@ -668,9 +673,11 @@ export default function Product() {
                   data-name={`related-card-${idx}`}
                 >
                   <div className="aspect-square w-full rounded-[10px] overflow-hidden bg-[#FAF5F0]">
-                    <img
+                    <LazyImage
                       alt={item.name}
                       src={item.img}
+                      priority={false}
+                      containerClassName="size-full"
                       className="size-full object-cover group-hover:scale-105 transition-transform duration-300"
                     />
                   </div>

@@ -1,7 +1,8 @@
-import { useMemo, useRef, useState, useEffect } from 'react';
+import { useMemo, useRef, useState, useEffect, Fragment } from 'react';
 import { Link } from 'react-router';
 import { useCart } from '../context/CartContext';
 import { useContent } from '../context/ContentContext';
+import { LazyImage } from '../components/LazyImage';
 
 const imgRectangle = '/figma-assets/2416c5a3da640dcea42f85f7a71067eac0c58ca9.png';
 const imgRectangle1 = '/figma-assets/2b39a24648f5a21e9e527dfe97992fd042715209.png';
@@ -93,10 +94,10 @@ export default function Home() {
 
       setActiveCollectionIdx((prevIdx) => {
         const cards = container.children;
-        const nextIdx = prevIdx + 1;
+        const maxIdx = Math.max(0, orderedCollections.length - 3);
+        const nextIdx = prevIdx >= maxIdx ? 0 : prevIdx + 1;
 
-        // If reached the end of list or near maxScroll, wrap back to 0 (cards 1 2 3)
-        if (nextIdx >= orderedCollections.length || container.scrollLeft >= maxScroll - 8) {
+        if (nextIdx === 0 || !cards || !cards[nextIdx] || !cards[0]) {
           container.scrollTo({
             left: 0,
             behavior: 'smooth',
@@ -104,23 +105,13 @@ export default function Home() {
           return 0;
         }
 
-        if (cards && cards[nextIdx]) {
-          const targetCard = cards[nextIdx] as HTMLElement;
-          const targetLeft = Math.min(targetCard.offsetLeft, maxScroll);
-          container.scrollTo({
-            left: targetLeft,
-            behavior: 'smooth',
-          });
-        } else {
-          const targetLeft = Math.min(
-            (nextIdx / (orderedCollections.length - 1)) * maxScroll,
-            maxScroll
-          );
-          container.scrollTo({
-            left: targetLeft,
-            behavior: 'smooth',
-          });
-        }
+        const firstOffset = (cards[0] as HTMLElement).offsetLeft;
+        const targetCard = cards[nextIdx] as HTMLElement;
+        const targetLeft = Math.min(Math.max(0, targetCard.offsetLeft - firstOffset), maxScroll);
+        container.scrollTo({
+          left: targetLeft,
+          behavior: 'smooth',
+        });
 
         return nextIdx;
       });
@@ -140,24 +131,21 @@ export default function Home() {
 
     const cards = container.children;
     if (cards && cards.length > 0) {
+      const firstOffset = (cards[0] as HTMLElement).offsetLeft;
       let closestIdx = 0;
       let minDiff = Infinity;
-      for (let i = 0; i < cards.length; i++) {
+      const maxIdx = Math.max(0, orderedCollections.length - 3);
+
+      for (let i = 0; i <= maxIdx && i < cards.length; i++) {
         const card = cards[i] as HTMLElement;
-        const diff = Math.abs(card.offsetLeft - scrollLeft);
+        const targetScroll = card.offsetLeft - firstOffset;
+        const diff = Math.abs(targetScroll - scrollLeft);
         if (diff < minDiff) {
           minDiff = diff;
           closestIdx = i;
         }
       }
       setActiveCollectionIdx(closestIdx);
-    } else {
-      const ratio = scrollLeft / maxScroll;
-      const index = Math.min(
-        orderedCollections.length - 1,
-        Math.max(0, Math.round(ratio * (orderedCollections.length - 1)))
-      );
-      setActiveCollectionIdx(index);
     }
   };
 
@@ -169,19 +157,12 @@ export default function Home() {
 
     const maxScroll = container.scrollWidth - container.clientWidth;
     const cards = container.children;
-    if (cards && cards[idx]) {
+    if (cards && cards[idx] && cards[0]) {
+      const firstOffset = (cards[0] as HTMLElement).offsetLeft;
       const targetCard = cards[idx] as HTMLElement;
+      const targetLeft = Math.min(Math.max(0, targetCard.offsetLeft - firstOffset), maxScroll);
       container.scrollTo({
-        left: Math.min(targetCard.offsetLeft, maxScroll),
-        behavior: 'smooth',
-      });
-    } else {
-      const targetScroll = Math.min(
-        (idx / Math.max(1, orderedCollections.length - 1)) * maxScroll,
-        maxScroll
-      );
-      container.scrollTo({
-        left: targetScroll,
+        left: targetLeft,
         behavior: 'smooth',
       });
     }
@@ -282,35 +263,35 @@ export default function Home() {
             onMouseLeave={() => setIsUserInteracting(false)}
             onTouchStart={pauseAutoScroll}
             onTouchEnd={pauseAutoScroll}
-            className="flex gap-3 overflow-x-auto scroll-smooth snap-x snap-mandatory pb-2 pt-1 px-1 -mx-1"
+            className="flex gap-2.5 overflow-x-auto scroll-smooth snap-x snap-mandatory pb-2 pt-1 px-1 -mx-1 relative"
             style={{
               scrollbarWidth: 'none',
               msOverflowStyle: 'none',
             }}
             data-name="categories-carousel"
           >
-            {orderedCollections.map((col) => {
+            {orderedCollections.map((col, idx) => {
               const coverImg = siteContent.collectionCovers?.[col.key] || col.defaultImg;
 
               return (
                 <Link
                   key={col.key}
                   to={`/shop?category=${encodeURIComponent(col.key)}`}
-                  className="group flex flex-col gap-2 items-center w-[112px] sm:w-[124px] shrink-0 snap-start"
+                  className="group flex flex-col gap-2 items-center w-[calc((100%-20px)/3)] shrink-0 snap-start"
                   data-name={`category-card-${col.key.toLowerCase().replace(/[^a-z0-9]/g, '-')}`}
                 >
                   <div className="aspect-[5/6] w-full rounded-2xl overflow-hidden border border-[#6b1a2a]/12 bg-[#FAF5F0] shadow-xs group-hover:shadow-md group-hover:scale-[1.03] transition-all relative">
-                    <img
+                    <LazyImage
                       alt={col.label}
-                      className="size-full object-cover transition-transform duration-300 group-hover:scale-105"
                       src={coverImg}
-                      onError={(e) => {
-                        (e.currentTarget as HTMLImageElement).src = col.defaultImg;
-                      }}
+                      fallbackSrc={col.defaultImg}
+                      priority={idx < 3}
+                      containerClassName="size-full"
+                      className="size-full object-cover transition-transform duration-300 group-hover:scale-105"
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/25 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/25 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
                   </div>
-                  <p className="font-cormorant font-semibold text-[#6b1a2a] text-[13px] sm:text-sm text-center leading-tight line-clamp-2 px-0.5 group-hover:underline">
+                  <p className="font-cormorant font-semibold text-[#6b1a2a] text-[12px] sm:text-[13px] text-center leading-tight line-clamp-2 px-0.5 group-hover:underline">
                     {col.label}
                   </p>
                 </Link>
@@ -320,12 +301,12 @@ export default function Home() {
 
           {/* Dots Indicator for Number of Collections */}
           <div className="flex items-center justify-center gap-1.5 pt-0.5" aria-label="Collections pagination">
-            {orderedCollections.map((col, idx) => (
+            {Array.from({ length: Math.max(1, orderedCollections.length - 2) }).map((_, idx) => (
               <button
-                key={col.key}
+                key={idx}
                 type="button"
                 onClick={() => scrollToCollection(idx)}
-                aria-label={`Go to ${col.label}`}
+                aria-label={`Go to trio ${idx + 1}`}
                 className={`transition-all rounded-full cursor-pointer ${
                   activeCollectionIdx === idx
                     ? 'w-4 h-1.5 bg-[#6b1a2a]'
@@ -359,7 +340,7 @@ export default function Home() {
 
           <div className="flex flex-col gap-3 w-full" data-node-id="2:164" data-name="bestseller-list">
             {bestsellers.length > 0 ? (
-              bestsellers.map((product) => (
+              bestsellers.map((product, idx) => (
                 <div
                   key={product.id}
                   className="bg-white border border-[rgba(107,26,42,0.08)] rounded-2xl p-3 flex gap-3 items-center shadow-xs hover:shadow-md transition-all group relative"
@@ -369,38 +350,34 @@ export default function Home() {
                     to={`/product/${product.id}`}
                     className="size-20 rounded-lg overflow-hidden shrink-0 border border-[rgba(107,26,42,0.06)] relative block"
                   >
-                    <img
+                    <LazyImage
                       alt={product.name}
-                      className={`size-full object-cover transition-all duration-300 ${
-                        product.images && product.images.length > 1
-                          ? 'group-hover:opacity-0 group-hover:scale-105'
-                          : 'group-hover:scale-105'
-                      }`}
-                      src={product.img || product.images?.[0]}
+                      src={product.img || product.images?.[0] || ''}
+                      priority={idx < 2}
+                      containerClassName="size-full"
+                      className="size-full object-cover transition-all duration-300 group-hover:scale-105"
                     />
-                    {product.images && product.images.length > 1 && product.images[1] && (
-                      <img
-                        alt={product.name}
-                        src={product.images[1]}
-                        className="size-full object-cover absolute inset-0 opacity-0 group-hover:opacity-100 group-hover:scale-105 transition-all duration-300"
-                      />
-                    )}
                     {product.images && product.images.length > 1 && (
-                      <span className="absolute bottom-1 right-1 bg-black/60 text-white text-[9px] font-sans px-1 rounded-sm pointer-events-none">
+                      <span className="absolute bottom-1 right-1 bg-black/60 text-white text-[9px] font-sans px-1 rounded-sm pointer-events-none z-10">
                         {product.images.length}
                       </span>
                     )}
                   </Link>
 
                   <div className="flex flex-col justify-between flex-1 min-w-0 self-stretch py-0.5">
-                    <div className="flex items-baseline justify-between gap-2">
+                    <div className="flex items-start justify-between gap-2">
                       <Link
                         to={`/product/${product.id}`}
-                        className="font-cormorant font-bold text-[#6b1a2a] text-base truncate hover:underline"
+                        className="font-cormorant font-bold text-[#6b1a2a] text-[15px] sm:text-base leading-snug hover:underline break-words min-w-0"
                       >
-                        {product.name}
+                        {product.name.split(/<br\s*\/?>|\n/gi).map((part, i, arr) => (
+                          <Fragment key={i}>
+                            {part}
+                            {i < arr.length - 1 && <br />}
+                          </Fragment>
+                        ))}
                       </Link>
-                      <div className="flex items-center gap-1.5 shrink-0">
+                      <div className="flex items-center gap-1.5 shrink-0 pt-0.5">
                         {product.discountedPrice !== undefined ? (
                           <>
                             <span className="font-sans font-bold text-[#6b1a2a] text-[15px]">
@@ -455,13 +432,13 @@ export default function Home() {
           <section className="relative overflow-hidden rounded-[20px] border border-[#6b1a2a]/10 bg-gradient-to-br from-[#FAF0ED] to-[#FDF5F2] p-5 shadow-xs">
             {siteContent.promoBannerUrl && (
               <div className="w-full h-36 rounded-xl overflow-hidden mb-3 border border-[#6b1a2a]/10">
-                <img
+                <LazyImage
                   src={siteContent.promoBannerUrl}
                   alt={siteContent.promoBannerText || 'Promo Banner'}
+                  fallbackSrc="/figma-assets/2b39a24648f5a21e9e527dfe97992fd042715209.png"
+                  priority={false}
+                  containerClassName="size-full"
                   className="w-full h-full object-cover"
-                  onError={(e) => {
-                    (e.currentTarget as HTMLImageElement).src = '/figma-assets/2b39a24648f5a21e9e527dfe97992fd042715209.png';
-                  }}
                 />
               </div>
             )}
@@ -493,13 +470,13 @@ export default function Home() {
         >
           {/* Small Story Image */}
           <div className="size-24 sm:size-28 rounded-2xl overflow-hidden border-2 border-white shadow-sm shrink-0 bg-white/80 ring-1 ring-[#aec6e4]/60">
-            <img
+            <LazyImage
               alt="Petalisse Story"
               src={siteContent.aboutImageUrl || '/figma-assets/2416c5a3da640dcea42f85f7a71067eac0c58ca9.png'}
+              fallbackSrc="/figma-assets/2416c5a3da640dcea42f85f7a71067eac0c58ca9.png"
+              priority={false}
+              containerClassName="size-full"
               className="size-full object-cover"
-              onError={(e) => {
-                (e.currentTarget as HTMLImageElement).src = '/figma-assets/2416c5a3da640dcea42f85f7a71067eac0c58ca9.png';
-              }}
             />
           </div>
 

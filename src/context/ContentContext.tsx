@@ -59,16 +59,16 @@ const DEFAULT_SITE_CONTENT: SiteContent = {
     { title: 'Silk & Velvet Ribbons', desc: 'Soft-touch french ribbons for an heirloom feel', img: '/figma-assets/c985c36ff39bdb6b9a8d2827b0a9f08ad612b3b1.png' },
   ],
   splashScreen: {
-    enabled: false,
-    mediaType: 'gif',
-    mediaUrl: '',
+    enabled: true,
+    mediaType: 'video',
+    mediaUrl: '/Gemini_Generated_Gif_9vqq7d9vqq7d9vqq.mp4',
     duration: 3,
     autoDismiss: true,
     showSkipButton: true,
     title: 'Petalisse',
     subtitle: 'Handcrafted Charms & Keepsakes',
     backgroundColor: '#FDFBF7',
-    showOncePerSession: true,
+    showOncePerSession: false,
   },
 };
 
@@ -103,6 +103,11 @@ function sanitizeSiteContent(content: SiteContent): SiteContent {
       ...DEFAULT_SITE_CONTENT.splashScreen!,
       ...content.splashScreen,
     };
+    if (!sanitized.splashScreen.mediaUrl && DEFAULT_SITE_CONTENT.splashScreen?.mediaUrl) {
+      sanitized.splashScreen.mediaUrl = DEFAULT_SITE_CONTENT.splashScreen.mediaUrl;
+    }
+  } else {
+    sanitized.splashScreen = DEFAULT_SITE_CONTENT.splashScreen;
   }
   return sanitized;
 }

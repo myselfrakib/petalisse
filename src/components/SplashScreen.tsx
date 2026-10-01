@@ -13,77 +13,48 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
   previewConfig,
   onClosePreview,
 }) => {
-  const { siteContent } = useContent();
+  const { siteContent, loading } = useContent();
   const config: SplashScreenConfig | undefined = previewConfig || siteContent?.splashScreen;
 
-  // Synchronously compute initial visibility to prevent any 1-frame background flash on page refresh
+  // On every page refresh or initial load, show the splash screen while loading
   const [visible, setVisible] = useState<boolean>(() => {
     if (forcePreview) return true;
     try {
-      const alreadyShown = sessionStorage.getItem('petalisse_splash_dismissed');
-      if (alreadyShown === 'true') {
-        return false;
-      }
-      if (previewConfig?.enabled && previewConfig?.mediaUrl) {
-        return true;
-      }
       const cached = localStorage.getItem('petalisse_site_content');
       if (cached) {
         const parsed = JSON.parse(cached);
         const splash = parsed?.splashScreen;
-        if (splash?.enabled && (splash?.mediaUrl || splash?.lottieData)) {
-          return true;
+        if (splash && splash.enabled === false) {
+          return false;
         }
       }
     } catch {}
-    return false;
+    // Default to true on every page refresh/load so it covers the interface immediately without flash
+    return true;
   });
 
   const [exiting, setExiting] = useState(false);
+  const [mediaReadyToDismiss, setMediaReadyToDismiss] = useState(false);
   const lottieContainerRef = useRef<HTMLDivElement>(null);
 
-  // Synchronize visibility if config changes dynamically
+  // Synchronize visibility if config changes dynamically or preview is toggled
   useEffect(() => {
-    if (!config) return;
-
     if (forcePreview) {
       setVisible(true);
       setExiting(false);
       return;
     }
 
-    if (!config.enabled || !config.mediaUrl) {
+    if (config && config.enabled === false) {
       setVisible(false);
       return;
     }
+  }, [config?.enabled, forcePreview]);
 
-    // Check session storage if showOncePerSession is true (default)
-    const showOnce = config.showOncePerSession !== false;
-    try {
-      const alreadyShown = sessionStorage.getItem('petalisse_splash_dismissed');
-      if (showOnce && alreadyShown === 'true') {
-        setVisible(false);
-        return;
-      }
-    } catch {
-      // Ignore storage errors in restricted iframes
-    }
-
-    // Show splash screen on first visit
-    setVisible(true);
-    setExiting(false);
-  }, [config?.enabled, config?.mediaUrl, config?.showOncePerSession, forcePreview]);
-
-  // Dismiss logic with fade out
+  // Dismiss logic with smooth fade out
   const handleDismiss = () => {
     if (exiting) return;
     setExiting(true);
-
-    if (!forcePreview && config?.showOncePerSession !== false) {
-      try {
-        sessionStorage.setItem('petalisse_splash_dismissed', 'true');
-      } catch {}
-    }
 
     setTimeout(() => {
       setVisible(false);
@@ -94,25 +65,47 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
     }, 600);
   };
 
-  // Auto-dismissal:
-  // For video: the duration matches the uploaded video length and dismisses onEnded
-  // For non-video (GIF / Lottie / image): dismisses after configured duration
+  // Auto-dismissal triggered once both:
+  // 1. Media duration / video finished (mediaReadyToDismiss)
+  // 2. Site content is done loading (!loading)
   useEffect(() => {
     if (!visible || exiting || !config) return;
     if (config.autoDismiss === false) return;
 
-    // For video media, duration is governed by the uploaded video itself
+    if (mediaReadyToDismiss && !loading) {
+      handleDismiss();
+    }
+  }, [mediaReadyToDismiss, loading, visible, exiting, config?.autoDismiss]);
+
+  // Duration timer for non-video media (GIF / Lottie / Fallback)
+  useEffect(() => {
+    if (!visible || exiting || !config) return;
+    if (config.autoDismiss === false) return;
+
+    // For video media, onEnded sets mediaReadyToDismiss
     if (config.mediaType === 'video') {
       return;
     }
 
     const durationSec = Math.max(config.duration || 3.5, 1.5);
     const timer = setTimeout(() => {
-      handleDismiss();
+      setMediaReadyToDismiss(true);
     }, durationSec * 1000);
 
     return () => clearTimeout(timer);
   }, [visible, exiting, config?.autoDismiss, config?.duration, config?.mediaType]);
+
+  // Safety fallback: dismiss after max 10 seconds even if network is extremely slow
+  useEffect(() => {
+    if (!visible || exiting || !config) return;
+    if (config.autoDismiss === false) return;
+
+    const safetyTimer = setTimeout(() => {
+      handleDismiss();
+    }, 10000);
+
+    return () => clearTimeout(safetyTimer);
+  }, [visible, exiting, config?.autoDismiss]);
 
   // Lottie Animation loader
   useEffect(() => {
@@ -227,8 +220,11 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
               loop={config.autoDismiss === false}
               onEnded={() => {
                 if (config.autoDismiss !== false) {
-                  handleDismiss();
+                  setMediaReadyToDismiss(true);
                 }
+              }}
+              onError={() => {
+                setMediaReadyToDismiss(true);
               }}
               className="size-full object-cover animate-fadeIn"
             />
@@ -238,6 +234,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
             <img
               src={config.mediaUrl}
               alt={config.title || 'Petalisse Splash'}
+              onError={() => setMediaReadyToDismiss(true)}
               className="size-full object-cover animate-fadeIn"
             />
           )}

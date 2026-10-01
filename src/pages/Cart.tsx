@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { useContent } from '../context/ContentContext';
 import { Order, OrderItem } from '../types';
 import { getColorHex } from '../lib/colorUtils';
+import { LazyImage } from '../components/LazyImage';
 
 const imgGinghamBg = '/figma-assets/772e8e7b4c0d39ad6752261452ccca607e718dc3.png';
 const imgChevronLeft = '/figma-assets/a9ed62056d32eaca4682db0b3be7e08d78983400.svg';
@@ -403,9 +404,11 @@ export default function Cart() {
                 data-name="cart-item"
               >
                 <Link to={`/product/${p.id}`} className="size-20 rounded-[12px] overflow-hidden shrink-0">
-                  <img
+                  <LazyImage
                     alt={p.name}
-                    src={p.img || p.images?.[0]}
+                    src={p.img || p.images?.[0] || ''}
+                    priority={idx < 3}
+                    containerClassName="size-full"
                     className="size-full object-cover"
                   />
                 </Link>

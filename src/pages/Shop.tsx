@@ -4,6 +4,7 @@ import { useCart } from '../context/CartContext';
 import { useContent } from '../context/ContentContext';
 import { Product } from '../types';
 import { getColorHex } from '../lib/colorUtils';
+import { LazyImage } from '../components/LazyImage';
 
 const imgGinghamBg = '/figma-assets/772e8e7b4c0d39ad6752261452ccca607e718dc3.png';
 const imgChevronLeft = '/figma-assets/de70edd513d91ef52fc2c1fa9af3cbf0656b675a.svg';
@@ -297,7 +298,7 @@ export default function Shop() {
             data-node-id="2:248"
             data-name="product-grid"
           >
-          {displayedProducts.map((product) => {
+          {displayedProducts.map((product, idx) => {
             const isFav = !!favorites[product.id];
             const isAdded = addedId === product.id;
 
@@ -313,9 +314,11 @@ export default function Shop() {
                   data-name="image-container"
                 >
                   <Link to={`/product/${product.id}`} className="block size-full relative">
-                    <img
+                    <LazyImage
                       alt={product.name}
-                      src={product.img || product.images?.[0]}
+                      src={product.img || product.images?.[0] || ''}
+                      priority={idx < 4}
+                      containerClassName="size-full"
                       className={`size-full object-cover transition-all duration-300 ${
                         product.images && product.images.length > 1
                           ? 'group-hover:opacity-0 group-hover:scale-105'
@@ -323,10 +326,12 @@ export default function Shop() {
                       }`}
                     />
                     {product.images && product.images.length > 1 && product.images[1] && (
-                      <img
+                      <LazyImage
                         alt={product.name}
                         src={product.images[1]}
-                        className="size-full object-cover absolute inset-0 opacity-0 group-hover:opacity-100 group-hover:scale-105 transition-all duration-300"
+                        priority={false}
+                        containerClassName="size-full absolute inset-0 opacity-0 group-hover:opacity-100 transition-all duration-300 pointer-events-none"
+                        className="size-full object-cover group-hover:scale-105 transition-all duration-300"
                       />
                     )}
                   </Link>
