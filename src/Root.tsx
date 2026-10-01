@@ -5,7 +5,6 @@ import { useAuth } from './context/AuthContext';
 import { useContent } from './context/ContentContext';
 import { RoseIcon } from './components/Icons';
 import { AuthModal } from './components/AuthModal';
-import { SplashScreen } from './components/SplashScreen';
 
 const imgHome = '/figma-assets/dffa408d6d19e91d6b056849cc2f0972b6a36cdd.svg';
 const imgShoppingBag = '/figma-assets/083e4c888f3568dd2146ebd73c535dfaacf6999c.svg';
@@ -20,26 +19,6 @@ export default function Root() {
   const pathname = location.pathname;
   const navigate = useNavigate();
   const [authModalOpen, setAuthModalOpen] = useState(false);
-
-  // 1. Route persistence across refresh/iframe reload
-  useEffect(() => {
-    try {
-      const savedRoute =
-        sessionStorage.getItem('petalisse_last_route') ||
-        localStorage.getItem('petalisse_last_route');
-      if (savedRoute && savedRoute !== '/' && location.pathname === '/') {
-        navigate(savedRoute, { replace: true });
-      }
-    } catch {}
-  }, []);
-
-  useEffect(() => {
-    try {
-      const fullPath = location.pathname + location.search + location.hash;
-      sessionStorage.setItem('petalisse_last_route', fullPath);
-      localStorage.setItem('petalisse_last_route', fullPath);
-    } catch {}
-  }, [location.pathname, location.search, location.hash]);
 
   // 2. Scroll position persistence & restoration
   useEffect(() => {
@@ -114,8 +93,6 @@ export default function Root() {
 
   return (
     <div className="font-body text-ink min-h-screen flex flex-col bg-[#FDFBF7]">
-      {/* Dynamic Splash Screen on Website Open */}
-      <SplashScreen />
 
       {/* Announcement Bar */}
       {!isAdminPage && siteContent.announcementText && (

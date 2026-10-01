@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useMemo, useRef, useState, useEffect } from 'react';
 import { Link } from 'react-router';
 import { useCart } from '../context/CartContext';
 import { useContent } from '../context/ContentContext';
@@ -53,6 +53,8 @@ export default function Home() {
   const { products, siteContent } = useContent();
   const collectionsScrollRef = useRef<HTMLDivElement>(null);
   const [activeCollectionIdx, setActiveCollectionIdx] = useState(0);
+  const [isUserInteracting, setIsUserInteracting] = useState(false);
+  const interactionTimeoutRef = useRef<any>(null);
 
   // Ordered collections managed live via Admin Panel CMS
   const orderedCollections = useMemo(() => {
@@ -68,28 +70,117 @@ export default function Home() {
     });
   }, [siteContent.collectionOrder]);
 
+  const pauseAutoScroll = () => {
+    setIsUserInteracting(true);
+    if (interactionTimeoutRef.current) clearTimeout(interactionTimeoutRef.current);
+    interactionTimeoutRef.current = setTimeout(() => {
+      setIsUserInteracting(false);
+    }, 4000);
+  };
+
+  // Auto-move collections one-by-one every 3 seconds (e.g. 1 2 3 -> 2 3 4 -> 3 4 5 ... -> resets to 1 2 3)
+  useEffect(() => {
+    if (!orderedCollections || orderedCollections.length <= 1) return;
+
+    const timer = setInterval(() => {
+      if (isUserInteracting) return;
+
+      const container = collectionsScrollRef.current;
+      if (!container) return;
+
+      const maxScroll = container.scrollWidth - container.clientWidth;
+      if (maxScroll <= 0) return;
+
+      setActiveCollectionIdx((prevIdx) => {
+        const cards = container.children;
+        const nextIdx = prevIdx + 1;
+
+        // If reached the end of list or near maxScroll, wrap back to 0 (cards 1 2 3)
+        if (nextIdx >= orderedCollections.length || container.scrollLeft >= maxScroll - 8) {
+          container.scrollTo({
+            left: 0,
+            behavior: 'smooth',
+          });
+          return 0;
+        }
+
+        if (cards && cards[nextIdx]) {
+          const targetCard = cards[nextIdx] as HTMLElement;
+          const targetLeft = Math.min(targetCard.offsetLeft, maxScroll);
+          container.scrollTo({
+            left: targetLeft,
+            behavior: 'smooth',
+          });
+        } else {
+          const targetLeft = Math.min(
+            (nextIdx / (orderedCollections.length - 1)) * maxScroll,
+            maxScroll
+          );
+          container.scrollTo({
+            left: targetLeft,
+            behavior: 'smooth',
+          });
+        }
+
+        return nextIdx;
+      });
+    }, 3000);
+
+    return () => clearInterval(timer);
+  }, [orderedCollections, isUserInteracting]);
+
   const handleCollectionsScroll = (e: React.UIEvent<HTMLDivElement>) => {
     const container = e.currentTarget;
     const scrollLeft = container.scrollLeft;
     const maxScroll = container.scrollWidth - container.clientWidth;
-    if (maxScroll <= 0) {
+    if (maxScroll <= 0 || scrollLeft <= 5) {
       setActiveCollectionIdx(0);
       return;
     }
-    const ratio = scrollLeft / maxScroll;
-    const index = Math.min(
-      orderedCollections.length - 1,
-      Math.max(0, Math.round(ratio * (orderedCollections.length - 1)))
-    );
-    setActiveCollectionIdx(index);
+
+    const cards = container.children;
+    if (cards && cards.length > 0) {
+      let closestIdx = 0;
+      let minDiff = Infinity;
+      for (let i = 0; i < cards.length; i++) {
+        const card = cards[i] as HTMLElement;
+        const diff = Math.abs(card.offsetLeft - scrollLeft);
+        if (diff < minDiff) {
+          minDiff = diff;
+          closestIdx = i;
+        }
+      }
+      setActiveCollectionIdx(closestIdx);
+    } else {
+      const ratio = scrollLeft / maxScroll;
+      const index = Math.min(
+        orderedCollections.length - 1,
+        Math.max(0, Math.round(ratio * (orderedCollections.length - 1)))
+      );
+      setActiveCollectionIdx(index);
+    }
   };
 
   const scrollToCollection = (idx: number) => {
-    if (collectionsScrollRef.current) {
-      const maxScroll =
-        collectionsScrollRef.current.scrollWidth - collectionsScrollRef.current.clientWidth;
-      const targetScroll = (idx / (orderedCollections.length - 1)) * maxScroll;
-      collectionsScrollRef.current.scrollTo({
+    const container = collectionsScrollRef.current;
+    if (!container) return;
+
+    pauseAutoScroll();
+
+    const maxScroll = container.scrollWidth - container.clientWidth;
+    const cards = container.children;
+    if (cards && cards[idx]) {
+      const targetCard = cards[idx] as HTMLElement;
+      container.scrollTo({
+        left: Math.min(targetCard.offsetLeft, maxScroll),
+        behavior: 'smooth',
+      });
+    } else {
+      const targetScroll = Math.min(
+        (idx / Math.max(1, orderedCollections.length - 1)) * maxScroll,
+        maxScroll
+      );
+      container.scrollTo({
         left: targetScroll,
         behavior: 'smooth',
       });
@@ -187,6 +278,10 @@ export default function Home() {
           <div
             ref={collectionsScrollRef}
             onScroll={handleCollectionsScroll}
+            onMouseEnter={() => setIsUserInteracting(true)}
+            onMouseLeave={() => setIsUserInteracting(false)}
+            onTouchStart={pauseAutoScroll}
+            onTouchEnd={pauseAutoScroll}
             className="flex gap-3 overflow-x-auto scroll-smooth snap-x snap-mandatory pb-2 pt-1 px-1 -mx-1"
             style={{
               scrollbarWidth: 'none',

@@ -3162,6 +3162,15 @@ export const AdminPage: React.FC = () => {
                       <span>3.5s (Recommended)</span>
                       <span>8.0s (Showcase)</span>
                     </div>
+                    {splashConfig.mediaType === 'video' ? (
+                      <p className="text-[11px] text-[#8E5B59] mt-1 font-medium">
+                        🎬 Video duration automatically matches the exact length of your uploaded video.
+                      </p>
+                    ) : (
+                      <p className="text-[10px] text-[#8C827A] mt-0.5">
+                        Duration for animated GIFs and Lottie animations before entering the storefront.
+                      </p>
+                    )}
                   </div>
 
                   {/* Background Color */}
@@ -3337,13 +3346,6 @@ export const AdminPage: React.FC = () => {
                           {splashConfig.subtitle}
                         </p>
                       )}
-                    </div>
-
-                    {/* Progress Bar */}
-                    <div className="relative z-10 w-full">
-                      <div className="w-full h-1 bg-black/15 rounded-full overflow-hidden backdrop-blur-xs">
-                        <div className="w-2/3 h-full bg-[#8E5B59] rounded-full animate-pulse shadow-xs" />
-                      </div>
                     </div>
                   </div>
 

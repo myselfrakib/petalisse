@@ -16,19 +16,39 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
   const { siteContent } = useContent();
   const config: SplashScreenConfig | undefined = previewConfig || siteContent?.splashScreen;
 
-  const [visible, setVisible] = useState(false);
+  // Synchronously compute initial visibility to prevent any 1-frame background flash on page refresh
+  const [visible, setVisible] = useState<boolean>(() => {
+    if (forcePreview) return true;
+    try {
+      const alreadyShown = sessionStorage.getItem('petalisse_splash_dismissed');
+      if (alreadyShown === 'true') {
+        return false;
+      }
+      if (previewConfig?.enabled && previewConfig?.mediaUrl) {
+        return true;
+      }
+      const cached = localStorage.getItem('petalisse_site_content');
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        const splash = parsed?.splashScreen;
+        if (splash?.enabled && (splash?.mediaUrl || splash?.lottieData)) {
+          return true;
+        }
+      }
+    } catch {}
+    return false;
+  });
+
   const [exiting, setExiting] = useState(false);
-  const [progress, setProgress] = useState(0);
   const lottieContainerRef = useRef<HTMLDivElement>(null);
 
-  // Check if splash screen should be shown
+  // Synchronize visibility if config changes dynamically
   useEffect(() => {
     if (!config) return;
 
     if (forcePreview) {
       setVisible(true);
       setExiting(false);
-      setProgress(0);
       return;
     }
 
@@ -52,8 +72,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
     // Show splash screen on first visit
     setVisible(true);
     setExiting(false);
-    setProgress(0);
-  }, [config, forcePreview]);
+  }, [config?.enabled, config?.mediaUrl, config?.showOncePerSession, forcePreview]);
 
   // Dismiss logic with fade out
   const handleDismiss = () => {
@@ -75,31 +94,25 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
     }, 600);
   };
 
-  // Timer & progress bar for auto-dismissal
+  // Auto-dismissal:
+  // For video: the duration matches the uploaded video length and dismisses onEnded
+  // For non-video (GIF / Lottie / image): dismisses after configured duration
   useEffect(() => {
     if (!visible || exiting || !config) return;
+    if (config.autoDismiss === false) return;
+
+    // For video media, duration is governed by the uploaded video itself
+    if (config.mediaType === 'video') {
+      return;
+    }
 
     const durationSec = Math.max(config.duration || 3.5, 1.5);
-    const durationMs = durationSec * 1000;
-    const intervalMs = 40;
-    const step = (intervalMs / durationMs) * 100;
+    const timer = setTimeout(() => {
+      handleDismiss();
+    }, durationSec * 1000);
 
-    const interval = setInterval(() => {
-      setProgress((prev) => {
-        const next = prev + step;
-        if (next >= 100) {
-          clearInterval(interval);
-          if (config.autoDismiss !== false) {
-            handleDismiss();
-          }
-          return 100;
-        }
-        return next;
-      });
-    }, intervalMs);
-
-    return () => clearInterval(interval);
-  }, [visible, exiting, config]);
+    return () => clearTimeout(timer);
+  }, [visible, exiting, config?.autoDismiss, config?.duration, config?.mediaType]);
 
   // Lottie Animation loader
   useEffect(() => {
@@ -306,25 +319,6 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
           </div>
         )}
 
-        {/* Bottom Progress Bar */}
-        <div className="relative z-20 w-full flex flex-col items-center gap-2 mt-auto">
-          <div className="w-full h-1.5 bg-black/15 rounded-full overflow-hidden backdrop-blur-xs">
-            <div
-              className="h-full bg-[#8E5B59] transition-all duration-75 ease-linear rounded-full shadow-xs"
-              style={{ width: `${Math.min(progress, 100)}%` }}
-            />
-          </div>
-          <p
-            className={`text-[10px] tracking-wider uppercase font-sans font-medium ${
-              config.mediaUrl ? 'text-white/80' : 'text-[#A89E94]'
-            }`}
-            style={{
-              textShadow: config.mediaUrl ? '0 1px 4px rgba(0,0,0,0.5)' : 'none',
-            }}
-          >
-            Opening Boutique...
-          </p>
-        </div>
       </div>
     </div>
   );
