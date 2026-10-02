@@ -21,7 +21,7 @@ const imgMusic = '/figma-assets/76abb4ffe21c8d67bea7f7daf70db2330cc66a88.svg';
 export default function Cart() {
   const { items, remove, update, total, count, clear } = useCart();
   const { currentUser, userProfile } = useAuth();
-  const { createOrder, orders, coupons, validateCoupon } = useContent();
+  const { createOrder, orders, validateCoupon } = useContent();
   const [promoCode, setPromoCode] = useState('');
   const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
   const [promoMessage, setPromoMessage] = useState('');
@@ -584,26 +584,6 @@ export default function Cart() {
             </p>
           )}
 
-          {/* Available coupons chips if user hasn't applied one */}
-          {!appliedCoupon && coupons.filter((c) => c.isActive && (!c.expiresAt || new Date().toISOString().split('T')[0] <= c.expiresAt)).length > 0 && (
-            <div className="flex flex-wrap items-center gap-1.5 pt-1 pl-1">
-              <span className="text-[10px] text-[#8b827d] font-medium">Available Coupons:</span>
-              {coupons
-                .filter((c) => c.isActive && (!c.expiresAt || new Date().toISOString().split('T')[0] <= c.expiresAt))
-                .slice(0, 3)
-                .map((c) => (
-                  <button
-                    key={c.code}
-                    type="button"
-                    onClick={() => handleApplyPromo(c.code)}
-                    className="px-2 py-0.5 rounded-full bg-[#FAF0ED] text-[#8E5B59] hover:bg-[#8E5B59] hover:text-white border border-[#E8C5B8]/80 text-[10px] font-sans font-semibold transition cursor-pointer"
-                    title={`Apply ${c.code}`}
-                  >
-                    🏷️ {c.code} ({c.discountType === 'percentage' ? `${c.discountValue}%` : `₹${c.discountValue}`})
-                  </button>
-                ))}
-            </div>
-          )}
         </section>
 
         {/* ── SHIPPING DETAILS SECTION ── */}
