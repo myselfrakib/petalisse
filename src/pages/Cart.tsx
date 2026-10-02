@@ -3,7 +3,7 @@ import { Link } from 'react-router';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { useContent } from '../context/ContentContext';
-import { Order, OrderItem } from '../types';
+import { Order, OrderItem, Coupon } from '../types';
 import { getColorHex } from '../lib/colorUtils';
 import { LazyImage } from '../components/LazyImage';
 
@@ -21,10 +21,11 @@ const imgMusic = '/figma-assets/76abb4ffe21c8d67bea7f7daf70db2330cc66a88.svg';
 export default function Cart() {
   const { items, remove, update, total, count, clear } = useCart();
   const { currentUser, userProfile } = useAuth();
-  const { createOrder, orders } = useContent();
-  const [promoCode, setPromoCode] = useState('PETALISSE10');
-  const [promoApplied, setPromoApplied] = useState(true);
-  const [promoMessage, setPromoMessage] = useState('10% off applied!');
+  const { createOrder, orders, coupons, validateCoupon } = useContent();
+  const [promoCode, setPromoCode] = useState('');
+  const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
+  const [promoMessage, setPromoMessage] = useState('');
+  const [promoError, setPromoError] = useState('');
   const [orderPlaced, setOrderPlaced] = useState(false);
   const [isSubmittingOrder, setIsSubmittingOrder] = useState(false);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
@@ -149,8 +150,8 @@ export default function Cart() {
   }, [orders, clear]);
 
   // Discount & Shipping calculations
-  // Free shipping on order above 599 or else 49 for online payment and 99 for partial cod
-  const discountAmount = promoApplied ? total * 0.1 : 0;
+  // Discount is calculated dynamically from the database coupon
+  const discountAmount = appliedCoupon ? validateCoupon(appliedCoupon.code, total).discount : 0;
   const productTotal = Math.max(0, total - discountAmount);
   const isFreeShipping = productTotal >= 599;
 
@@ -169,14 +170,34 @@ export default function Cart() {
   const amountPaidNow = paymentMethod === 'online' ? onlineTotal : partialCodPayNow;
   const codAmountDue = paymentMethod === 'online' ? 0 : partialCodDue;
 
-  const handleApplyPromo = () => {
-    if (!promoCode.trim()) {
-      setPromoApplied(false);
-      setPromoMessage('');
+  const handleApplyPromo = (codeToApply?: string) => {
+    const targetCode = (codeToApply || promoCode).trim();
+    setPromoError('');
+    setPromoMessage('');
+    if (!targetCode) {
+      setAppliedCoupon(null);
       return;
     }
-    setPromoApplied(true);
-    setPromoMessage('10% discount applied!');
+    const res = validateCoupon(targetCode, total);
+    if (res.valid && res.coupon) {
+      setAppliedCoupon(res.coupon);
+      setPromoCode(res.coupon.code);
+      const discountLabel = res.coupon.discountType === 'percentage'
+        ? `${res.coupon.discountValue}% OFF (saved ₹${res.discount})`
+        : `₹${res.discount} OFF`;
+      setPromoMessage(`✓ ${res.coupon.code} applied: ${discountLabel}`);
+      setPromoError('');
+    } else {
+      setAppliedCoupon(null);
+      setPromoError(res.error || 'Invalid or inactive coupon code');
+    }
+  };
+
+  const handleRemovePromo = () => {
+    setAppliedCoupon(null);
+    setPromoCode('');
+    setPromoMessage('');
+    setPromoError('');
   };
 
   const handlePlaceOrder = async (e?: React.FormEvent) => {
@@ -249,6 +270,7 @@ export default function Cart() {
         items: orderItems,
         subtotal: total,
         discount: discountAmount,
+        couponCode: appliedCoupon?.code,
         shippingFee,
         total: finalTotal,
         paymentMethod,
@@ -488,31 +510,99 @@ export default function Cart() {
 
         {/* ── PROMO CODE SECTION ── */}
         <section
-          className="flex flex-col gap-1.5 w-full"
+          className="flex flex-col gap-2 w-full"
           data-node-id="9:71"
           data-name="promo-section"
         >
-          <div className="flex gap-2 items-center w-full" data-name="promo-row">
-            <input
-              type="text"
-              value={promoCode}
-              onChange={(e) => setPromoCode(e.target.value)}
-              placeholder="Enter promo code"
-              className="bg-white border border-[rgba(107,26,42,0.1)] rounded-full px-4 py-2.5 flex-1 font-cormorant text-sm text-ink placeholder-[#8b827d] outline-none focus:border-[#6b1a2a] transition-colors"
-              data-name="promo-input"
-            />
-            <button
-              onClick={handleApplyPromo}
-              className="bg-[#6b1a2a] hover:bg-[#50131f] active:scale-95 text-white font-cormorant font-bold uppercase text-[13px] tracking-wider px-5 py-2.5 rounded-full transition-all cursor-pointer shadow-xs"
-              data-name="apply-button"
-            >
-              Apply
-            </button>
-          </div>
-          {promoMessage && (
-            <p className="text-[11px] font-cormorant text-[#e28fa9] font-semibold pl-3">
-              ✓ {promoMessage}
+          {appliedCoupon ? (
+            <div className="flex items-center justify-between p-3 rounded-2xl bg-emerald-50 border border-emerald-200">
+              <div className="flex items-center gap-2">
+                <span className="text-base">🎟️</span>
+                <div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-sans font-bold text-xs text-emerald-900 tracking-wide uppercase">
+                      {appliedCoupon.code}
+                    </span>
+                    <span className="text-[10px] font-medium px-1.5 py-0.2 rounded-full bg-emerald-200/70 text-emerald-800">
+                      {appliedCoupon.discountType === 'percentage'
+                        ? `${appliedCoupon.discountValue}% OFF`
+                        : `₹${appliedCoupon.discountValue} OFF`}
+                    </span>
+                  </div>
+                  <span className="text-[11px] text-emerald-700">
+                    Saved ₹{discountAmount} on this order
+                  </span>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={handleRemovePromo}
+                className="text-xs font-medium text-[#C53030] hover:underline px-2 py-1 cursor-pointer"
+              >
+                ✕ Remove
+              </button>
+            </div>
+          ) : (
+            <div className="flex gap-2 items-center w-full" data-name="promo-row">
+              <input
+                type="text"
+                value={promoCode}
+                onChange={(e) => {
+                  setPromoCode(e.target.value.toUpperCase());
+                  setPromoError('');
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    handleApplyPromo();
+                  }
+                }}
+                placeholder="Enter promo coupon code"
+                className="bg-white border border-[rgba(107,26,42,0.15)] rounded-full px-4 py-2.5 flex-1 font-cormorant text-sm text-[#2C2724] uppercase placeholder-[#8b827d] outline-none focus:border-[#6b1a2a] transition-colors"
+                data-name="promo-input"
+              />
+              <button
+                type="button"
+                onClick={() => handleApplyPromo()}
+                className="bg-[#6b1a2a] hover:bg-[#50131f] active:scale-95 text-white font-cormorant font-bold uppercase text-[13px] tracking-wider px-5 py-2.5 rounded-full transition-all cursor-pointer shadow-xs"
+                data-name="apply-button"
+              >
+                Apply
+              </button>
+            </div>
+          )}
+
+          {promoError && (
+            <p className="text-[11px] font-sans text-[#C53030] pl-3">
+              ✕ {promoError}
             </p>
+          )}
+
+          {promoMessage && !appliedCoupon && (
+            <p className="text-[11px] font-cormorant text-[#2E7D32] font-semibold pl-3">
+              {promoMessage}
+            </p>
+          )}
+
+          {/* Available coupons chips if user hasn't applied one */}
+          {!appliedCoupon && coupons.filter((c) => c.isActive && (!c.expiresAt || new Date().toISOString().split('T')[0] <= c.expiresAt)).length > 0 && (
+            <div className="flex flex-wrap items-center gap-1.5 pt-1 pl-1">
+              <span className="text-[10px] text-[#8b827d] font-medium">Available Coupons:</span>
+              {coupons
+                .filter((c) => c.isActive && (!c.expiresAt || new Date().toISOString().split('T')[0] <= c.expiresAt))
+                .slice(0, 3)
+                .map((c) => (
+                  <button
+                    key={c.code}
+                    type="button"
+                    onClick={() => handleApplyPromo(c.code)}
+                    className="px-2 py-0.5 rounded-full bg-[#FAF0ED] text-[#8E5B59] hover:bg-[#8E5B59] hover:text-white border border-[#E8C5B8]/80 text-[10px] font-sans font-semibold transition cursor-pointer"
+                    title={`Apply ${c.code}`}
+                  >
+                    🏷️ {c.code} ({c.discountType === 'percentage' ? `${c.discountValue}%` : `₹${c.discountValue}`})
+                  </button>
+                ))}
+            </div>
           )}
         </section>
 
@@ -815,10 +905,13 @@ export default function Cart() {
             </div>
 
             {/* Discount */}
-            {promoApplied && discountAmount > 0 && (
+            {appliedCoupon && discountAmount > 0 && (
               <div className="flex items-center justify-between">
-                <span className="font-cormorant text-[#8b827d]">Discount (10% off)</span>
-                <span className="font-sans font-semibold text-[#e28fa9]">
+                <span className="font-cormorant text-[#8b827d]">
+                  Discount ({appliedCoupon.code}
+                  {appliedCoupon.discountType === 'percentage' ? ` - ${appliedCoupon.discountValue}%` : ''})
+                </span>
+                <span className="font-sans font-semibold text-[#2E7D32]">
                   -₹{discountAmount.toFixed(0)}
                 </span>
               </div>

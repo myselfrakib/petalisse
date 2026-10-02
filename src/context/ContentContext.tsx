@@ -15,7 +15,7 @@ import {
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, storage } from '../lib/firebase';
 import { useAuth } from './AuthContext';
-import { Product, SiteContent, Order, OrderShipmentInfo } from '../types';
+import { Product, SiteContent, Order, OrderShipmentInfo, Coupon } from '../types';
 
 export const DEFAULT_COLLECTIONS_ORDER = [
   'Mobile Charms',
@@ -206,6 +206,14 @@ interface ContentContextType {
   deleteOrder: (orderId: string) => Promise<void>;
   toggleProductFavorite: (id: string) => Promise<void>;
   setFeaturedProducts: (ids: string[]) => Promise<void>;
+  coupons: Coupon[];
+  addCoupon: (coupon: Omit<Coupon, 'id' | 'createdAt'>) => Promise<string>;
+  updateCoupon: (id: string, coupon: Partial<Coupon>) => Promise<void>;
+  deleteCoupon: (id: string) => Promise<void>;
+  validateCoupon: (
+    code: string,
+    subtotal: number
+  ) => { valid: boolean; coupon?: Coupon; discount: number; error?: string };
 }
 
 const ContentContext = createContext<ContentContextType | undefined>(undefined);
@@ -528,6 +536,49 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
     return () => unsub();
   }, [isAdmin, currentUser]);
 
+  // 5. Subscribe to Coupons in Firestore (real-time listener)
+  const [coupons, setCoupons] = useState<Coupon[]>([]);
+
+  useEffect(() => {
+    let unsub = () => {};
+    try {
+      unsub = onSnapshot(
+        collection(db, 'coupons'),
+        (snapshot) => {
+          const list: Coupon[] = [];
+          snapshot.forEach((docSnap) => {
+            const data = docSnap.data();
+            list.push({
+              id: docSnap.id,
+              code: (data.code || '').trim().toUpperCase(),
+              discountType: data.discountType || 'percentage',
+              discountValue: Number(data.discountValue) || 0,
+              minOrderValue: data.minOrderValue !== undefined && data.minOrderValue !== null ? Number(data.minOrderValue) : undefined,
+              maxDiscount: data.maxDiscount !== undefined && data.maxDiscount !== null ? Number(data.maxDiscount) : undefined,
+              description: data.description || '',
+              isActive: data.isActive !== false,
+              expiresAt: data.expiresAt || undefined,
+              usageCount: Number(data.usageCount) || 0,
+              createdAt: data.createdAt,
+            });
+          });
+          list.sort((a, b) => {
+            const timeA = a.createdAt?.toMillis ? a.createdAt.toMillis() : (a.createdAt?.seconds ? a.createdAt.seconds * 1000 : 0);
+            const timeB = b.createdAt?.toMillis ? b.createdAt.toMillis() : (b.createdAt?.seconds ? b.createdAt.seconds * 1000 : 0);
+            return timeB - timeA;
+          });
+          setCoupons(list);
+        },
+        (error) => {
+          console.warn('Coupons snapshot error:', error);
+        }
+      );
+    } catch (e) {
+      console.warn('Could not initialize coupons listener:', e);
+    }
+    return () => unsub();
+  }, []);
+
   // Product Actions
   const addProduct = async (productData: Omit<Product, 'id'>): Promise<string> => {
     const id = `prod_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
@@ -700,11 +751,110 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
         createdAt: serverTimestamp(),
       });
       await setDoc(doc(db, 'orders', id), payload);
+
+      // Increment coupon usage count if coupon applied
+      if (orderData.couponCode) {
+        const targetCoupon = coupons.find(
+          (c) => c.code.toUpperCase() === orderData.couponCode?.trim().toUpperCase()
+        );
+        if (targetCoupon?.id) {
+          try {
+            await updateDoc(doc(db, 'coupons', targetCoupon.id), {
+              usageCount: (targetCoupon.usageCount || 0) + 1,
+            });
+          } catch (err) {
+            console.warn('Could not update coupon usage count:', err);
+          }
+        }
+      }
     } catch (e) {
       console.warn('Firestore order save fallback (saved locally & broadcast live):', e);
     }
 
     return id;
+  };
+
+  const addCoupon = async (couponData: Omit<Coupon, 'id' | 'createdAt'>): Promise<string> => {
+    const formattedCode = couponData.code.trim().toUpperCase();
+    if (!formattedCode) {
+      throw new Error('Coupon code cannot be empty');
+    }
+    const exists = coupons.some((c) => c.code.toUpperCase() === formattedCode);
+    if (exists) {
+      throw new Error(`A coupon with code "${formattedCode}" already exists.`);
+    }
+
+    const docRef = await addDoc(collection(db, 'coupons'), {
+      ...couponData,
+      code: formattedCode,
+      usageCount: 0,
+      createdAt: serverTimestamp(),
+    });
+    return docRef.id;
+  };
+
+  const updateCoupon = async (id: string, updates: Partial<Coupon>): Promise<void> => {
+    if (updates.code) {
+      updates.code = updates.code.trim().toUpperCase();
+    }
+    await updateDoc(doc(db, 'coupons', id), updates);
+  };
+
+  const deleteCoupon = async (id: string): Promise<void> => {
+    await deleteDoc(doc(db, 'coupons', id));
+  };
+
+  const validateCoupon = (
+    code: string,
+    subtotal: number
+  ): { valid: boolean; coupon?: Coupon; discount: number; error?: string } => {
+    const cleanCode = code.trim().toUpperCase();
+    if (!cleanCode) {
+      return { valid: false, discount: 0, error: 'Please enter a coupon code' };
+    }
+
+    const found = coupons.find((c) => c.code.trim().toUpperCase() === cleanCode);
+    if (!found) {
+      return { valid: false, discount: 0, error: 'Invalid coupon code' };
+    }
+
+    if (!found.isActive) {
+      return { valid: false, discount: 0, error: 'This coupon is currently inactive' };
+    }
+
+    if (found.expiresAt) {
+      const today = new Date().toISOString().split('T')[0];
+      if (today > found.expiresAt) {
+        return { valid: false, discount: 0, error: 'This coupon has expired' };
+      }
+    }
+
+    if (found.minOrderValue && subtotal < found.minOrderValue) {
+      return {
+        valid: false,
+        discount: 0,
+        error: `Minimum order amount of ₹${found.minOrderValue} required for this coupon`,
+      };
+    }
+
+    let calculatedDiscount = 0;
+    if (found.discountType === 'percentage') {
+      calculatedDiscount = Math.round((subtotal * found.discountValue) / 100);
+      if (found.maxDiscount && calculatedDiscount > found.maxDiscount) {
+        calculatedDiscount = found.maxDiscount;
+      }
+    } else {
+      calculatedDiscount = Math.round(found.discountValue);
+    }
+
+    // Discount cannot exceed subtotal
+    calculatedDiscount = Math.min(calculatedDiscount, subtotal);
+
+    return {
+      valid: true,
+      coupon: found,
+      discount: calculatedDiscount,
+    };
   };
 
   const updateOrderStatus = async (orderId: string, status: Order['status']): Promise<void> => {
@@ -804,6 +954,11 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
         deleteOrder,
         toggleProductFavorite,
         setFeaturedProducts,
+        coupons,
+        addCoupon,
+        updateCoupon,
+        deleteCoupon,
+        validateCoupon,
       }}
     >
       {children}

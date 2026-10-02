@@ -123,20 +123,119 @@ export const AdminPage: React.FC = () => {
     updateOrderShipment,
     deleteOrder,
     toggleProductFavorite,
-    setFeaturedProducts
+    setFeaturedProducts,
+    coupons,
+    addCoupon,
+    updateCoupon,
+    deleteCoupon,
   } = useContent();
 
 
   // Dashboard Active Tab (persisted across refreshes)
-  const [activeTab, setActiveTab] = useState<'products' | 'cms' | 'orders' | 'admins' | 'splash'>(() => {
+  const [activeTab, setActiveTab] = useState<'products' | 'cms' | 'orders' | 'admins' | 'splash' | 'coupons'>(() => {
     try {
       const saved = localStorage.getItem('petalisse_admin_tab');
-      if (saved === 'products' || saved === 'cms' || saved === 'orders' || saved === 'admins' || saved === 'splash') {
+      if (saved === 'products' || saved === 'cms' || saved === 'orders' || saved === 'admins' || saved === 'splash' || saved === 'coupons') {
         return saved;
       }
     } catch {}
     return 'products';
   });
+
+  // Hamburger drawer navigation state
+  const [isHamburgerOpen, setIsHamburgerOpen] = useState(false);
+
+  // Coupon Manager Form State
+  const [couponCode, setCouponCode] = useState('');
+  const [couponDiscountType, setCouponDiscountType] = useState<'percentage' | 'fixed'>('percentage');
+  const [couponDiscountValue, setCouponDiscountValue] = useState<number | ''>(10);
+  const [couponMinOrder, setCouponMinOrder] = useState<number | ''>('');
+  const [couponMaxDiscount, setCouponMaxDiscount] = useState<number | ''>('');
+  const [couponDesc, setCouponDesc] = useState('');
+  const [couponExpiresAt, setCouponExpiresAt] = useState('');
+  const [couponIsActive, setCouponIsActive] = useState(true);
+  const [couponSubmitting, setCouponSubmitting] = useState(false);
+  const [couponError, setCouponError] = useState<string | null>(null);
+  const [couponSuccess, setCouponSuccess] = useState<string | null>(null);
+  const [couponSearch, setCouponSearch] = useState('');
+  const [copiedCouponId, setCopiedCouponId] = useState<string | null>(null);
+
+  const handleCreateCoupon = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setCouponError(null);
+    setCouponSuccess(null);
+
+    const cleanCode = couponCode.trim().toUpperCase();
+    if (!cleanCode) {
+      setCouponError('Please enter a coupon code.');
+      return;
+    }
+
+    const numValue = Number(couponDiscountValue);
+    if (!numValue || numValue <= 0) {
+      setCouponError('Please enter a valid discount value greater than 0.');
+      return;
+    }
+
+    if (couponDiscountType === 'percentage' && numValue > 100) {
+      setCouponError('Percentage discount cannot exceed 100%.');
+      return;
+    }
+
+    setCouponSubmitting(true);
+    try {
+      await addCoupon({
+        code: cleanCode,
+        discountType: couponDiscountType,
+        discountValue: numValue,
+        minOrderValue: couponMinOrder !== '' ? Number(couponMinOrder) : undefined,
+        maxDiscount: couponMaxDiscount !== '' ? Number(couponMaxDiscount) : undefined,
+        description: couponDesc.trim() || undefined,
+        expiresAt: couponExpiresAt || undefined,
+        isActive: couponIsActive,
+      });
+
+      setCouponSuccess(`Coupon "${cleanCode}" created successfully!`);
+      // Reset form
+      setCouponCode('');
+      setCouponDiscountType('percentage');
+      setCouponDiscountValue(10);
+      setCouponMinOrder('');
+      setCouponMaxDiscount('');
+      setCouponDesc('');
+      setCouponExpiresAt('');
+      setCouponIsActive(true);
+    } catch (err: any) {
+      setCouponError(err.message || 'Failed to create coupon.');
+    } finally {
+      setCouponSubmitting(false);
+    }
+  };
+
+  const handleToggleCouponActive = async (id: string, currentActive: boolean) => {
+    try {
+      await updateCoupon(id, { isActive: !currentActive });
+    } catch (err) {
+      console.warn('Could not toggle coupon active status:', err);
+    }
+  };
+
+  const handleDeleteCoupon = async (id: string, code: string) => {
+    if (!window.confirm(`Are you sure you want to permanently delete coupon "${code}"?`)) {
+      return;
+    }
+    try {
+      await deleteCoupon(id);
+    } catch (err) {
+      console.warn('Could not delete coupon:', err);
+    }
+  };
+
+  const handleCopyCode = (code: string, id: string) => {
+    navigator.clipboard?.writeText(code);
+    setCopiedCouponId(id);
+    setTimeout(() => setCopiedCouponId(null), 2000);
+  };
 
   useEffect(() => {
     try {
@@ -1221,27 +1320,232 @@ export const AdminPage: React.FC = () => {
   // 2. DASHBOARD: User is authorized as admin (isAdmin === true)
   return (
     <div className="min-h-screen bg-[#F7F3EE] pb-16">
-      {/* Top Admin Header Bar */}
+
+      {/* ── HAMBURGER NAVIGATION DRAWER (SLIDE-OVER) ── */}
+      {isHamburgerOpen && (
+        <div className="fixed inset-0 z-50 flex">
+          {/* Backdrop overlay */}
+          <div
+            className="fixed inset-0 bg-black/45 backdrop-blur-xs transition-opacity"
+            onClick={() => setIsHamburgerOpen(false)}
+          />
+
+          {/* Drawer Panel */}
+          <div className="relative w-full max-w-xs sm:max-w-sm bg-[#FAF7F2] shadow-2xl flex flex-col h-full z-10 border-r border-[#E8E0D5] animate-slideInLeft">
+            {/* Drawer Header */}
+            <div className="p-4 sm:p-5 border-b border-[#EAE3D8] flex items-center justify-between bg-white/70">
+              <div className="flex items-center gap-2.5">
+                <span className="font-['Parisienne'] text-3xl text-[#8E5B59]">Petalisse</span>
+                <span className="text-[10px] uppercase font-bold tracking-widest px-2 py-0.5 rounded-md bg-[#8E5B59]/10 text-[#8E5B59]">
+                  Admin Menu
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsHamburgerOpen(false)}
+                className="p-1.5 rounded-lg text-[#786F66] hover:text-[#2C2724] hover:bg-[#FAF0ED] transition cursor-pointer"
+                aria-label="Close menu"
+              >
+                <svg className="size-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Navigation Tabs List */}
+            <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-1.5">
+              <div className="text-[10px] font-bold text-[#8C827A] uppercase tracking-wider px-3 py-1">
+                Admin Console Tabs
+              </div>
+
+              {[
+                {
+                  id: 'products' as const,
+                  label: 'Product Catalog',
+                  icon: '📦',
+                  badge: `${products.length}`,
+                  desc: 'Inventory, variants, badges & pricing',
+                },
+                {
+                  id: 'orders' as const,
+                  label: 'Customer Orders',
+                  icon: '🛍️',
+                  badge: `${orders.length}`,
+                  alertBadge: orders.filter((o) => o.status === 'pending').length > 0
+                    ? `${orders.filter((o) => o.status === 'pending').length} new`
+                    : undefined,
+                  desc: 'Order tracking, labels & Shiprocket',
+                },
+                {
+                  id: 'coupons' as const,
+                  label: 'Coupons & Discounts',
+                  icon: '🎟️',
+                  badge: `${coupons.length}`,
+                  alertBadge: coupons.filter((c) => c.isActive).length > 0
+                    ? `${coupons.filter((c) => c.isActive).length} active`
+                    : undefined,
+                  desc: 'Promo codes, rates & minimums',
+                },
+                {
+                  id: 'cms' as const,
+                  label: 'Site CMS & Imagery',
+                  icon: '🎨',
+                  desc: 'Banners, collections & story content',
+                },
+                {
+                  id: 'splash' as const,
+                  label: 'Splash Screen',
+                  icon: '🌸',
+                  activeDot: siteContent.splashScreen?.enabled,
+                  desc: 'Intro video, GIF & welcome animations',
+                },
+                {
+                  id: 'admins' as const,
+                  label: 'Admin Permissions',
+                  icon: '🛡️',
+                  desc: 'Staff credentials & access approval',
+                },
+              ].map((tab) => {
+                const isCurrent = activeTab === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    onClick={() => {
+                      setActiveTab(tab.id);
+                      setIsHamburgerOpen(false);
+                    }}
+                    className={`w-full text-left p-3 rounded-2xl transition flex items-center justify-between cursor-pointer ${
+                      isCurrent
+                        ? 'bg-[#8E5B59] text-white shadow-sm font-medium'
+                        : 'bg-white hover:bg-[#FAF0ED] text-[#2C2724] border border-[#EAE3D8]'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className="text-xl">{tab.icon}</span>
+                      <div>
+                        <div className="text-xs font-bold leading-tight flex items-center gap-2">
+                          <span>{tab.label}</span>
+                          {tab.activeDot && (
+                            <span className="size-2 rounded-full bg-emerald-400 animate-pulse" />
+                          )}
+                        </div>
+                        <div
+                          className={`text-[10px] mt-0.5 leading-tight ${
+                            isCurrent ? 'text-white/80' : 'text-[#786F66]'
+                          }`}
+                        >
+                          {tab.desc}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      {tab.alertBadge ? (
+                        <span
+                          className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                            isCurrent ? 'bg-white text-[#8E5B59]' : 'bg-[#FAF0ED] text-[#8E5B59] border border-[#E8C5B8]'
+                          }`}
+                        >
+                          {tab.alertBadge}
+                        </span>
+                      ) : tab.badge ? (
+                        <span
+                          className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${
+                            isCurrent ? 'bg-white/20 text-white' : 'bg-[#FAF7F2] text-[#786F66]'
+                          }`}
+                        >
+                          {tab.badge}
+                        </span>
+                      ) : null}
+                      <span className={`text-xs ${isCurrent ? 'text-white' : 'text-[#A89E94]'}`}>&rarr;</span>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Drawer Footer */}
+            <div className="p-4 border-t border-[#EAE3D8] bg-white/70 space-y-2">
+              <div className="flex items-center justify-between text-xs px-1 text-[#786F66]">
+                <span className="truncate max-w-[180px] font-medium text-[#2C2724]">
+                  {currentUser?.displayName || 'Administrator'}
+                </span>
+                <span className="text-[11px] truncate max-w-[120px]">{currentUser?.email}</span>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 pt-1">
+                <Link
+                  to="/"
+                  className="py-2 px-3 rounded-xl border border-[#DED5C9] bg-white text-xs font-medium text-[#4A423B] hover:bg-[#F3EDE2] transition text-center shadow-2xs"
+                >
+                  Live Store &rarr;
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => logout()}
+                  className="py-2 px-3 rounded-xl bg-[#FAF0ED] text-[#9E3E2B] text-xs font-medium hover:bg-[#F3DDD6] transition cursor-pointer text-center"
+                >
+                  Sign Out
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Top Admin Header Bar with Hamburger Button */}
       <header className="bg-[#FAF7F2] border-b border-[#E8E0D5] sticky top-0 z-30 shadow-xs">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-3">
+          {/* Left: Hamburger Tab Toggle & Petalisse Title */}
           <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setIsHamburgerOpen(true)}
+              className="p-2 sm:px-3 sm:py-2 rounded-xl bg-white border border-[#DED5C9] text-[#6b1a2a] hover:bg-[#FAF0ED] hover:border-[#8E5B59] transition shadow-xs flex items-center gap-2 cursor-pointer active:scale-95 shrink-0"
+              aria-label="Open Navigation Tabs Menu"
+              title="Open Navigation Menu"
+            >
+              <svg className="size-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.2} d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+              <span className="text-xs font-bold uppercase tracking-wider hidden sm:inline text-[#2C2724]">
+                Tabs
+              </span>
+              {orders.filter((o) => o.status === 'pending').length > 0 && (
+                <span className="size-2 rounded-full bg-[#8E5B59] animate-pulse" />
+              )}
+            </button>
+
             <Link to="/" className="flex items-center gap-2 group">
               <span className="font-['Parisienne'] text-3xl text-[#8E5B59] group-hover:opacity-80 transition">
                 Petalisse
               </span>
-              <span className="text-[10px] uppercase font-bold tracking-widest px-2 py-0.5 rounded-md bg-[#8E5B59]/10 text-[#8E5B59]">
+              <span className="text-[10px] uppercase font-bold tracking-widest px-2 py-0.5 rounded-md bg-[#8E5B59]/10 text-[#8E5B59] hidden xs:inline">
                 Admin Console
               </span>
             </Link>
 
-            {/* Live Synchronized Indicator */}
-            <div className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-[11px] font-medium">
-              <span className="size-2 rounded-full bg-emerald-500 animate-pulse" />
-              <span>Live Storefront Sync Active</span>
+            {/* Currently Active Tab Pill */}
+            <div className="hidden md:flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#FAF0ED] border border-[#E8C5B8] text-[#8E5B59] text-xs font-semibold">
+              <span>
+                {activeTab === 'products' ? '📦 Product Catalog' :
+                 activeTab === 'orders' ? '🛍️ Customer Orders' :
+                 activeTab === 'coupons' ? '🎟️ Coupons & Discounts' :
+                 activeTab === 'cms' ? '🎨 Site CMS & Imagery' :
+                 activeTab === 'splash' ? '🌸 Splash Screen' : '🛡️ Admin Permissions'}
+              </span>
             </div>
           </div>
 
+          {/* Right: Live Sync, User info, Quick actions */}
           <div className="flex items-center gap-3">
+            {/* Live Synchronized Indicator */}
+            <div className="hidden lg:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-[11px] font-medium">
+              <span className="size-2 rounded-full bg-emerald-500 animate-pulse" />
+              <span>Live Storefront Sync</span>
+            </div>
+
             <div className="hidden sm:block text-right text-xs">
               <div className="font-medium text-[#2C2724]">{currentUser?.displayName || 'Boutique Administrator'}</div>
               <div className="text-[11px] text-[#786F66]">{currentUser?.email || 'admin@petalisse.com'}</div>
@@ -1251,7 +1555,7 @@ export const AdminPage: React.FC = () => {
               to="/"
               className="px-3.5 py-1.5 rounded-lg border border-[#DED5C9] bg-white text-xs font-medium text-[#4A423B] hover:bg-[#F3EDE2] transition shadow-xs flex items-center gap-1.5"
             >
-              <span>View Live Store</span>
+              <span>View Store</span>
               <span>&rarr;</span>
             </Link>
 
@@ -1265,71 +1569,62 @@ export const AdminPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Tab Navigation */}
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex border-t border-[#EAE3D8] overflow-x-auto">
-          <button
-            type="button"
-            onClick={() => setActiveTab('products')}
-            className={`py-3 px-4 text-xs font-medium uppercase tracking-wider border-b-2 cursor-pointer transition shrink-0 ${
-              activeTab === 'products'
-                ? 'border-[#8E5B59] text-[#8E5B59] font-bold'
-                : 'border-transparent text-[#786F66] hover:text-[#2C2724]'
-            }`}
-          >
-            Product Catalog ({products.length})
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab('orders')}
-            className={`py-3 px-4 text-xs font-medium uppercase tracking-wider border-b-2 cursor-pointer transition shrink-0 flex items-center gap-1.5 ${
-              activeTab === 'orders'
-                ? 'border-[#8E5B59] text-[#8E5B59] font-bold'
-                : 'border-transparent text-[#786F66] hover:text-[#2C2724]'
-            }`}
-          >
-            <span>Customer Orders ({orders.length})</span>
-            {orders.filter((o) => o.status === 'pending').length > 0 && (
-              <span className="px-1.5 py-0.2 rounded-full bg-[#8E5B59] text-white text-[10px] font-bold">
-                {orders.filter((o) => o.status === 'pending').length} new
-              </span>
-            )}
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab('cms')}
-            className={`py-3 px-4 text-xs font-medium uppercase tracking-wider border-b-2 cursor-pointer transition shrink-0 ${
-              activeTab === 'cms'
-                ? 'border-[#8E5B59] text-[#8E5B59] font-bold'
-                : 'border-transparent text-[#786F66] hover:text-[#2C2724]'
-            }`}
-          >
-            Site CMS & Imagery
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab('splash')}
-            className={`py-3 px-4 text-xs font-medium uppercase tracking-wider border-b-2 cursor-pointer transition shrink-0 flex items-center gap-1.5 ${
-              activeTab === 'splash'
-                ? 'border-[#8E5B59] text-[#8E5B59] font-bold'
-                : 'border-transparent text-[#786F66] hover:text-[#2C2724]'
-            }`}
-          >
-            <span>Splash Screen</span>
-            {siteContent.splashScreen?.enabled && (
-              <span className="size-2 rounded-full bg-emerald-500 animate-pulse" title="Splash screen is active" />
-            )}
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab('admins')}
-            className={`py-3 px-4 text-xs font-medium uppercase tracking-wider border-b-2 cursor-pointer transition shrink-0 ${
-              activeTab === 'admins'
-                ? 'border-[#8E5B59] text-[#8E5B59] font-bold'
-                : 'border-transparent text-[#786F66] hover:text-[#2C2724]'
-            }`}
-          >
-            Admin Permissions
-          </button>
+        {/* Tab Navigation Quick Bar */}
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex border-t border-[#EAE3D8] overflow-x-auto gap-1 py-1.5">
+          {[
+            { id: 'products' as const, label: 'Product Catalog', icon: '📦', badge: `${products.length}` },
+            {
+              id: 'orders' as const,
+              label: 'Orders',
+              icon: '🛍️',
+              badge: `${orders.length}`,
+              alertBadge: orders.filter((o) => o.status === 'pending').length > 0 ? `${orders.filter((o) => o.status === 'pending').length} new` : undefined,
+            },
+            {
+              id: 'coupons' as const,
+              label: 'Coupons',
+              icon: '🎟️',
+              badge: `${coupons.length}`,
+              alertBadge: coupons.filter((c) => c.isActive).length > 0 ? `${coupons.filter((c) => c.isActive).length} active` : undefined,
+            },
+            { id: 'cms' as const, label: 'CMS & Imagery', icon: '🎨' },
+            { id: 'splash' as const, label: 'Splash Screen', icon: '🌸', activeDot: siteContent.splashScreen?.enabled },
+            { id: 'admins' as const, label: 'Permissions', icon: '🛡️' },
+          ].map((tab) => {
+            const isCurrent = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setActiveTab(tab.id)}
+                className={`py-1.5 px-3 rounded-xl text-xs font-medium uppercase tracking-wider transition shrink-0 flex items-center gap-1.5 cursor-pointer ${
+                  isCurrent
+                    ? 'bg-[#8E5B59] text-white font-bold shadow-xs'
+                    : 'bg-transparent text-[#786F66] hover:bg-[#FAF0ED] hover:text-[#2C2724]'
+                }`}
+              >
+                <span>{tab.icon}</span>
+                <span>{tab.label}</span>
+                {tab.alertBadge ? (
+                  <span
+                    className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
+                      isCurrent ? 'bg-white text-[#8E5B59]' : 'bg-[#8E5B59] text-white'
+                    }`}
+                  >
+                    {tab.alertBadge}
+                  </span>
+                ) : tab.badge ? (
+                  <span
+                    className={`px-1.5 py-0.2 rounded-full text-[10px] ${
+                      isCurrent ? 'bg-white/20 text-white' : 'bg-[#EAE3D8] text-[#786F66]'
+                    }`}
+                  >
+                    {tab.badge}
+                  </span>
+                ) : null}
+              </button>
+            );
+          })}
         </div>
       </header>
 
@@ -3794,6 +4089,379 @@ export const AdminPage: React.FC = () => {
                   </div>
                 </div>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── 6. PROMOTIONS & COUPONS MANAGEMENT ── */}
+        {activeTab === 'coupons' && (
+          <div className="space-y-8 animate-fadeIn">
+            {/* Header & Overview */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-[#FAF7F2] rounded-2xl border border-[#E8E0D5] p-6 shadow-sm">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xl">🎟️</span>
+                  <h2 className="text-xl font-serif text-[#2C2724] font-medium">
+                    Promotions & Coupons
+                  </h2>
+                  <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold tracking-wide bg-[#FAF0ED] text-[#8E5B59] border border-[#E8C5B8]">
+                    {coupons.filter((c) => c.isActive).length} Active
+                  </span>
+                </div>
+                <p className="text-xs text-[#786F66] mt-1">
+                  Create discount codes for your patrons with percentage or flat rates, minimum order thresholds, and expiry dates. All codes connect directly with checkout!
+                </p>
+              </div>
+
+              {/* Stats Counters */}
+              <div className="flex items-center gap-2 sm:gap-3">
+                <div className="px-3.5 py-2 rounded-xl bg-white border border-[#DED5C9] text-center shadow-xs">
+                  <div className="text-[10px] text-[#786F66] uppercase font-bold tracking-wider">Total Codes</div>
+                  <div className="text-base font-bold text-[#2C2724] font-sans">{coupons.length}</div>
+                </div>
+                <div className="px-3.5 py-2 rounded-xl bg-white border border-[#DED5C9] text-center shadow-xs">
+                  <div className="text-[10px] text-[#786F66] uppercase font-bold tracking-wider">Times Used</div>
+                  <div className="text-base font-bold text-[#8E5B59] font-sans">
+                    {coupons.reduce((sum, c) => sum + (c.usageCount || 0), 0)}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Create New Coupon Form */}
+            <div className="bg-[#FAF7F2] rounded-2xl border border-[#E8E0D5] p-6 shadow-sm space-y-5">
+              <div className="flex items-center justify-between border-b border-[#EAE3D8] pb-3">
+                <div className="flex items-center gap-2">
+                  <span className="size-2 rounded-full bg-[#8E5B59]" />
+                  <h3 className="text-sm font-semibold text-[#2C2724] uppercase tracking-wider">
+                    Add New Promotional Coupon
+                  </h3>
+                </div>
+                <span className="text-xs text-[#786F66]">
+                  * Required fields
+                </span>
+              </div>
+
+              {couponError && (
+                <div className="p-3 rounded-xl bg-[#FAF0ED] border border-[#E8C5B8] text-[#C53030] text-xs flex items-center justify-between">
+                  <span>✕ {couponError}</span>
+                  <button type="button" onClick={() => setCouponError(null)} className="cursor-pointer font-bold">×</button>
+                </div>
+              )}
+
+              {couponSuccess && (
+                <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs flex items-center justify-between">
+                  <span>✓ {couponSuccess}</span>
+                  <button type="button" onClick={() => setCouponSuccess(null)} className="cursor-pointer font-bold">×</button>
+                </div>
+              )}
+
+              <form onSubmit={handleCreateCoupon} className="space-y-4">
+                {/* Quick Presets */}
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-xs text-[#786F66] font-medium">Quick Presets:</span>
+                  {[
+                    { label: '10% OFF', code: 'SAVE10', type: 'percentage' as const, val: 10 },
+                    { label: '15% OFF', code: 'SPRING15', type: 'percentage' as const, val: 15 },
+                    { label: '20% OFF', code: 'PETAL20', type: 'percentage' as const, val: 20 },
+                    { label: '₹50 Flat OFF', code: 'FLAT50', type: 'fixed' as const, val: 50 },
+                    { label: '₹100 Flat OFF', code: 'BONUS100', type: 'fixed' as const, val: 100, min: 599 },
+                  ].map((preset) => (
+                    <button
+                      key={preset.code}
+                      type="button"
+                      onClick={() => {
+                        setCouponCode(preset.code);
+                        setCouponDiscountType(preset.type);
+                        setCouponDiscountValue(preset.val);
+                        if (preset.min) setCouponMinOrder(preset.min);
+                        setCouponError(null);
+                      }}
+                      className="px-2.5 py-1 rounded-full bg-white text-[#4A423B] hover:bg-[#FAF0ED] hover:text-[#8E5B59] border border-[#DED5C9] text-xs font-medium transition cursor-pointer"
+                    >
+                      + {preset.label}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  {/* Coupon Code */}
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-xs font-semibold text-[#2C2724]">
+                      Coupon Code *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={couponCode}
+                      onChange={(e) => setCouponCode(e.target.value.toUpperCase().replace(/\s+/g, ''))}
+                      placeholder="e.g. WELCOME10"
+                      className="px-3.5 py-2.5 rounded-xl border border-[#DED5C9] bg-white text-xs font-bold text-[#2C2724] uppercase tracking-wider focus:outline-none focus:border-[#8E5B59]"
+                    />
+                  </div>
+
+                  {/* Discount Type */}
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-xs font-semibold text-[#2C2724]">
+                      Discount Type *
+                    </label>
+                    <div className="grid grid-cols-2 gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => setCouponDiscountType('percentage')}
+                        className={`py-2 px-3 rounded-xl text-xs font-medium border transition cursor-pointer text-center ${
+                          couponDiscountType === 'percentage'
+                            ? 'bg-[#8E5B59] text-white border-[#8E5B59] shadow-xs'
+                            : 'bg-white text-[#4A423B] border-[#DED5C9] hover:bg-[#FAF7F2]'
+                        }`}
+                      >
+                        % Percentage
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setCouponDiscountType('fixed')}
+                        className={`py-2 px-3 rounded-xl text-xs font-medium border transition cursor-pointer text-center ${
+                          couponDiscountType === 'fixed'
+                            ? 'bg-[#8E5B59] text-white border-[#8E5B59] shadow-xs'
+                            : 'bg-white text-[#4A423B] border-[#DED5C9] hover:bg-[#FAF7F2]'
+                        }`}
+                      >
+                        ₹ Fixed (INR)
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Discount Value */}
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-xs font-semibold text-[#2C2724]">
+                      Discount Value * ({couponDiscountType === 'percentage' ? '%' : '₹'})
+                    </label>
+                    <input
+                      type="number"
+                      required
+                      min={1}
+                      max={couponDiscountType === 'percentage' ? 100 : 10000}
+                      value={couponDiscountValue}
+                      onChange={(e) => setCouponDiscountValue(e.target.value === '' ? '' : Number(e.target.value))}
+                      placeholder={couponDiscountType === 'percentage' ? '10' : '100'}
+                      className="px-3.5 py-2.5 rounded-xl border border-[#DED5C9] bg-white text-xs text-[#2C2724] focus:outline-none focus:border-[#8E5B59]"
+                    />
+                  </div>
+
+                  {/* Minimum Order Value */}
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-xs font-semibold text-[#2C2724]">
+                      Min. Order Value (₹) <span className="text-[10px] text-[#786F66] font-normal">(optional)</span>
+                    </label>
+                    <input
+                      type="number"
+                      min={0}
+                      value={couponMinOrder}
+                      onChange={(e) => setCouponMinOrder(e.target.value === '' ? '' : Number(e.target.value))}
+                      placeholder="e.g. 499 (0 for none)"
+                      className="px-3.5 py-2.5 rounded-xl border border-[#DED5C9] bg-white text-xs text-[#2C2724] focus:outline-none focus:border-[#8E5B59]"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-1">
+                  {/* Max Discount for Percentage */}
+                  {couponDiscountType === 'percentage' && (
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-xs font-semibold text-[#2C2724]">
+                        Max Discount Cap (₹) <span className="text-[10px] text-[#786F66] font-normal">(optional)</span>
+                      </label>
+                      <input
+                        type="number"
+                        min={1}
+                        value={couponMaxDiscount}
+                        onChange={(e) => setCouponMaxDiscount(e.target.value === '' ? '' : Number(e.target.value))}
+                        placeholder="e.g. 200 (max saving)"
+                        className="px-3.5 py-2.5 rounded-xl border border-[#DED5C9] bg-white text-xs text-[#2C2724] focus:outline-none focus:border-[#8E5B59]"
+                      />
+                    </div>
+                  )}
+
+                  {/* Expiration Date */}
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-xs font-semibold text-[#2C2724]">
+                      Expiry Date <span className="text-[10px] text-[#786F66] font-normal">(optional)</span>
+                    </label>
+                    <input
+                      type="date"
+                      value={couponExpiresAt}
+                      onChange={(e) => setCouponExpiresAt(e.target.value)}
+                      className="px-3.5 py-2.5 rounded-xl border border-[#DED5C9] bg-white text-xs text-[#2C2724] focus:outline-none focus:border-[#8E5B59]"
+                    />
+                  </div>
+
+                  {/* Description / Notes */}
+                  <div className={`flex flex-col gap-1.5 ${couponDiscountType === 'percentage' ? 'sm:col-span-1' : 'sm:col-span-2'}`}>
+                    <label className="text-xs font-semibold text-[#2C2724]">
+                      Short Description / Label <span className="text-[10px] text-[#786F66] font-normal">(optional)</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={couponDesc}
+                      onChange={(e) => setCouponDesc(e.target.value)}
+                      placeholder="e.g. 10% off for first-time shoppers"
+                      className="px-3.5 py-2.5 rounded-xl border border-[#DED5C9] bg-white text-xs text-[#2C2724] focus:outline-none focus:border-[#8E5B59]"
+                    />
+                  </div>
+                </div>
+
+                {/* Active Status & Submit */}
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pt-3 border-t border-[#EAE3D8]">
+                  <label className="flex items-center gap-2 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={couponIsActive}
+                      onChange={(e) => setCouponIsActive(e.target.checked)}
+                      className="size-4 accent-[#8E5B59] rounded cursor-pointer"
+                    />
+                    <span className="text-xs font-medium text-[#2C2724]">
+                      Activate coupon immediately upon creation
+                    </span>
+                  </label>
+
+                  <button
+                    type="submit"
+                    disabled={couponSubmitting}
+                    className="px-5 py-2.5 rounded-xl bg-[#8E5B59] hover:bg-[#784A48] text-white text-xs font-medium shadow-sm transition disabled:opacity-50 cursor-pointer flex items-center gap-2"
+                  >
+                    {couponSubmitting ? (
+                      <span className="size-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    ) : (
+                      <span>+</span>
+                    )}
+                    <span>Create Coupon</span>
+                  </button>
+                </div>
+              </form>
+            </div>
+
+            {/* Existing Coupons List */}
+            <div className="bg-[#FAF7F2] rounded-2xl border border-[#E8E0D5] p-6 shadow-sm space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <h3 className="text-sm font-semibold text-[#2C2724] uppercase tracking-wider">
+                    All Promotional Coupons ({coupons.length})
+                  </h3>
+                </div>
+
+                <div className="w-full sm:w-64">
+                  <input
+                    type="text"
+                    value={couponSearch}
+                    onChange={(e) => setCouponSearch(e.target.value)}
+                    placeholder="Search coupons..."
+                    className="w-full px-3 py-1.5 rounded-xl border border-[#DED5C9] bg-white text-xs text-[#2C2724] focus:outline-none focus:border-[#8E5B59]"
+                  />
+                </div>
+              </div>
+
+              {coupons.length === 0 ? (
+                <div className="py-12 text-center text-xs text-[#786F66]">
+                  No coupons found. Create your first promotional coupon using the form above!
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse text-xs">
+                    <thead>
+                      <tr className="border-b border-[#EAE3D8] text-[11px] text-[#786F66] uppercase font-semibold">
+                        <th className="py-3 px-3">Coupon Code</th>
+                        <th className="py-3 px-3">Discount</th>
+                        <th className="py-3 px-3">Conditions</th>
+                        <th className="py-3 px-3">Expiry</th>
+                        <th className="py-3 px-3">Times Used</th>
+                        <th className="py-3 px-3">Status</th>
+                        <th className="py-3 px-3 text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[#EAE3D8]">
+                      {coupons
+                        .filter(
+                          (c) =>
+                            !couponSearch.trim() ||
+                            c.code.toLowerCase().includes(couponSearch.toLowerCase()) ||
+                            (c.description || '').toLowerCase().includes(couponSearch.toLowerCase())
+                        )
+                        .map((c) => {
+                          const isExpired = c.expiresAt && new Date().toISOString().split('T')[0] > c.expiresAt;
+                          return (
+                            <tr key={c.id || c.code} className="hover:bg-white/60 transition">
+                              <td className="py-3 px-3">
+                                <div className="flex items-center gap-2">
+                                  <span className="font-mono font-bold text-xs bg-[#FAF0ED] text-[#8E5B59] px-2 py-0.5 rounded-md border border-[#E8C5B8]">
+                                    {c.code}
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleCopyCode(c.code, c.id || c.code)}
+                                    className="text-[10px] text-[#786F66] hover:text-[#8E5B59] cursor-pointer"
+                                    title="Copy code"
+                                  >
+                                    {copiedCouponId === (c.id || c.code) ? '✓ Copied' : '📋'}
+                                  </button>
+                                </div>
+                                {c.description && (
+                                  <div className="text-[10px] text-[#786F66] mt-0.5 max-w-xs truncate">
+                                    {c.description}
+                                  </div>
+                                )}
+                              </td>
+                              <td className="py-3 px-3 font-semibold text-[#2C2724]">
+                                {c.discountType === 'percentage' ? `${c.discountValue}% OFF` : `₹${c.discountValue} FLAT OFF`}
+                                {c.maxDiscount && (
+                                  <span className="text-[10px] text-[#786F66] font-normal block">
+                                    Up to ₹{c.maxDiscount}
+                                  </span>
+                                )}
+                              </td>
+                              <td className="py-3 px-3 text-[#786F66]">
+                                {c.minOrderValue ? `Min order ₹${c.minOrderValue}` : 'No minimum'}
+                              </td>
+                              <td className="py-3 px-3">
+                                {c.expiresAt ? (
+                                  <span className={isExpired ? 'text-[#C53030] font-medium' : 'text-[#786F66]'}>
+                                    {c.expiresAt} {isExpired && '(Expired)'}
+                                  </span>
+                                ) : (
+                                  <span className="text-[#786F66]">Never</span>
+                                )}
+                              </td>
+                              <td className="py-3 px-3 font-medium text-[#2C2724]">
+                                {c.usageCount || 0}
+                              </td>
+                              <td className="py-3 px-3">
+                                <button
+                                  type="button"
+                                  onClick={() => c.id && handleToggleCouponActive(c.id, c.isActive)}
+                                  className={`px-2 py-0.5 rounded-full text-[10px] font-semibold border cursor-pointer transition ${
+                                    c.isActive && !isExpired
+                                      ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
+                                      : 'bg-gray-100 text-gray-500 border-gray-200 hover:bg-gray-200'
+                                  }`}
+                                >
+                                  {c.isActive && !isExpired ? '● Active' : '○ Inactive'}
+                                </button>
+                              </td>
+                              <td className="py-3 px-3 text-right">
+                                <button
+                                  type="button"
+                                  onClick={() => c.id && handleDeleteCoupon(c.id, c.code)}
+                                  className="text-xs text-[#C53030] hover:underline cursor-pointer"
+                                >
+                                  Delete
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           </div>
         )}

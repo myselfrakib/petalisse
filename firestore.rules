@@ -89,5 +89,13 @@ service cloud.firestore {
       );
       allow update, delete: if isAdmin();
     }
+
+    // 6. Promotional Coupons & Discounts:
+    // Customers and guests can read active coupons to validate at checkout.
+    // Only verified administrators (isAdmin == true) can create, edit, or delete coupons.
+    match /coupons/{couponId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
   }
 }

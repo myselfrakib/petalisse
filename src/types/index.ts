@@ -70,6 +70,20 @@ export interface OrderShipmentInfo {
   raw?: any;
 }
 
+export interface Coupon {
+  id?: string;
+  code: string;
+  discountType: 'percentage' | 'fixed';
+  discountValue: number;
+  minOrderValue?: number;
+  maxDiscount?: number;
+  description?: string;
+  isActive: boolean;
+  expiresAt?: string;
+  usageCount?: number;
+  createdAt?: any;
+}
+
 export interface Order {
   id?: string;
   orderNumber?: string;
@@ -84,6 +98,7 @@ export interface Order {
   items: OrderItem[];
   subtotal: number;
   discount: number;
+  couponCode?: string;
   shippingFee: number;
   total: number;
   paymentMethod: 'online' | 'partial_cod';
