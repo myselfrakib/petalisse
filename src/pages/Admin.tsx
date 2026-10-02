@@ -9,6 +9,13 @@ import { Link, Navigate } from 'react-router';
 import { getColorHex, SUGGESTED_COLORS } from '../lib/colorUtils';
 import { SplashScreen } from '../components/SplashScreen';
 import { ImageCropModal } from '../components/ImageCropModal';
+import { ShiprocketShipmentModal } from '../components/ShiprocketShipmentModal';
+import { ShiprocketTrackingModal } from '../components/ShiprocketTrackingModal';
+import {
+  getStoredCredentials,
+  saveStoredCredentials,
+  getShiprocketToken,
+} from '../lib/shiprocket';
 
 export const ALL_COLLECTION_TEMPLATES = [
   { key: 'Mobile Charms', label: 'Mobile Charms', defaultImg: '/figma-assets/2416c5a3da640dcea42f85f7a71067eac0c58ca9.png' },
@@ -113,6 +120,7 @@ export const AdminPage: React.FC = () => {
     uploadImage, 
     uploadMedia,
     updateOrderStatus,
+    updateOrderShipment,
     deleteOrder,
     toggleProductFavorite,
     setFeaturedProducts
@@ -419,15 +427,55 @@ export const AdminPage: React.FC = () => {
   }, [productCategoryFilter]);
 
   // Orders Tab Filter State (persisted across refreshes)
-  const [orderStatusFilter, setOrderStatusFilter] = useState<'all' | 'pending' | 'processing' | 'shipped' | 'delivered'>(() => {
+  const [orderStatusFilter, setOrderStatusFilter] = useState<'all' | 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled'>(() => {
     try {
       const saved = localStorage.getItem('petalisse_admin_order_filter');
-      if (saved && ['all', 'pending', 'processing', 'shipped', 'delivered'].includes(saved)) {
+      if (saved && ['all', 'pending', 'processing', 'shipped', 'delivered', 'cancelled'].includes(saved)) {
         return saved as any;
       }
     } catch {}
     return 'all';
   });
+
+  // Shiprocket Shipping Modals & State
+  const [selectedShipmentOrder, setSelectedShipmentOrder] = useState<Order | null>(null);
+  const [isShipmentModalOpen, setIsShipmentModalOpen] = useState<boolean>(false);
+  const [selectedTrackingOrder, setSelectedTrackingOrder] = useState<Order | null>(null);
+  const [isTrackingOpen, setIsTrackingOpen] = useState<boolean>(false);
+
+  // Shiprocket Credentials Settings State
+  const [isShiprocketSettingsOpen, setIsShiprocketSettingsOpen] = useState<boolean>(false);
+  const [shiprocketEmail, setShiprocketEmail] = useState<string>(() => getStoredCredentials().email);
+  const [shiprocketPassword, setShiprocketPassword] = useState<string>(() => getStoredCredentials().password);
+  const [testConnStatus, setTestConnStatus] = useState<string | null>(null);
+  const [testingConn, setTestingConn] = useState<boolean>(false);
+
+  const handleSaveShiprocketCreds = () => {
+    saveStoredCredentials({
+      email: shiprocketEmail.trim(),
+      password: shiprocketPassword,
+    });
+    setTestConnStatus('Credentials updated and saved successfully.');
+  };
+
+  const handleTestShiprocketConnection = async () => {
+    setTestingConn(true);
+    setTestConnStatus(null);
+    try {
+      saveStoredCredentials({
+        email: shiprocketEmail.trim(),
+        password: shiprocketPassword,
+      });
+      const token = await getShiprocketToken(true);
+      if (token) {
+        setTestConnStatus('SUCCESS: Shiprocket connection verified & authenticated!');
+      }
+    } catch (err: any) {
+      setTestConnStatus(`FAILED: ${err?.message || 'Could not authenticate'}`);
+    } finally {
+      setTestingConn(false);
+    }
+  };
 
   useEffect(() => {
     try {
@@ -1856,7 +1904,7 @@ export const AdminPage: React.FC = () => {
 
               {/* Status Filter Tabs */}
               <div className="flex flex-wrap gap-1.5 p-1 bg-white rounded-xl border border-[#EAE3D8]">
-                {(['all', 'pending', 'processing', 'shipped', 'delivered'] as const).map((st) => (
+                {(['all', 'pending', 'processing', 'shipped', 'delivered', 'cancelled'] as const).map((st) => (
                   <button
                     key={st}
                     type="button"
@@ -1870,6 +1918,43 @@ export const AdminPage: React.FC = () => {
                     {st} {st !== 'all' && `(${orders.filter((o) => o.status === st).length})`}
                   </button>
                 ))}
+              </div>
+            </div>
+
+            {/* Shiprocket Logistics Header Banner */}
+            <div className="bg-white p-4 rounded-2xl border border-[#E8E0D5] flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
+              <div className="flex items-center gap-3">
+                <div className="size-10 rounded-2xl bg-[#FAF0ED] text-[#8E5B59] flex items-center justify-center font-bold text-lg shadow-2xs">
+                  🚀
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-[#2C2724] uppercase tracking-wider">
+                      Shiprocket Logistics Integration
+                    </span>
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                      <span className="size-1.5 rounded-full bg-emerald-600 animate-pulse" />
+                      Connected
+                    </span>
+                  </div>
+                  <div className="text-xs text-[#786F66]">
+                    Active Account: <strong className="text-[#2C2724]">{shiprocketEmail}</strong> · Address Prefill, Multi-Carrier Rates, Instant AWB & Cancellation Sync
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTestConnStatus(null);
+                    setIsShiprocketSettingsOpen(true);
+                  }}
+                  className="px-3.5 py-1.5 rounded-xl border border-[#DED5C9] bg-[#FAF7F2] text-xs font-medium text-[#4A423B] hover:bg-white transition cursor-pointer flex items-center gap-1.5"
+                >
+                  <span>⚙️</span>
+                  <span>Shiprocket Settings</span>
+                </button>
               </div>
             </div>
 
@@ -1918,6 +2003,7 @@ export const AdminPage: React.FC = () => {
                     processing: 'bg-blue-100 text-blue-800 border-blue-200',
                     shipped: 'bg-indigo-100 text-indigo-800 border-indigo-200',
                     delivered: 'bg-emerald-100 text-emerald-800 border-emerald-200',
+                    cancelled: 'bg-rose-100 text-rose-800 border-rose-200',
                   };
 
                   return (
@@ -1953,6 +2039,7 @@ export const AdminPage: React.FC = () => {
                             <option value="processing">Processing</option>
                             <option value="shipped">Shipped</option>
                             <option value="delivered">Delivered</option>
+                            <option value="cancelled">Cancelled</option>
                           </select>
 
                           <button
@@ -2063,6 +2150,88 @@ export const AdminPage: React.FC = () => {
                             ✓ 100% paid online (₹{order.amountPaid || order.total}). No collection on delivery.
                           </div>
                         )}
+
+                        {/* Shiprocket Delivery & Logistics Action Bar */}
+                        <div className="pt-3 border-t border-[#EAE3D8] flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-3.5 rounded-xl border border-[#EAE3D8]">
+                          {order.shipment && order.shipment.status !== 'CANCELED' && order.status !== 'cancelled' ? (
+                            <div className="flex items-center gap-3 flex-1 min-w-0">
+                              <div className="size-9 rounded-xl bg-[#FAF0ED] text-[#8E5B59] flex items-center justify-center text-base shrink-0 shadow-2xs">
+                                🚚
+                              </div>
+                              <div className="min-w-0">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className="font-semibold text-xs text-[#2C2724]">
+                                    {order.shipment.courierName || 'Shiprocket Courier'}
+                                  </span>
+                                  {order.shipment.awbCode && (
+                                    <span className="font-mono text-[11px] font-bold text-[#8E5B59] bg-[#FAF0ED] px-2 py-0.5 rounded">
+                                      AWB: {order.shipment.awbCode}
+                                    </span>
+                                  )}
+                                  <span className="text-[10px] uppercase font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300">
+                                    {order.shipment.status || 'Active'}
+                                  </span>
+                                </div>
+                                <div className="text-[11px] text-[#786F66] mt-0.5">
+                                  Pickup: <strong>{order.shipment.pickupDate || 'Scheduled'}</strong> · Hub: {order.shipment.pickupLocation || 'Kar apartment'}
+                                  {order.shipment.rate && ` · Shipping: ₹${order.shipment.rate.toFixed(2)}`}
+                                </div>
+                              </div>
+                            </div>
+                          ) : order.shipment && (order.shipment.status === 'CANCELED' || order.status === 'cancelled') ? (
+                            <div className="flex items-center gap-2 text-xs text-rose-700">
+                              <span className="text-base">🚫</span>
+                              <span>Shiprocket shipment cancelled. You can create a new shipment anytime.</span>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-2 text-xs text-[#786F66]">
+                              <span className="text-base">📦</span>
+                              <span>Ready for dispatch. Delivery address is prefilled from order.</span>
+                            </div>
+                          )}
+
+                          <div className="flex items-center gap-2 shrink-0">
+                            {order.shipment && order.shipment.status !== 'CANCELED' && order.status !== 'cancelled' ? (
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setSelectedTrackingOrder(order);
+                                    setIsTrackingOpen(true);
+                                  }}
+                                  className="px-3 py-1.5 rounded-xl border border-[#DED5C9] bg-[#FAF7F2] text-xs font-medium text-[#2C2724] hover:bg-white transition cursor-pointer flex items-center gap-1.5 shadow-2xs"
+                                >
+                                  <span>🔍</span>
+                                  <span>Track & Sync</span>
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setSelectedTrackingOrder(order);
+                                    setIsTrackingOpen(true);
+                                  }}
+                                  className="px-3 py-1.5 rounded-xl border border-rose-200 bg-rose-50 text-xs font-medium text-rose-700 hover:bg-rose-100 transition cursor-pointer flex items-center gap-1"
+                                >
+                                  <span>✕</span>
+                                  <span>Cancel</span>
+                                </button>
+                              </>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setSelectedShipmentOrder(order);
+                                  setIsShipmentModalOpen(true);
+                                }}
+                                className="px-3.5 py-1.5 rounded-xl bg-[#8E5B59] hover:bg-[#784A48] text-white text-xs font-medium transition cursor-pointer flex items-center gap-1.5 shadow-2xs"
+                              >
+                                <span>🚚</span>
+                                <span>{order.shipment?.status === 'CANCELED' ? 'Create New Shipment' : 'Create Shipment'}</span>
+                              </button>
+                            )}
+                          </div>
+                        </div>
                       </div>
                     </div>
                   );
@@ -3410,6 +3579,148 @@ export const AdminPage: React.FC = () => {
             onSkipCrop={handleSkipCurrentCrop}
             onCancel={handleCancelCropQueue}
           />
+        )}
+
+        {/* Shiprocket Create Shipment Modal */}
+        {selectedShipmentOrder && (
+          <ShiprocketShipmentModal
+            order={selectedShipmentOrder}
+            isOpen={isShipmentModalOpen}
+            onClose={() => {
+              setIsShipmentModalOpen(false);
+              setSelectedShipmentOrder(null);
+            }}
+            onSuccess={(shipmentInfo, newStatus) => {
+              if (selectedShipmentOrder.id) {
+                updateOrderShipment(selectedShipmentOrder.id, shipmentInfo, newStatus);
+              }
+            }}
+          />
+        )}
+
+        {/* Shiprocket Live Tracking & Sync Modal */}
+        {selectedTrackingOrder && (
+          <ShiprocketTrackingModal
+            order={selectedTrackingOrder}
+            isOpen={isTrackingOpen}
+            onClose={() => {
+              setIsTrackingOpen(false);
+              setSelectedTrackingOrder(null);
+            }}
+            onUpdateShipment={(shipmentPatch, newStatus) => {
+              if (selectedTrackingOrder.id) {
+                updateOrderShipment(selectedTrackingOrder.id, shipmentPatch, newStatus);
+              }
+            }}
+          />
+        )}
+
+        {/* Shiprocket Settings & Credentials Modal */}
+        {isShiprocketSettingsOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs overflow-y-auto animate-fade-in">
+            <div className="bg-[#FAF7F2] border border-[#E8E0D5] rounded-3xl w-full max-w-lg shadow-2xl overflow-hidden my-auto">
+              <div className="px-6 py-4 bg-white border-b border-[#EAE3D8] flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <span className="text-xl">🚀</span>
+                  <div>
+                    <h3 className="font-serif text-base font-semibold text-[#2C2724]">
+                      Shiprocket API Configuration
+                    </h3>
+                    <p className="text-xs text-[#786F66]">
+                      Manage connected credentials & test API authentication
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsShiprocketSettingsOpen(false)}
+                  className="size-8 rounded-full hover:bg-[#F3EDE2] text-[#786F66] flex items-center justify-center transition cursor-pointer"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div className="p-6 space-y-4 text-xs">
+                {testConnStatus && (
+                  <div
+                    className={`p-3 rounded-xl border ${
+                      testConnStatus.startsWith('SUCCESS')
+                        ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                        : 'bg-rose-50 text-rose-800 border-rose-200'
+                    }`}
+                  >
+                    {testConnStatus}
+                  </div>
+                )}
+
+                <div>
+                  <label className="block text-[11px] font-medium text-[#786F66] mb-1">
+                    Shiprocket Email Address
+                  </label>
+                  <input
+                    type="email"
+                    value={shiprocketEmail}
+                    onChange={(e) => setShiprocketEmail(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-[#DED5C9] bg-white text-[#2C2724] focus:outline-none focus:border-[#8E5B59]"
+                  />
+                  <span className="text-[10px] text-[#8C827A] mt-1 block">
+                    Default: sekhrakib001@gmail.com
+                  </span>
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-medium text-[#786F66] mb-1">
+                    Shiprocket Password
+                  </label>
+                  <input
+                    type="password"
+                    value={shiprocketPassword}
+                    onChange={(e) => setShiprocketPassword(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-[#DED5C9] bg-white text-[#2C2724] focus:outline-none focus:border-[#8E5B59] font-mono"
+                  />
+                </div>
+
+                <div className="bg-white p-3 rounded-xl border border-[#EAE3D8] text-[11px] text-[#786F66] space-y-1">
+                  <div className="font-semibold text-[#2C2724]">Integrated Capabilities:</div>
+                  <div>• Automatic delivery address prefilling directly from customer orders</div>
+                  <div>• Live multi-carrier serviceability and real-time shipping rate comparison</div>
+                  <div>• Instant AWB generation and scheduled pickup date booking</div>
+                  <div>• Shipment cancellation with live Shiprocket status sync</div>
+                </div>
+              </div>
+
+              <div className="px-6 py-4 bg-white border-t border-[#EAE3D8] flex items-center justify-between gap-2">
+                <button
+                  type="button"
+                  onClick={handleTestShiprocketConnection}
+                  disabled={testingConn}
+                  className="px-3.5 py-2 rounded-xl border border-[#DED5C9] text-xs font-medium text-[#4A423B] hover:bg-[#F3EDE2] transition cursor-pointer flex items-center gap-1.5"
+                >
+                  {testingConn ? 'Testing...' : '⚡ Test Connection'}
+                </button>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsShiprocketSettingsOpen(false)}
+                    className="px-4 py-2 rounded-xl border border-[#DED5C9] text-xs font-medium text-[#4A423B] hover:bg-[#F3EDE2] transition cursor-pointer"
+                  >
+                    Close
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      handleSaveShiprocketCreds();
+                      setIsShiprocketSettingsOpen(false);
+                    }}
+                    className="px-4 py-2 rounded-xl bg-[#8E5B59] hover:bg-[#784A48] text-white text-xs font-medium transition cursor-pointer"
+                  >
+                    Save Changes
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
         )}
       </main>
     </div>

@@ -46,6 +46,23 @@ export interface OrderItem {
   selectedColor?: string;
 }
 
+export interface OrderShipmentInfo {
+  shiprocketOrderId?: number | string;
+  shipmentId?: number | string;
+  awbCode?: string;
+  courierName?: string;
+  courierId?: number;
+  pickupLocation?: string;
+  pickupDate?: string;
+  pickupTokenNumber?: string;
+  rate?: number;
+  etd?: string;
+  status?: string; // 'NEW', 'AWB_ASSIGNED', 'PICKUP_SCHEDULED', 'IN_TRANSIT', 'DELIVERED', 'CANCELED'
+  cancelledAt?: string;
+  updatedAt?: string;
+  raw?: any;
+}
+
 export interface Order {
   id?: string;
   orderNumber?: string;
@@ -65,7 +82,8 @@ export interface Order {
   paymentMethod: 'online' | 'partial_cod';
   amountPaid: number;
   codAmountDue: number;
-  status: 'pending' | 'processing' | 'shipped' | 'delivered';
+  status: 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
+  shipment?: OrderShipmentInfo;
   createdAt: any;
 }
 

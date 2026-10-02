@@ -15,7 +15,7 @@ import {
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, storage } from '../lib/firebase';
 import { useAuth } from './AuthContext';
-import { Product, SiteContent, Order } from '../types';
+import { Product, SiteContent, Order, OrderShipmentInfo } from '../types';
 
 export const DEFAULT_COLLECTIONS_ORDER = [
   'Mobile Charms',
@@ -198,6 +198,11 @@ interface ContentContextType {
   seedInitialProductsToFirestore: () => Promise<void>;
   createOrder: (orderData: Omit<Order, 'id'>) => Promise<string>;
   updateOrderStatus: (orderId: string, status: Order['status']) => Promise<void>;
+  updateOrderShipment: (
+    orderId: string,
+    shipment: Partial<OrderShipmentInfo>,
+    newStatus?: Order['status']
+  ) => Promise<void>;
   deleteOrder: (orderId: string) => Promise<void>;
   toggleProductFavorite: (id: string) => Promise<void>;
   setFeaturedProducts: (ids: string[]) => Promise<void>;
@@ -486,6 +491,7 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
                 amountPaid: Number(data.amountPaid !== undefined ? data.amountPaid : data.total) || 0,
                 codAmountDue: Number(data.codAmountDue) || 0,
                 status: data.status || 'pending',
+                shipment: data.shipment || undefined,
                 createdAt: data.createdAt?.toDate
                   ? data.createdAt.toDate().toISOString()
                   : data.createdAt || new Date().toISOString(),
@@ -714,6 +720,47 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
   };
 
+  const updateOrderShipment = async (
+    orderId: string,
+    shipmentData: Partial<OrderShipmentInfo>,
+    newStatus?: Order['status']
+  ): Promise<void> => {
+    const updated = orders.map((o) => {
+      if (o.id !== orderId) return o;
+      const mergedShipment: OrderShipmentInfo = {
+        ...(o.shipment || {}),
+        ...shipmentData,
+        updatedAt: new Date().toISOString(),
+      };
+      return {
+        ...o,
+        status: newStatus || o.status,
+        shipment: mergedShipment,
+      };
+    });
+    syncOrders(updated);
+
+    try {
+      const orderRef = doc(db, 'orders', orderId);
+      const existing = orders.find((o) => o.id === orderId);
+      const mergedShipment = {
+        ...(existing?.shipment || {}),
+        ...shipmentData,
+        updatedAt: new Date().toISOString(),
+      };
+      const payload: any = {
+        shipment: sanitizeForFirestore(mergedShipment),
+        updatedAt: serverTimestamp(),
+      };
+      if (newStatus) {
+        payload.status = newStatus;
+      }
+      await updateDoc(orderRef, payload);
+    } catch (e) {
+      console.warn('Firestore order shipment update fallback:', e);
+    }
+  };
+
   const deleteOrder = async (orderId: string): Promise<void> => {
     const remaining = orders.filter((o) => o.id !== orderId);
     syncOrders(remaining);
@@ -752,6 +799,7 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
         seedInitialProductsToFirestore,
         createOrder,
         updateOrderStatus,
+        updateOrderShipment,
         deleteOrder,
         toggleProductFavorite,
         setFeaturedProducts,

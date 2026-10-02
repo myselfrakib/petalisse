@@ -38,6 +38,14 @@ export default defineConfig(({ mode }) => {
           '**/.figma/**',
 ],
       },
+      proxy: {
+        '/api/shiprocket': {
+          target: 'https://apiv2.shiprocket.in/v1/external',
+          changeOrigin: true,
+          rewrite: (path) => path.replace(/^\/api\/shiprocket/, ''),
+          secure: false,
+        },
+      },
     },
     preview: {
       host: process.env.FIGMA_DEV_SERVER_HOST || '0.0.0.0',
