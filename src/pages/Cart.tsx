@@ -153,14 +153,15 @@ export default function Cart() {
   // Discount is calculated dynamically from the database coupon
   const discountAmount = appliedCoupon ? validateCoupon(appliedCoupon.code, total).discount : 0;
   const productTotal = Math.max(0, total - discountAmount);
-  const isFreeShipping = productTotal >= 599;
+  // Free delivery is based on cart items subtotal; applying a coupon does not change the delivery fee
+  const isFreeShipping = total >= 599;
 
   // Dedicated rates for each payment method so option cards always display accurate amounts
-  const onlineShippingFee = productTotal > 0 ? (isFreeShipping ? 0 : 49) : 0;
+  const onlineShippingFee = total > 0 ? (isFreeShipping ? 0 : 49) : 0;
   const onlineTotal = productTotal + onlineShippingFee;
 
   const halfProduct = Math.round(productTotal * 0.5);
-  const partialCodShippingFee = productTotal > 0 ? (isFreeShipping ? 0 : 99) : 0;
+  const partialCodShippingFee = total > 0 ? (isFreeShipping ? 0 : 99) : 0;
   const partialCodPayNow = halfProduct + partialCodShippingFee;
   const partialCodDue = productTotal - halfProduct;
 
@@ -719,7 +720,7 @@ export default function Cart() {
         </section>
 
         {/* ── FREE SHIPPING PROGRESS BAR ── */}
-        {productTotal > 0 && (
+        {total > 0 && (
           <div className="w-full bg-[#FAF7F2] p-3 rounded-2xl border border-[rgba(107,26,42,0.12)]">
             {isFreeShipping ? (
               <div className="flex items-center gap-2 text-xs font-medium text-[#2E7D32]">
@@ -732,16 +733,16 @@ export default function Cart() {
               <div className="space-y-1.5">
                 <div className="flex justify-between items-center text-xs">
                   <span className="text-[#6D635B]">
-                    Add <strong className="text-[#6b1a2a]">₹{(599 - productTotal).toFixed(0)}</strong> more for <strong>FREE SHIPPING</strong>
+                    Add <strong className="text-[#6b1a2a]">₹{(599 - total).toFixed(0)}</strong> more for <strong>FREE SHIPPING</strong>
                   </span>
                   <span className="font-bold text-[#6b1a2a] text-[11px]">
-                    {Math.min(100, Math.round((productTotal / 599) * 100))}%
+                    {Math.min(100, Math.round((total / 599) * 100))}%
                   </span>
                 </div>
                 <div className="w-full bg-[#EAE3D8] h-1.5 rounded-full overflow-hidden">
                   <div
                     className="bg-[#8E5B59] h-full rounded-full transition-all duration-300"
-                    style={{ width: `${Math.min(100, Math.max(5, (productTotal / 599) * 100))}%` }}
+                    style={{ width: `${Math.min(100, Math.max(5, (total / 599) * 100))}%` }}
                   />
                 </div>
               </div>
