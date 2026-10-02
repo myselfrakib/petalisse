@@ -97,10 +97,14 @@ export function CartProvider({ children }: { children: ReactNode }) {
     } catch {}
   };
 
-  const total = items.reduce(
-    (sum, i) => sum + (i.product.discountedPrice !== undefined ? i.product.discountedPrice : i.product.price) * i.quantity,
-    0
-  );
+  const total = items.reduce((sum, i) => {
+    const p = i.product;
+    const effectivePrice =
+      p.discountedPrice !== undefined && p.discountedPrice !== null && Number(p.discountedPrice) > 0
+        ? Number(p.discountedPrice)
+        : Number(p.price || 0);
+    return sum + effectivePrice * i.quantity;
+  }, 0);
   const count = items.reduce((sum, i) => sum + i.quantity, 0);
 
   return (

@@ -19,9 +19,22 @@ const imgInstagram = '/figma-assets/61242fa42cf1591147b709b00c26b1201880564e.svg
 const imgMusic = '/figma-assets/76abb4ffe21c8d67bea7f7daf70db2330cc66a88.svg';
 
 export default function Cart() {
-  const { items, remove, update, total, count, clear } = useCart();
+  const { items, remove, update, total: cartTotal, count, clear } = useCart();
   const { currentUser, userProfile } = useAuth();
-  const { createOrder, orders, validateCoupon } = useContent();
+  const { createOrder, orders, validateCoupon, products } = useContent();
+
+  // Dynamic subtotal synchronized with active catalog prices
+  const total = useMemo(() => {
+    if (!items.length) return 0;
+    return items.reduce((sum, i) => {
+      const live = products.find((prod) => prod.id === i.product.id) || i.product;
+      const effectivePrice =
+        live.discountedPrice !== undefined && live.discountedPrice !== null && Number(live.discountedPrice) > 0
+          ? Number(live.discountedPrice)
+          : Number(live.price || 0);
+      return sum + effectivePrice * i.quantity;
+    }, 0);
+  }, [items, products]);
   const [promoCode, setPromoCode] = useState('');
   const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
   const [promoMessage, setPromoMessage] = useState('');
@@ -243,15 +256,22 @@ export default function Cart() {
       const orderId = `ord_${timestamp}_${randomSuffix.toLowerCase()}`;
       const orderNumber = `#PET-${timestamp.toString().slice(-6)}${randomSuffix}`;
 
-      const orderItems: OrderItem[] = items.map((i) => ({
-        id: i.product.id,
-        name: i.product.name,
-        price: i.product.discountedPrice ?? i.product.price,
-        quantity: i.quantity,
-        img: i.product.img || i.product.images?.[0] || '',
-        selectedColor: i.selectedColor,
-        selectedVariant: i.selectedVariant,
-      }));
+      const orderItems: OrderItem[] = items.map((i) => {
+        const live = products.find((prod) => prod.id === i.product.id) || i.product;
+        const effectivePrice =
+          live.discountedPrice !== undefined && live.discountedPrice !== null && Number(live.discountedPrice) > 0
+            ? Number(live.discountedPrice)
+            : Number(live.price || 0);
+        return {
+          id: live.id,
+          name: live.name,
+          price: effectivePrice,
+          quantity: i.quantity,
+          img: live.img || live.images?.[0] || '',
+          selectedColor: i.selectedColor,
+          selectedVariant: i.selectedVariant,
+        };
+      });
 
       const fullShippingAddress = `${address.trim()}, ${city.trim()}${
         stateName.trim() ? `, ${stateName.trim()}` : ''
@@ -417,95 +437,124 @@ export default function Cart() {
               </Link>
             </div>
           ) : (
-            items.map(({ product: p, quantity, selectedColor, selectedVariant }, idx) => (
-              <div
-                key={`${p.id}-${selectedColor || ''}-${selectedVariant || ''}-${idx}`}
-                className="bg-white border border-[rgba(107,26,42,0.1)] rounded-[16px] p-3 flex gap-3 items-center w-full shadow-xs"
-                data-name="cart-item"
-              >
-                <Link to={`/product/${p.id}`} className="size-20 rounded-[12px] overflow-hidden shrink-0">
-                  <LazyImage
-                    alt={p.name}
-                    src={p.img || p.images?.[0] || ''}
-                    priority={idx < 3}
-                    containerClassName="size-full"
-                    className="size-full object-cover"
-                  />
-                </Link>
+            items.map(({ product: p, quantity, selectedColor, selectedVariant }, idx) => {
+              const live = products.find((prod) => prod.id === p.id) || p;
+              const unitPrice =
+                live.discountedPrice !== undefined && live.discountedPrice !== null && Number(live.discountedPrice) > 0
+                  ? Number(live.discountedPrice)
+                  : Number(live.price || 0);
+              const origPrice = Number(live.price || 0);
+              const hasDiscount =
+                live.discountedPrice !== undefined &&
+                live.discountedPrice !== null &&
+                Number(live.discountedPrice) > 0 &&
+                Number(live.discountedPrice) < origPrice;
+              const lineTotal = unitPrice * quantity;
 
-                <div className="flex flex-col gap-1 flex-1 min-w-0">
-                  <div className="flex items-start justify-between gap-2">
-                    <Link
-                      to={`/product/${p.id}`}
-                      className="font-cormorant font-bold text-[#6b1a2a] text-[16px] truncate hover:underline"
-                    >
-                      {p.name}
-                    </Link>
-                    <button
-                      onClick={() => remove(p.id, selectedColor, selectedVariant)}
-                      className="p-1 text-[#8b827d] hover:text-[#c82333] transition-colors cursor-pointer"
-                      title="Remove item"
-                      data-name="remove-btn"
-                    >
-                      <img alt="Remove" className="size-2.5 block" src={imgXCircle} />
-                    </button>
-                  </div>
+              return (
+                <div
+                  key={`${p.id}-${selectedColor || ''}-${selectedVariant || ''}-${idx}`}
+                  className="bg-white border border-[rgba(107,26,42,0.1)] rounded-[16px] p-3 flex gap-3 items-center w-full shadow-xs"
+                  data-name="cart-item"
+                >
+                  <Link to={`/product/${live.id}`} className="size-20 rounded-[12px] overflow-hidden shrink-0">
+                    <LazyImage
+                      alt={live.name}
+                      src={live.img || live.images?.[0] || ''}
+                      priority={idx < 3}
+                      containerClassName="size-full"
+                      className="size-full object-cover"
+                    />
+                  </Link>
 
-                  <div className="flex flex-wrap items-center gap-2 -mt-0.5">
-                    {selectedColor && (
-                      <div className="flex items-center gap-1">
-                        <span
-                          className="size-2 rounded-full border border-black/10 shrink-0"
-                          style={{ backgroundColor: getColorHex(selectedColor) }}
-                        />
-                        <span className="font-sans text-[11px] text-[#8E5B59] font-medium">
-                          Color: <span className="text-[#4A423B]">{selectedColor}</span>
-                        </span>
-                      </div>
-                    )}
-                    {selectedVariant && (
-                      <div className="flex items-center gap-1 bg-[#FAF0ED] px-1.5 py-0.2 rounded-md border border-[#E8C5B8]/60">
-                        <span className="font-sans text-[10px] text-[#8E5B59] font-medium">
-                          {selectedVariant}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-
-                  <p className="font-cormorant text-[#8b827d] text-[13px] leading-[1.3] line-clamp-2">
-                    {p.description}
-                  </p>
-
-                  <div className="flex items-center justify-between mt-1">
-                    {/* Quantity Selector Pill */}
-                    <div
-                      className="bg-[#fdfbf7] border border-[rgba(107,26,42,0.1)] rounded-full px-2.5 py-0.5 flex items-center gap-2.5 font-cormorant font-bold text-[#6b1a2a]"
-                      data-name="qty-selector"
-                    >
-                      <button
-                        onClick={() => update(p.id, quantity - 1, selectedColor, selectedVariant)}
-                        className="text-xs hover:opacity-75 transition-opacity cursor-pointer"
-                        aria-label="Decrease quantity"
+                  <div className="flex flex-col gap-1 flex-1 min-w-0">
+                    <div className="flex items-start justify-between gap-2">
+                      <Link
+                        to={`/product/${live.id}`}
+                        className="font-cormorant font-bold text-[#6b1a2a] text-[16px] truncate hover:underline"
                       >
-                        —
-                      </button>
-                      <span className="text-[13px] font-sans font-bold">{quantity}</span>
+                        {live.name}
+                      </Link>
                       <button
-                        onClick={() => update(p.id, quantity + 1, selectedColor, selectedVariant)}
-                        className="text-xs hover:opacity-75 transition-opacity cursor-pointer"
-                        aria-label="Increase quantity"
+                        onClick={() => remove(p.id, selectedColor, selectedVariant)}
+                        className="p-1 text-[#8b827d] hover:text-[#c82333] transition-colors cursor-pointer"
+                        title="Remove item"
+                        data-name="remove-btn"
                       >
-                        +
+                        <img alt="Remove" className="size-2.5 block" src={imgXCircle} />
                       </button>
                     </div>
 
-                    <span className="font-sans font-bold text-[#6b1a2a] text-[15px]">
-                      ₹{p.price * quantity}
-                    </span>
+                    <div className="flex flex-wrap items-center gap-2 -mt-0.5">
+                      {selectedColor && (
+                        <div className="flex items-center gap-1">
+                          <span
+                            className="size-2 rounded-full border border-black/10 shrink-0"
+                            style={{ backgroundColor: getColorHex(selectedColor) }}
+                          />
+                          <span className="font-sans text-[11px] text-[#8E5B59] font-medium">
+                            Color: <span className="text-[#4A423B]">{selectedColor}</span>
+                          </span>
+                        </div>
+                      )}
+                      {selectedVariant && (
+                        <div className="flex items-center gap-1 bg-[#FAF0ED] px-1.5 py-0.2 rounded-md border border-[#E8C5B8]/60">
+                          <span className="font-sans text-[10px] text-[#8E5B59] font-medium">
+                            {selectedVariant}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+
+                    <p className="font-cormorant text-[#8b827d] text-[13px] leading-[1.3] line-clamp-2">
+                      {live.description}
+                    </p>
+
+                    <div className="flex items-center justify-between mt-1">
+                      {/* Quantity Selector Pill */}
+                      <div
+                        className="bg-[#fdfbf7] border border-[rgba(107,26,42,0.1)] rounded-full px-2.5 py-0.5 flex items-center gap-2.5 font-cormorant font-bold text-[#6b1a2a]"
+                        data-name="qty-selector"
+                      >
+                        <button
+                          onClick={() => update(p.id, quantity - 1, selectedColor, selectedVariant)}
+                          className="text-xs hover:opacity-75 transition-opacity cursor-pointer"
+                          aria-label="Decrease quantity"
+                        >
+                          —
+                        </button>
+                        <span className="text-[13px] font-sans font-bold">{quantity}</span>
+                        <button
+                          onClick={() => update(p.id, quantity + 1, selectedColor, selectedVariant)}
+                          className="text-xs hover:opacity-75 transition-opacity cursor-pointer"
+                          aria-label="Increase quantity"
+                        >
+                          +
+                        </button>
+                      </div>
+
+                      <div className="flex flex-col items-end">
+                        <div className="flex items-baseline gap-1.5">
+                          <span className="font-sans font-bold text-[#6b1a2a] text-[15px]">
+                            ₹{lineTotal.toFixed(0)}
+                          </span>
+                          {hasDiscount && (
+                            <span className="font-sans text-[11px] text-[#8b827d] line-through">
+                              ₹{(origPrice * quantity).toFixed(0)}
+                            </span>
+                          )}
+                        </div>
+                        {quantity > 1 && (
+                          <span className="text-[10px] text-[#8b827d] font-sans">
+                            (₹{unitPrice.toFixed(0)} each)
+                          </span>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))
+              );
+            })
           )}
         </section>
 
