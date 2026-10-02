@@ -82,7 +82,7 @@ export const ImageCropModal: React.FC<ImageCropModalProps> = ({
 
   // Dragging / Pan handling with mouse
   const handleMouseDown = (e: React.MouseEvent) => {
-    e.preventDefault();
+    if (e.cancelable) e.preventDefault();
     setIsDragging(true);
     setDragStart({ x: e.clientX - offset.x, y: e.clientY - offset.y });
   };
@@ -124,7 +124,7 @@ export const ImageCropModal: React.FC<ImageCropModalProps> = ({
 
   // Smooth wheel zoom
   const handleWheel = (e: React.WheelEvent) => {
-    e.preventDefault();
+    if (e.cancelable) e.preventDefault();
     const delta = e.deltaY > 0 ? -0.1 : 0.1;
     setZoom((prev) => Math.min(Math.max(1, prev + delta), 4));
   };

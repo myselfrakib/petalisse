@@ -111,7 +111,9 @@ export default function Shop() {
 
   const handleMouseMove = (e: React.MouseEvent) => {
     if (!isDraggingRef.current || !categoriesRef.current) return;
-    e.preventDefault();
+    if (e.cancelable) {
+      e.preventDefault();
+    }
     const x = e.pageX - categoriesRef.current.offsetLeft;
     const walk = (x - startXRef.current) * 1.5;
     categoriesRef.current.scrollLeft = scrollLeftRef.current - walk;
@@ -132,13 +134,13 @@ export default function Shop() {
   };
 
   const handleAddToCart = (e: React.MouseEvent, product: Product) => {
-    e.preventDefault();
+    if (e.cancelable) e.preventDefault();
     e.stopPropagation();
     add(product);
   };
 
   const handleIncrement = (e: React.MouseEvent, product: Product) => {
-    e.preventDefault();
+    if (e.cancelable) e.preventDefault();
     e.stopPropagation();
     const matching = items.find((i) => i.product.id === product.id);
     if (matching) {
@@ -149,7 +151,7 @@ export default function Shop() {
   };
 
   const handleDecrement = (e: React.MouseEvent, product: Product) => {
-    e.preventDefault();
+    if (e.cancelable) e.preventDefault();
     e.stopPropagation();
     const matchingList = items.filter((i) => i.product.id === product.id);
     if (matchingList.length > 0) {
@@ -159,7 +161,7 @@ export default function Shop() {
   };
 
   const handleFavoriteClick = (e: React.MouseEvent, id: string) => {
-    e.preventDefault();
+    if (e.cancelable) e.preventDefault();
     e.stopPropagation();
     toggleWishlist(id);
   };
