@@ -304,19 +304,18 @@ export default function Shop() {
                       src={product.img || product.images?.[0] || ''}
                       priority={idx < 4}
                       containerClassName="size-full"
-                      className={`size-full object-cover transition-all duration-300 ${
-                        product.images && product.images.length > 1
-                          ? 'group-hover:opacity-0 group-hover:scale-105'
-                          : 'group-hover:scale-105'
-                      }`}
+                      className="size-full object-cover transition-all duration-300 group-hover:scale-105"
                     />
-                    {product.images && product.images.length > 1 && product.images[1] && (
-                      <LazyImage
+                    {product.images && product.images.length > 1 && product.images[1]?.trim() && product.images[1] !== (product.img || product.images[0]) && (
+                      <img
                         alt={product.name}
                         src={product.images[1]}
-                        priority={false}
-                        containerClassName="size-full absolute inset-0 opacity-0 group-hover:opacity-100 transition-all duration-300 pointer-events-none"
-                        className="size-full object-cover group-hover:scale-105 transition-all duration-300"
+                        loading="lazy"
+                        decoding="async"
+                        className="size-full object-cover absolute inset-0 opacity-0 group-hover:opacity-100 transition-all duration-300 pointer-events-none group-hover:scale-105"
+                        onError={(e) => {
+                          (e.target as HTMLElement).style.display = 'none';
+                        }}
                       />
                     )}
                   </Link>
