@@ -170,6 +170,37 @@ export default function Shop() {
     setDisplayCount((prev) => prev + 6);
   };
 
+  const loadMoreBtnRef = useRef<HTMLButtonElement | null>(null);
+  const isAutoLoadingRef = useRef(false);
+
+  useEffect(() => {
+    const btn = loadMoreBtnRef.current;
+    if (!btn) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const [entry] = entries;
+        if (entry.isIntersecting && !isAutoLoadingRef.current) {
+          isAutoLoadingRef.current = true;
+          handleLoadMore();
+          setTimeout(() => {
+            isAutoLoadingRef.current = false;
+          }, 300);
+        }
+      },
+      {
+        rootMargin: '150px',
+        threshold: 0.1,
+      }
+    );
+
+    observer.observe(btn);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [displayedProducts.length, filtered.length]);
+
   return (
     <div
       className="min-h-screen w-full flex flex-col items-center justify-start py-5 px-4 sm:px-6 pb-28 relative bg-[#fdfbf7]"
@@ -506,6 +537,7 @@ export default function Shop() {
         {displayedProducts.length < filtered.length && (
           <div className="flex items-center justify-center pt-2" data-node-id="2:324">
             <button
+              ref={loadMoreBtnRef}
               onClick={handleLoadMore}
               className="bg-white border border-[#6b1a2a] text-[#6b1a2a] hover:bg-[#6b1a2a] hover:text-white px-11 py-2.5 rounded-full font-cormorant font-bold text-[13px] uppercase tracking-wider transition-all active:scale-95 cursor-pointer shadow-xs"
               data-node-id="2:325"
