@@ -1,3 +1,8 @@
+export interface ProductVariant {
+  name: string;
+  options: string[];
+}
+
 export interface Product {
   id: string;
   name: string;
@@ -11,6 +16,7 @@ export interface Product {
   badge?: string;
   details?: string[];
   colors?: string[];
+  variants?: ProductVariant[];
   isFavorite?: boolean;
   createdAt?: any;
 }
@@ -44,6 +50,7 @@ export interface OrderItem {
   quantity: number;
   img: string;
   selectedColor?: string;
+  selectedVariant?: string;
 }
 
 export interface OrderShipmentInfo {

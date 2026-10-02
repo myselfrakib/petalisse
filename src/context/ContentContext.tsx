@@ -389,6 +389,7 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
                 badge: data.badge || undefined,
                 details: data.details || [],
                 colors: data.colors || [],
+                variants: data.variants || [],
                 isFavorite: !!data.isFavorite,
                 createdAt: data.createdAt,
               });

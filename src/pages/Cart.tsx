@@ -9,7 +9,7 @@ import { LazyImage } from '../components/LazyImage';
 
 const imgGinghamBg = '/figma-assets/772e8e7b4c0d39ad6752261452ccca607e718dc3.png';
 const imgChevronLeft = '/figma-assets/a9ed62056d32eaca4682db0b3be7e08d78983400.svg';
-const imgShoppingBag = '/figma-assets/c0a9184bb0018ada313c0983e0b8eacc37091194.svg';
+const imgShoppingCart = '/figma-assets/4f65122783bfac603a2ed7718755493bda56dc21.svg';
 const imgXCircle = '/figma-assets/cf54c1777967904b46c130fd6899a0c8a75fc015.svg';
 const imgLine = '/figma-assets/517bc7baba824d13ad91f42856bf10b6d75c407e.svg';
 const imgRibbonBow = '/figma-assets/c17b250678e032af9de42877174cc7812bd92c8c.svg';
@@ -154,25 +154,20 @@ export default function Cart() {
   const productTotal = Math.max(0, total - discountAmount);
   const isFreeShipping = productTotal >= 599;
 
-  let shippingFee = 0;
-  if (productTotal > 0) {
-    if (isFreeShipping) {
-      shippingFee = 0;
-    } else if (paymentMethod === 'online') {
-      shippingFee = 49;
-    } else {
-      shippingFee = 99; // partial_cod
-    }
-  }
+  // Dedicated rates for each payment method so option cards always display accurate amounts
+  const onlineShippingFee = productTotal > 0 ? (isFreeShipping ? 0 : 49) : 0;
+  const onlineTotal = productTotal + onlineShippingFee;
 
-  const finalTotal = productTotal + shippingFee;
-
-  // Partial COD calculation:
-  // "for partial cod user have to pay half amount of the product and 99 shipping
-  // and if the order amount is above 599 then free shipping on the 50 % amount will have to paid to place the order"
   const halfProduct = Math.round(productTotal * 0.5);
-  const codAmountDue = paymentMethod === 'partial_cod' ? productTotal - halfProduct : 0;
-  const amountPaidNow = paymentMethod === 'partial_cod' ? halfProduct + shippingFee : finalTotal;
+  const partialCodShippingFee = productTotal > 0 ? (isFreeShipping ? 0 : 99) : 0;
+  const partialCodPayNow = halfProduct + partialCodShippingFee;
+  const partialCodDue = productTotal - halfProduct;
+
+  // Active amounts for checkout and order summary
+  const shippingFee = paymentMethod === 'online' ? onlineShippingFee : partialCodShippingFee;
+  const finalTotal = productTotal + shippingFee;
+  const amountPaidNow = paymentMethod === 'online' ? onlineTotal : partialCodPayNow;
+  const codAmountDue = paymentMethod === 'online' ? 0 : partialCodDue;
 
   const handleApplyPromo = () => {
     if (!promoCode.trim()) {
@@ -233,6 +228,7 @@ export default function Cart() {
         quantity: i.quantity,
         img: i.product.img || i.product.images?.[0] || '',
         selectedColor: i.selectedColor,
+        selectedVariant: i.selectedVariant,
       }));
 
       const fullShippingAddress = `${address.trim()}, ${city.trim()}${
@@ -354,7 +350,8 @@ export default function Cart() {
           </Link>
 
           <h1
-            className="font-parisienne text-[#6b1a2a] text-[32px] leading-none"
+            className="font-meow text-[#6b1a2a] text-[38px] sm:text-[42px] leading-none select-none tracking-wide"
+            style={{ fontFamily: "'Meow Script', cursive" }}
             data-node-id="9:22"
           >
             Your Cart
@@ -365,7 +362,7 @@ export default function Cart() {
             data-node-id="9:23"
             data-name="nav-cart-button"
           >
-            <img alt="Cart" className="size-3.5 block" src={imgShoppingBag} />
+            <img alt="Cart" className="size-3.5 block" src={imgShoppingCart} />
             {count > 0 && (
               <span
                 className="absolute -top-1 -right-1 bg-[#c82333] text-white text-[9px] font-sans font-bold px-1.5 py-0.2 rounded-full leading-none"
@@ -397,9 +394,9 @@ export default function Cart() {
               </Link>
             </div>
           ) : (
-            items.map(({ product: p, quantity, selectedColor }, idx) => (
+            items.map(({ product: p, quantity, selectedColor, selectedVariant }, idx) => (
               <div
-                key={`${p.id}-${selectedColor || ''}-${idx}`}
+                key={`${p.id}-${selectedColor || ''}-${selectedVariant || ''}-${idx}`}
                 className="bg-white border border-[rgba(107,26,42,0.1)] rounded-[16px] p-3 flex gap-3 items-center w-full shadow-xs"
                 data-name="cart-item"
               >
@@ -422,7 +419,7 @@ export default function Cart() {
                       {p.name}
                     </Link>
                     <button
-                      onClick={() => remove(p.id, selectedColor)}
+                      onClick={() => remove(p.id, selectedColor, selectedVariant)}
                       className="p-1 text-[#8b827d] hover:text-[#c82333] transition-colors cursor-pointer"
                       title="Remove item"
                       data-name="remove-btn"
@@ -431,17 +428,26 @@ export default function Cart() {
                     </button>
                   </div>
 
-                  {selectedColor && (
-                    <div className="flex items-center gap-1.5 -mt-0.5">
-                      <span
-                        className="size-2 rounded-full border border-black/10 shrink-0"
-                        style={{ backgroundColor: getColorHex(selectedColor) }}
-                      />
-                      <span className="font-sans text-[11px] text-[#8E5B59] font-medium">
-                        Color: <span className="text-[#4A423B]">{selectedColor}</span>
-                      </span>
-                    </div>
-                  )}
+                  <div className="flex flex-wrap items-center gap-2 -mt-0.5">
+                    {selectedColor && (
+                      <div className="flex items-center gap-1">
+                        <span
+                          className="size-2 rounded-full border border-black/10 shrink-0"
+                          style={{ backgroundColor: getColorHex(selectedColor) }}
+                        />
+                        <span className="font-sans text-[11px] text-[#8E5B59] font-medium">
+                          Color: <span className="text-[#4A423B]">{selectedColor}</span>
+                        </span>
+                      </div>
+                    )}
+                    {selectedVariant && (
+                      <div className="flex items-center gap-1 bg-[#FAF0ED] px-1.5 py-0.2 rounded-md border border-[#E8C5B8]/60">
+                        <span className="font-sans text-[10px] text-[#8E5B59] font-medium">
+                          {selectedVariant}
+                        </span>
+                      </div>
+                    )}
+                  </div>
 
                   <p className="font-cormorant text-[#8b827d] text-[13px] leading-[1.3] line-clamp-2">
                     {p.description}
@@ -454,7 +460,7 @@ export default function Cart() {
                       data-name="qty-selector"
                     >
                       <button
-                        onClick={() => update(p.id, quantity - 1, selectedColor)}
+                        onClick={() => update(p.id, quantity - 1, selectedColor, selectedVariant)}
                         className="text-xs hover:opacity-75 transition-opacity cursor-pointer"
                         aria-label="Decrease quantity"
                       >
@@ -462,7 +468,7 @@ export default function Cart() {
                       </button>
                       <span className="text-[13px] font-sans font-bold">{quantity}</span>
                       <button
-                        onClick={() => update(p.id, quantity + 1, selectedColor)}
+                        onClick={() => update(p.id, quantity + 1, selectedColor, selectedVariant)}
                         className="text-xs hover:opacity-75 transition-opacity cursor-pointer"
                         aria-label="Increase quantity"
                       >
@@ -522,7 +528,8 @@ export default function Cart() {
               <img alt="" className="w-full h-auto block" src={imgLine} />
             </div>
             <h2
-              className="font-parisienne text-[#6b1a2a] text-[34px] leading-none px-2 text-center"
+              className="font-meow text-[#6b1a2a] text-[38px] sm:text-[44px] leading-none px-2 text-center select-none tracking-wide"
+              style={{ fontFamily: "'Meow Script', cursive" }}
               data-node-id="9:99"
             >
               Shipping Details
@@ -544,7 +551,7 @@ export default function Cart() {
                 required
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
-                placeholder="e.g. Ananya Sharma"
+                placeholder="Enter your full name"
                 className="bg-white border border-[rgba(107,26,42,0.15)] rounded-xl px-4 py-2.5 font-cormorant text-sm text-[#2C2724] placeholder-[#A89E94] outline-none focus:border-[#6b1a2a] focus:ring-1 focus:ring-[#6b1a2a]/20 transition-all"
               />
             </div>
@@ -560,7 +567,7 @@ export default function Cart() {
                   required
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
-                  placeholder="e.g. 9876543210"
+                  placeholder="Enter 10-digit mobile number"
                   className="bg-white border border-[rgba(107,26,42,0.15)] rounded-xl px-4 py-2.5 font-cormorant text-sm text-[#2C2724] placeholder-[#A89E94] outline-none focus:border-[#6b1a2a] focus:ring-1 focus:ring-[#6b1a2a]/20 transition-all"
                 />
               </div>
@@ -573,7 +580,7 @@ export default function Cart() {
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="e.g. ananya@example.com"
+                  placeholder="Enter your email address"
                   className="bg-white border border-[rgba(107,26,42,0.15)] rounded-xl px-4 py-2.5 font-cormorant text-sm text-[#2C2724] placeholder-[#A89E94] outline-none focus:border-[#6b1a2a] focus:ring-1 focus:ring-[#6b1a2a]/20 transition-all"
                 />
               </div>
@@ -589,7 +596,7 @@ export default function Cart() {
                 required
                 value={address}
                 onChange={(e) => setAddress(e.target.value)}
-                placeholder="House/Flat no., Building name, Street / Area"
+                placeholder="House/Flat no., apartment, street, landmark"
                 className="bg-white border border-[rgba(107,26,42,0.15)] rounded-xl px-4 py-2.5 font-cormorant text-sm text-[#2C2724] placeholder-[#A89E94] outline-none focus:border-[#6b1a2a] focus:ring-1 focus:ring-[#6b1a2a]/20 transition-all"
               />
             </div>
@@ -605,7 +612,7 @@ export default function Cart() {
                   required
                   value={city}
                   onChange={(e) => setCity(e.target.value)}
-                  placeholder="e.g. Mumbai"
+                  placeholder="Enter city"
                   className="bg-white border border-[rgba(107,26,42,0.15)] rounded-xl px-3 py-2.5 font-cormorant text-sm text-[#2C2724] placeholder-[#A89E94] outline-none focus:border-[#6b1a2a] focus:ring-1 focus:ring-[#6b1a2a]/20 transition-all"
                 />
               </div>
@@ -618,7 +625,7 @@ export default function Cart() {
                   type="text"
                   value={stateName}
                   onChange={(e) => setStateName(e.target.value)}
-                  placeholder="e.g. Maharashtra"
+                  placeholder="Enter state"
                   className="bg-white border border-[rgba(107,26,42,0.15)] rounded-xl px-3 py-2.5 font-cormorant text-sm text-[#2C2724] placeholder-[#A89E94] outline-none focus:border-[#6b1a2a] focus:ring-1 focus:ring-[#6b1a2a]/20 transition-all"
                 />
               </div>
@@ -633,7 +640,7 @@ export default function Cart() {
                   maxLength={6}
                   value={pinCode}
                   onChange={(e) => setPinCode(e.target.value.replace(/[^0-9]/g, ''))}
-                  placeholder="e.g. 400001"
+                  placeholder="6-digit PIN"
                   className="bg-white border border-[rgba(107,26,42,0.15)] rounded-xl px-3 py-2.5 font-cormorant text-sm text-[#2C2724] placeholder-[#A89E94] outline-none focus:border-[#6b1a2a] focus:ring-1 focus:ring-[#6b1a2a]/20 transition-all"
                 />
               </div>
@@ -730,7 +737,7 @@ export default function Cart() {
               </p>
 
               <div className="pl-6.5 text-xs font-sans text-[#2C2724] font-semibold">
-                Amount to pay now: <span className="text-[#6b1a2a] font-bold">₹{finalTotal.toFixed(0)}</span>
+                Amount to pay now: <span className="text-[#6b1a2a] font-bold">₹{onlineTotal.toFixed(0)}</span>
               </div>
             </div>
 
@@ -775,10 +782,10 @@ export default function Cart() {
 
               <div className="pl-6.5 pt-0.5 flex flex-wrap items-center gap-2 text-xs font-sans">
                 <span className="px-2 py-0.5 rounded-md bg-[#FAF0ED] text-[#8E5B59] font-medium border border-[#E8C5B8]">
-                  Pay Now: <strong className="font-bold">₹{amountPaidNow.toFixed(0)}</strong>
+                  Pay Now: <strong className="font-bold">₹{partialCodPayNow.toFixed(0)}</strong>
                 </span>
                 <span className="px-2 py-0.5 rounded-md bg-[#FAF7F2] text-[#5C534B] font-medium border border-[#DED5C9]">
-                  Pay on Delivery: <strong className="font-bold">₹{codAmountDue.toFixed(0)}</strong>
+                  Pay on Delivery: <strong className="font-bold">₹{partialCodDue.toFixed(0)}</strong>
                 </span>
               </div>
             </div>

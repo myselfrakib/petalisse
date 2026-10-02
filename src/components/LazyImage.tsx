@@ -61,7 +61,7 @@ export const LazyImage: React.FC<LazyImageProps> = ({
           className="absolute inset-0 size-full skeleton-shimmer z-0 flex items-center justify-center pointer-events-none"
           aria-hidden="true"
         >
-          <span className="opacity-20 text-xl select-none">🌸</span>
+          <span className="opacity-25 text-xl select-none">🌹</span>
         </div>
       )}
 

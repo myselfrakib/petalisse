@@ -5,13 +5,14 @@ export interface CartItem {
   product: Product;
   quantity: number;
   selectedColor?: string;
+  selectedVariant?: string;
 }
 
 interface CartContextValue {
   items: CartItem[];
-  add: (product: Product, qty?: number, selectedColor?: string) => void;
-  remove: (id: string, selectedColor?: string) => void;
-  update: (id: string, qty: number, selectedColor?: string) => void;
+  add: (product: Product, qty?: number, selectedColor?: string, selectedVariant?: string) => void;
+  remove: (id: string, selectedColor?: string, selectedVariant?: string) => void;
+  update: (id: string, qty: number, selectedColor?: string, selectedVariant?: string) => void;
   clear: () => void;
   total: number;
   count: number;
@@ -38,40 +39,51 @@ export function CartProvider({ children }: { children: ReactNode }) {
     } catch {}
   }, [items]);
 
-  const add = (product: Product, qty = 1, selectedColor?: string) => {
+  const add = (product: Product, qty = 1, selectedColor?: string, selectedVariant?: string) => {
     setItems((prev) => {
       const colorToMatch = selectedColor || (product.colors && product.colors.length > 0 ? product.colors[0] : undefined);
       const existing = prev.find(
-        (i) => i.product.id === product.id && (i.selectedColor || '') === (colorToMatch || '')
+        (i) =>
+          i.product.id === product.id &&
+          (i.selectedColor || '') === (colorToMatch || '') &&
+          (i.selectedVariant || '') === (selectedVariant || '')
       );
       if (existing) {
         return prev.map((i) =>
-          i.product.id === product.id && (i.selectedColor || '') === (colorToMatch || '')
+          i.product.id === product.id &&
+          (i.selectedColor || '') === (colorToMatch || '') &&
+          (i.selectedVariant || '') === (selectedVariant || '')
             ? { ...i, quantity: i.quantity + qty }
             : i
         );
       }
-      return [...prev, { product, quantity: qty, selectedColor: colorToMatch }];
+      return [...prev, { product, quantity: qty, selectedColor: colorToMatch, selectedVariant }];
     });
   };
 
-  const remove = (id: string, selectedColor?: string) => {
+  const remove = (id: string, selectedColor?: string, selectedVariant?: string) => {
     setItems((prev) =>
       prev.filter(
         (i) =>
-          !(i.product.id === id && (selectedColor === undefined || (i.selectedColor || '') === (selectedColor || '')))
+          !(
+            i.product.id === id &&
+            (selectedColor === undefined || (i.selectedColor || '') === (selectedColor || '')) &&
+            (selectedVariant === undefined || (i.selectedVariant || '') === (selectedVariant || ''))
+          )
       )
     );
   };
 
-  const update = (id: string, qty: number, selectedColor?: string) => {
+  const update = (id: string, qty: number, selectedColor?: string, selectedVariant?: string) => {
     if (qty <= 0) {
-      remove(id, selectedColor);
+      remove(id, selectedColor, selectedVariant);
       return;
     }
     setItems((prev) =>
       prev.map((i) =>
-        i.product.id === id && (selectedColor === undefined || (i.selectedColor || '') === (selectedColor || ''))
+        i.product.id === id &&
+        (selectedColor === undefined || (i.selectedColor || '') === (selectedColor || '')) &&
+        (selectedVariant === undefined || (i.selectedVariant || '') === (selectedVariant || ''))
           ? { ...i, quantity: qty }
           : i
       )

@@ -9,7 +9,7 @@ import { useWishlist } from '../context/WishlistContext';
 
 const imgGinghamBg = '/figma-assets/772e8e7b4c0d39ad6752261452ccca607e718dc3.png';
 const imgChevronLeft = '/figma-assets/de70edd513d91ef52fc2c1fa9af3cbf0656b675a.svg';
-const imgShoppingBag = '/figma-assets/8aab77e6404936a9df121d7028258a27c83ee8b7.svg';
+const imgShoppingCart = '/figma-assets/4f65122783bfac603a2ed7718755493bda56dc21.svg';
 const imgHeart = '/figma-assets/31e27e08eda6d57eca61746b58532f5771b76653.svg';
 
 const SHOP_CATEGORIES = [
@@ -199,7 +199,7 @@ export default function Shop() {
             data-name="nav-cart-button"
             aria-label="View Cart"
           >
-            <img alt="Cart" className="size-3.5 block" src={imgShoppingBag} />
+            <img alt="Cart" className="size-3.5 block" src={imgShoppingCart} />
             {count > 0 && (
               <span className="absolute -top-1 -right-1 bg-[#6b1a2a] text-white text-[9px] font-sans font-bold w-4 h-4 rounded-full flex items-center justify-center leading-none">
                 {count > 9 ? '9+' : count}

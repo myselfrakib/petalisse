@@ -843,6 +843,9 @@ export default function Profile() {
                           {it.selectedColor && (
                             <span className="text-[#8C827A]">({it.selectedColor})</span>
                           )}{' '}
+                          {it.selectedVariant && (
+                            <span className="text-[#8C827A]">({it.selectedVariant})</span>
+                          )}{' '}
                           <span className="text-[#8C827A]">× {it.quantity}</span>
                         </span>
                         <span className="font-medium text-[#2C2724] shrink-0">

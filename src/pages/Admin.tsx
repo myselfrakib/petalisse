@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useContent } from '../context/ContentContext';
-import { Product, SiteContent, Order, SplashScreenConfig } from '../types';
+import { Product, SiteContent, Order, SplashScreenConfig, ProductVariant } from '../types';
 import { CATEGORIES } from '../data/products';
 import { collection, getDocs, updateDoc, doc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
@@ -410,6 +410,56 @@ export const AdminPage: React.FC = () => {
     setProdColors((prev) => prev.filter((_, idx) => idx !== indexToRemove));
   };
 
+  // Product Custom Variants State (e.g. Shape, Size, Style)
+  const [prodVariants, setProdVariants] = useState<ProductVariant[]>([]);
+  const [newOptionInputs, setNewOptionInputs] = useState<Record<number, string>>({});
+
+  const handleAddVariantType = (variantName = 'Shape') => {
+    const trimmed = variantName.trim() || 'Shape';
+    if (prodVariants.some((v) => v.name.toLowerCase() === trimmed.toLowerCase())) {
+      alert(`A variant named "${trimmed}" already exists.`);
+      return;
+    }
+    setProdVariants((prev) => [...prev, { name: trimmed, options: [] }]);
+  };
+
+  const handleUpdateVariantName = (index: number, newName: string) => {
+    setProdVariants((prev) =>
+      prev.map((v, idx) => (idx === index ? { ...v, name: newName } : v))
+    );
+  };
+
+  const handleAddVariantOption = (variantIndex: number, optionToAdd?: string) => {
+    const raw = typeof optionToAdd === 'string' ? optionToAdd : (newOptionInputs[variantIndex] || '');
+    const trimmed = raw.trim();
+    if (!trimmed) return;
+
+    setProdVariants((prev) =>
+      prev.map((v, idx) => {
+        if (idx !== variantIndex) return v;
+        if (v.options.some((o) => o.toLowerCase() === trimmed.toLowerCase())) {
+          return v;
+        }
+        return { ...v, options: [...v.options, trimmed] };
+      })
+    );
+
+    setNewOptionInputs((prev) => ({ ...prev, [variantIndex]: '' }));
+  };
+
+  const handleRemoveVariantOption = (variantIndex: number, optionIndex: number) => {
+    setProdVariants((prev) =>
+      prev.map((v, idx) => {
+        if (idx !== variantIndex) return v;
+        return { ...v, options: v.options.filter((_, oIdx) => oIdx !== optionIndex) };
+      })
+    );
+  };
+
+  const handleRemoveVariantType = (variantIndex: number) => {
+    setProdVariants((prev) => prev.filter((_, idx) => idx !== variantIndex));
+  };
+
   // Product Filter State (persisted across refreshes)
   const [productSearch, setProductSearch] = useState('');
   const [productCategoryFilter, setProductCategoryFilter] = useState(() => {
@@ -580,6 +630,7 @@ export const AdminPage: React.FC = () => {
         description: prodDescription,
         details: detailsArray,
         colors: prodColors.filter(Boolean),
+        variants: prodVariants.filter((v) => v.name.trim() && v.options.length > 0),
       };
 
       if (editingProductId) {
@@ -617,6 +668,8 @@ export const AdminPage: React.FC = () => {
     setProdDescription(prod.description);
     setProdDetailsStr((prod.details || []).join('\n'));
     setProdColors(prod.colors && Array.isArray(prod.colors) ? prod.colors : []);
+    setProdVariants(prod.variants && Array.isArray(prod.variants) ? prod.variants : []);
+    setNewOptionInputs({});
     setNewColorInput('');
     setProdMessage(null);
     window.scrollTo({ top: 350, behavior: 'smooth' });
@@ -650,6 +703,8 @@ export const AdminPage: React.FC = () => {
     setProdDescription('');
     setProdDetailsStr('');
     setProdColors([]);
+    setProdVariants([]);
+    setNewOptionInputs({});
     setNewColorInput('');
   };
 
@@ -1532,6 +1587,176 @@ export const AdminPage: React.FC = () => {
                     )}
                   </div>
 
+                  {/* Custom Product Variants (e.g. Shape, Size) (Optional) */}
+                  <div className="p-3.5 bg-white rounded-xl border border-[#DED5C9] space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <label className="block text-xs font-semibold text-[#2C2724]">
+                          Custom Variants (e.g. Shape, Size) (Optional)
+                        </label>
+                        <p className="text-[11px] text-[#786F66] mt-0.5">
+                          Add variant options like Shape (Heart, Star, Butterfly) that customers can select like colors on the product page.
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleAddVariantType('Shape')}
+                        className="px-3 py-1.5 rounded-xl bg-[#FAF0ED] text-[#8E5B59] hover:bg-[#F3DDD6] text-xs font-semibold transition cursor-pointer flex items-center gap-1 shadow-2xs shrink-0"
+                      >
+                        <span className="text-sm font-bold leading-none">+</span>
+                        <span>Add Variant</span>
+                      </button>
+                    </div>
+
+                    {prodVariants.length === 0 ? (
+                      <div className="p-3 rounded-xl border border-dashed border-[#DED5C9] text-center text-xs text-[#8C827A] flex flex-col items-center gap-2 bg-[#FAF7F2]/50">
+                        <span>No custom variants added yet.</span>
+                        <div className="flex flex-wrap items-center justify-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => handleAddVariantType('Shape')}
+                            className="px-2.5 py-1 rounded-full bg-white border border-[#DED5C9] text-[11px] font-medium text-[#8E5B59] hover:bg-[#FAF0ED] cursor-pointer"
+                          >
+                            + Add "Shape" Variant
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleAddVariantType('Size')}
+                            className="px-2.5 py-1 rounded-full bg-white border border-[#DED5C9] text-[11px] font-medium text-[#8E5B59] hover:bg-[#FAF0ED] cursor-pointer"
+                          >
+                            + Add "Size" Variant
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleAddVariantType('Charm Type')}
+                            className="px-2.5 py-1 rounded-full bg-white border border-[#DED5C9] text-[11px] font-medium text-[#8E5B59] hover:bg-[#FAF0ED] cursor-pointer"
+                          >
+                            + Add "Charm Type" Variant
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        {prodVariants.map((variant, vIdx) => {
+                          const isShape = variant.name.toLowerCase().includes('shape');
+                          const shapeSuggestions = ['Heart', 'Star', 'Butterfly', 'Flower', 'Round', 'Moon', 'Bow', 'Square'];
+                          const sizeSuggestions = ['Mini', 'Standard', 'Large'];
+                          const activeSuggestions = isShape ? shapeSuggestions : variant.name.toLowerCase().includes('size') ? sizeSuggestions : [];
+
+                          return (
+                            <div
+                              key={vIdx}
+                              className="p-3 rounded-xl bg-[#FAF7F2] border border-[#EAE3D8] space-y-2.5"
+                            >
+                              <div className="flex items-center justify-between gap-2 border-b border-[#E8E0D5] pb-2">
+                                <div className="flex items-center gap-2 flex-1">
+                                  <span className="text-xs font-bold text-[#8E5B59]">Variant {vIdx + 1}:</span>
+                                  <input
+                                    type="text"
+                                    value={variant.name}
+                                    onChange={(e) => handleUpdateVariantName(vIdx, e.target.value)}
+                                    placeholder="Variant Name (e.g. Shape)"
+                                    className="px-2.5 py-1 bg-white border border-[#DED5C9] rounded-lg text-xs font-semibold text-[#2C2724] focus:outline-none focus:border-[#8E5B59] max-w-[180px]"
+                                  />
+                                  <span className="text-[11px] text-[#786F66]">
+                                    ({variant.options.length} options added)
+                                  </span>
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemoveVariantType(vIdx)}
+                                  className="text-xs text-[#C53030] hover:underline cursor-pointer"
+                                >
+                                  ✕ Remove Variant
+                                </button>
+                              </div>
+
+                              {/* Input for adding new option to this variant */}
+                              <div className="flex gap-1.5">
+                                <input
+                                  type="text"
+                                  value={newOptionInputs[vIdx] || ''}
+                                  onChange={(e) => setNewOptionInputs((prev) => ({ ...prev, [vIdx]: e.target.value }))}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                      e.preventDefault();
+                                      handleAddVariantOption(vIdx);
+                                    }
+                                  }}
+                                  placeholder={`Add option for ${variant.name} (e.g. Heart, Star, Round)`}
+                                  className="flex-1 px-3 py-1.5 rounded-xl border border-[#DED5C9] bg-white text-xs text-[#2C2724] focus:outline-none focus:border-[#8E5B59]"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => handleAddVariantOption(vIdx)}
+                                  disabled={!(newOptionInputs[vIdx] || '').trim()}
+                                  className="px-3 py-1.5 rounded-xl bg-[#8E5B59] text-white hover:bg-[#784A48] disabled:opacity-40 text-xs font-medium transition cursor-pointer shrink-0"
+                                >
+                                  + Add Option
+                                </button>
+                              </div>
+
+                              {/* Quick Suggestions for options */}
+                              {activeSuggestions.length > 0 && (
+                                <div className="flex flex-wrap items-center gap-1">
+                                  <span className="text-[10px] text-[#8C827A] font-bold uppercase tracking-wider mr-1">
+                                    Quick:
+                                  </span>
+                                  {activeSuggestions.map((opt) => {
+                                    const alreadyAdded = variant.options.some(
+                                      (o) => o.toLowerCase() === opt.toLowerCase()
+                                    );
+                                    return (
+                                      <button
+                                        key={opt}
+                                        type="button"
+                                        disabled={alreadyAdded}
+                                        onClick={() => handleAddVariantOption(vIdx, opt)}
+                                        className={`px-2 py-0.5 rounded-full text-[10px] font-medium transition cursor-pointer ${
+                                          alreadyAdded
+                                            ? 'opacity-40 bg-gray-100 text-gray-400 cursor-not-allowed'
+                                            : 'bg-white text-[#5C534B] border border-[#E0D5C7] hover:border-[#8E5B59] hover:text-[#8E5B59]'
+                                        }`}
+                                      >
+                                        + {opt}
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              )}
+
+                              {/* Active Added Options for this variant */}
+                              {variant.options.length > 0 ? (
+                                <div className="flex flex-wrap gap-1.5 pt-1">
+                                  {variant.options.map((opt, oIdx) => (
+                                    <span
+                                      key={oIdx}
+                                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white text-[#2C2724] text-[11px] font-medium border border-[#DED5C9] shadow-2xs"
+                                    >
+                                      <span>{opt}</span>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleRemoveVariantOption(vIdx, oIdx)}
+                                        className="text-[#8C827A] hover:text-[#C53030] font-bold text-[10px] cursor-pointer"
+                                        title={`Remove ${opt}`}
+                                      >
+                                        ✕
+                                      </button>
+                                    </span>
+                                  ))}
+                                </div>
+                              ) : (
+                                <div className="text-[10px] text-[#8C827A] italic">
+                                  No options added for this variant yet. Add at least one option above.
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+
                   <div className="flex items-center gap-2.5 p-3 rounded-xl bg-[#FAF0ED] border border-[#E8C5B8]/70">
                     <input
                       type="checkbox"
@@ -1814,6 +2039,19 @@ export const AdminPage: React.FC = () => {
                                       style={{ backgroundColor: getColorHex(c) }}
                                     />
                                     {c}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+                            {p.variants && p.variants.length > 0 && (
+                              <div className="flex flex-wrap items-center gap-1 mt-1">
+                                {p.variants.map((v, i) => (
+                                  <span
+                                    key={i}
+                                    className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded-full bg-[#FAF7F2] text-[#6D635B] text-[10px] font-medium border border-[#E0D5C7]"
+                                  >
+                                    <span>✨ {v.name}:</span>
+                                    <span className="font-semibold">{v.options.slice(0, 3).join(', ')}{v.options.length > 3 ? ` +${v.options.length - 3}` : ''}</span>
                                   </span>
                                 ))}
                               </div>
@@ -2102,6 +2340,12 @@ export const AdminPage: React.FC = () => {
                                         style={{ backgroundColor: getColorHex(item.selectedColor) }}
                                       />
                                       Color: {item.selectedColor}
+                                    </span>
+                                  )}
+                                  {item.selectedVariant && (
+                                    <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded-md bg-[#FAF0ED] text-[#8E5B59] text-[10px] font-medium border border-[#E8C5B8]/60">
+                                      <span>✨</span>
+                                      {item.selectedVariant}
                                     </span>
                                   )}
                                 </div>

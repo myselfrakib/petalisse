@@ -40,6 +40,7 @@ export default function Product() {
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [qty, setQty] = useState(1);
   const [selectedColor, setSelectedColor] = useState<string>('');
+  const [selectedVariants, setSelectedVariants] = useState<Record<string, string>>({});
   const { isWishlisted: checkWishlisted, toggleWishlist } = useWishlist();
   const isWishlisted = product ? checkWishlisted(product.id) : false;
   const [addedNotice, setAddedNotice] = useState(false);
@@ -50,7 +51,30 @@ export default function Product() {
     } else {
       setSelectedColor('');
     }
+
+    if (product?.variants && product.variants.length > 0) {
+      const initial: Record<string, string> = {};
+      product.variants.forEach((v) => {
+        if (v.options && v.options.length > 0) {
+          initial[v.name] = v.options[0];
+        }
+      });
+      setSelectedVariants(initial);
+    } else {
+      setSelectedVariants({});
+    }
   }, [product]);
+
+  const getVariantString = () => {
+    if (!product?.variants || product.variants.length === 0) return undefined;
+    const parts = product.variants
+      .map((v) => {
+        const val = selectedVariants[v.name] || v.options[0];
+        return val ? `${v.name}: ${val}` : null;
+      })
+      .filter(Boolean);
+    return parts.length > 0 ? parts.join(', ') : undefined;
+  };
 
   // Touch and drag swipe detection for sliding images & products
   const touchStartXRef = useRef<number | null>(null);
@@ -130,7 +154,8 @@ export default function Product() {
   const handleAddToCart = () => {
     if (!product) return;
     const colorToUse = selectedColor || (product.colors && product.colors.length > 0 ? product.colors[0] : undefined);
-    add(product, qty, colorToUse);
+    const variantToUse = getVariantString();
+    add(product, qty, colorToUse, variantToUse);
     setAddedNotice(true);
     setTimeout(() => setAddedNotice(false), 2000);
   };
@@ -138,7 +163,8 @@ export default function Product() {
   const handleBuyNow = () => {
     if (!product) return;
     const colorToUse = selectedColor || (product.colors && product.colors.length > 0 ? product.colors[0] : undefined);
-    add(product, qty, colorToUse);
+    const variantToUse = getVariantString();
+    add(product, qty, colorToUse, variantToUse);
     navigate('/cart');
   };
 
@@ -482,6 +508,63 @@ export default function Product() {
               </div>
             </div>
           )}
+
+          {/* Custom Product Variants Option (e.g. Shape, Size) - Just before Quantity */}
+          {product.variants && product.variants.length > 0 && product.variants.map((v) => {
+            const currentVal = selectedVariants[v.name] || v.options[0];
+            return (
+              <div
+                key={v.name}
+                className="flex flex-col gap-2.5 w-full pb-4 border-b border-[rgba(107,26,42,0.08)]"
+                data-name={`${v.name.toLowerCase()}-variants-row`}
+              >
+                <div className="flex items-center justify-between w-full">
+                  <span className="font-cormorant font-bold text-[#6b1a2a] text-lg">
+                    {v.name}:{' '}
+                    <span className="font-sans font-medium text-sm text-[#4A423B]">
+                      {currentVal}
+                    </span>
+                  </span>
+                  <span className="font-sans text-[11px] text-[#8b827d]">
+                    {v.options.length} {v.options.length === 1 ? 'choice' : 'choices'} available
+                  </span>
+                </div>
+
+                {/* Variant Options Buttons */}
+                <div className="flex flex-wrap gap-2 items-center" data-name={`${v.name.toLowerCase()}-options-selector`}>
+                  {v.options.map((opt) => {
+                    const isSelected = currentVal === opt;
+                    return (
+                      <button
+                        key={opt}
+                        type="button"
+                        onClick={() => setSelectedVariants((prev) => ({ ...prev, [v.name]: opt }))}
+                        className={`group flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-sans transition-all duration-150 cursor-pointer ${
+                          isSelected
+                            ? 'bg-[#6b1a2a] text-white shadow-sm ring-2 ring-[#6b1a2a]/25 font-semibold'
+                            : 'bg-white border border-[#DED5C9] text-[#4A423B] hover:border-[#6b1a2a]/40 hover:bg-[#FAF5F0] font-medium'
+                        }`}
+                        aria-label={`Select ${v.name} ${opt}`}
+                        aria-pressed={isSelected}
+                      >
+                        <span>{opt}</span>
+                        {isSelected && (
+                          <svg
+                            className="w-3 h-3 text-white shrink-0 ml-0.5"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                          >
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                          </svg>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
 
           {/* Quantity Selector */}
           <div
