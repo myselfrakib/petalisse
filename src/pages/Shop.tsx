@@ -26,10 +26,9 @@ const SHOP_CATEGORIES = [
 
 export default function Shop() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const { add, count } = useCart();
+  const { add, count, items, update } = useCart();
   const { products } = useContent();
   const { wishlist, isWishlisted: checkWishlisted, toggleWishlist } = useWishlist();
-  const [addedId, setAddedId] = useState<string | null>(null);
   const [isWishlistOpen, setIsWishlistOpen] = useState(false);
 
   const [displayCount, setDisplayCount] = useState<number>(() => {
@@ -132,14 +131,31 @@ export default function Shop() {
     }
   };
 
-  const handleAddToCart = (e: React.MouseEvent, product: (typeof products)[0]) => {
+  const handleAddToCart = (e: React.MouseEvent, product: Product) => {
     e.preventDefault();
     e.stopPropagation();
     add(product);
-    setAddedId(product.id);
-    setTimeout(() => {
-      setAddedId((current) => (current === product.id ? null : current));
-    }, 1200);
+  };
+
+  const handleIncrement = (e: React.MouseEvent, product: Product) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const matching = items.find((i) => i.product.id === product.id);
+    if (matching) {
+      update(matching.product.id, matching.quantity + 1, matching.selectedColor, matching.selectedVariant);
+    } else {
+      add(product);
+    }
+  };
+
+  const handleDecrement = (e: React.MouseEvent, product: Product) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const matchingList = items.filter((i) => i.product.id === product.id);
+    if (matchingList.length > 0) {
+      const itemToDec = matchingList[matchingList.length - 1];
+      update(itemToDec.product.id, itemToDec.quantity - 1, itemToDec.selectedColor, itemToDec.selectedVariant);
+    }
   };
 
   const handleFavoriteClick = (e: React.MouseEvent, id: string) => {
@@ -317,7 +333,8 @@ export default function Shop() {
           >
           {displayedProducts.map((product, idx) => {
             const isFav = checkWishlisted(product.id);
-            const isAdded = addedId === product.id;
+            const matchingItems = items.filter((i) => i.product.id === product.id);
+            const cartQty = matchingItems.reduce((sum, i) => sum + i.quantity, 0);
 
             return (
               <div
@@ -430,17 +447,41 @@ export default function Shop() {
                     </div>
                   )}
 
-                  <button
-                    onClick={(e) => handleAddToCart(e, product)}
-                    className={`mt-1 h-7 rounded-[6px] font-cormorant font-bold text-[11px] uppercase tracking-wider w-full flex items-center justify-center transition-all duration-200 cursor-pointer ${
-                      isAdded
-                        ? 'bg-[#2E7D32] text-white scale-98'
-                        : 'bg-[#6b1a2a] hover:bg-[#50131f] active:scale-95 text-white shadow-xs'
-                    }`}
-                    data-name="add-to-cart"
-                  >
-                    {isAdded ? '✓ Added' : 'Add to Cart'}
-                  </button>
+                  {cartQty > 0 ? (
+                    <div
+                      className="mt-1 h-7 rounded-[6px] bg-[#6b1a2a] text-white flex items-center justify-between px-2 w-full shadow-xs"
+                      data-name="cart-counter"
+                    >
+                      <button
+                        type="button"
+                        onClick={(e) => handleDecrement(e, product)}
+                        className="size-5 rounded flex items-center justify-center font-bold text-[14px] hover:bg-[#50131f] active:scale-90 transition cursor-pointer select-none leading-none"
+                        aria-label="Decrease quantity"
+                      >
+                        −
+                      </button>
+                      <span className="font-sans font-bold text-[12px] text-white select-none px-1">
+                        {cartQty}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={(e) => handleIncrement(e, product)}
+                        className="size-5 rounded flex items-center justify-center font-bold text-[14px] hover:bg-[#50131f] active:scale-90 transition cursor-pointer select-none leading-none"
+                        aria-label="Increase quantity"
+                      >
+                        +
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={(e) => handleAddToCart(e, product)}
+                      className="mt-1 h-7 rounded-[6px] font-cormorant font-bold text-[11px] uppercase tracking-wider w-full flex items-center justify-center transition-all duration-200 cursor-pointer bg-[#6b1a2a] hover:bg-[#50131f] active:scale-95 text-white shadow-xs"
+                      data-name="add-to-cart"
+                    >
+                      Add to Cart
+                    </button>
+                  )}
                 </div>
               </div>
             );
