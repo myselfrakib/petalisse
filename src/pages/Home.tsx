@@ -414,14 +414,8 @@ export default function Home() {
                   Artisan Studio
                 </span>
                 <p className="font-cormorant text-[#8b827d] text-xs">
-                  Showing live boutique inventory. Add your handcrafted charms in the Admin Panel to feature them here!
+                  Showing live boutique inventory. Check back soon for new handcrafted charms!
                 </p>
-                <Link
-                  to="/admin"
-                  className="inline-block mt-3 px-4 py-1.5 rounded-full bg-[#6b1a2a]/10 hover:bg-[#6b1a2a]/20 text-[#6b1a2a] font-cormorant font-bold text-xs uppercase tracking-wider transition"
-                >
-                  Admin Console &rarr;
-                </Link>
               </div>
             )}
           </div>

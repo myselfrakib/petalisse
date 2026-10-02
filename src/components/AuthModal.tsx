@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { useNavigate } from 'react-router';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -23,7 +22,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
   const { login, signup, resetPassword } = useAuth();
-  const navigate = useNavigate();
 
   if (!isOpen) return null;
 
@@ -246,19 +244,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               </button>
             </p>
           )}
-
-          <div className="pt-2">
-            <button
-              type="button"
-              onClick={() => {
-                onClose();
-                navigate('/admin');
-              }}
-              className="text-[11px] text-[#A89E94] hover:text-[#6D635B] underline transition cursor-pointer"
-            >
-              Administrator? Access Admin Portal &rarr;
-            </button>
-          </div>
         </div>
       </div>
     </div>

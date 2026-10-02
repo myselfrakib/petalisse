@@ -492,17 +492,11 @@ export default function Shop() {
             <span className="font-parisienne text-3xl text-[#6b1a2a] block mb-1">
               Boutique Collection
             </span>
-            <p className="font-cormorant text-[#8b827d] text-xs max-w-xs mb-3">
+            <p className="font-cormorant text-[#8b827d] text-xs max-w-xs">
               {activeCategory === 'All'
-                ? 'No live products yet. Create your first handcrafted charm in the Admin Panel to see it appear here immediately!'
-                : `No live products in "${activeCategory}" yet. Add products to this category from the Admin Panel.`}
+                ? 'No live products yet. Check back soon for new handcrafted arrivals!'
+                : `No live products in "${activeCategory}" yet. Explore other categories or check back soon.`}
             </p>
-            <Link
-              to="/admin"
-              className="px-5 py-2 rounded-full bg-[#6b1a2a] text-white font-cormorant font-bold text-xs uppercase tracking-wider hover:bg-[#50131f] transition shadow-xs"
-            >
-              + Add Product in Admin
-            </Link>
           </div>
         )}
 

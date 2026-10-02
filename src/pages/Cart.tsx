@@ -1185,14 +1185,6 @@ export default function Cart() {
               >
                 Continue Shopping &rarr;
               </Link>
-
-              <Link
-                to="/admin"
-                onClick={handleResetOrder}
-                className="text-xs text-[#8b827d] hover:text-[#6b1a2a] underline py-1"
-              >
-                View Live in Admin Orders Tab &rarr;
-              </Link>
             </div>
           </div>
         </div>
