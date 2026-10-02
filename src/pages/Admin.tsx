@@ -342,22 +342,6 @@ export const AdminPage: React.FC = () => {
               setUploadingSplashMedia(false);
             }
           },
-          onSkip: async (originalFile) => {
-            setUploadingSplashMedia(true);
-            try {
-              const uploadedUrl = await uploadMedia(originalFile, 'splash');
-              setSplashConfig((prev) => ({
-                ...prev,
-                mediaType: 'gif',
-                mediaUrl: uploadedUrl,
-              }));
-              setSplashSaveMsg('Splash photo uploaded! Click "Save Splash Screen" to apply.');
-            } catch (err: any) {
-              alert('Upload failed: ' + err.message);
-            } finally {
-              setUploadingSplashMedia(false);
-            }
-          },
         }]);
         setCropTotalCount(1);
         setCropCurrentIndex(1);
@@ -440,7 +424,6 @@ export const AdminPage: React.FC = () => {
     defaultAspectRatio: number;
     aspectRatioLabel: string;
     onConfirm: (croppedFile: File) => Promise<void>;
-    onSkip?: (originalFile: File) => Promise<void>;
   }
 
   const [cropQueue, setCropQueue] = useState<ActiveCropSession[]>([]);
@@ -453,17 +436,6 @@ export const AdminPage: React.FC = () => {
     const item = currentCropItem;
     URL.revokeObjectURL(item.dataUrl);
     await item.onConfirm(croppedFile);
-    setCropQueue((prev) => prev.slice(1));
-    setCropCurrentIndex((prev) => prev + 1);
-  };
-
-  const handleSkipCurrentCrop = async () => {
-    if (!currentCropItem) return;
-    const item = currentCropItem;
-    URL.revokeObjectURL(item.dataUrl);
-    if (item.onSkip) {
-      await item.onSkip(item.file);
-    }
     setCropQueue((prev) => prev.slice(1));
     setCropCurrentIndex((prev) => prev + 1);
   };
@@ -885,23 +857,6 @@ export const AdminPage: React.FC = () => {
           setUploadingCollectionCover(null);
         }
       },
-      onSkip: async (originalFile) => {
-        setUploadingCollectionCover(category);
-        try {
-          const url = await uploadImage(originalFile, 'collections');
-          setCmsContent((prev) => ({
-            ...prev,
-            collectionCovers: {
-              ...(prev.collectionCovers || {}),
-              [category]: url,
-            },
-          }));
-        } catch (err: any) {
-          alert('Cover upload failed: ' + err.message);
-        } finally {
-          setUploadingCollectionCover(null);
-        }
-      },
     }]);
     setCropTotalCount(1);
     setCropCurrentIndex(1);
@@ -1002,25 +957,6 @@ export const AdminPage: React.FC = () => {
           setUploadingImage(false);
         }
       },
-      onSkip: async (originalFile) => {
-        setUploadingImage(true);
-        try {
-          const url = await uploadImage(originalFile, 'products');
-          if (url) {
-            setProdImages((prev) => {
-              const combined = [...prev, url].slice(0, 5);
-              if (combined.length > 0) {
-                setProdImgUrl(combined[0]);
-              }
-              return combined;
-            });
-          }
-        } catch (err: any) {
-          alert('Upload failed: ' + err.message);
-        } finally {
-          setUploadingImage(false);
-        }
-      },
     }));
 
     setCropTotalCount(sessions.length);
@@ -1087,17 +1023,6 @@ export const AdminPage: React.FC = () => {
           setUploadingHeroImg(false);
         }
       },
-      onSkip: async (originalFile) => {
-        setUploadingHeroImg(true);
-        try {
-          const url = await uploadImage(originalFile, 'site');
-          setCmsContent((prev) => ({ ...prev, heroBannerUrl: url }));
-        } catch (err: any) {
-          alert('Upload failed: ' + err.message);
-        } finally {
-          setUploadingHeroImg(false);
-        }
-      },
     }]);
     setCropTotalCount(1);
     setCropCurrentIndex(1);
@@ -1126,17 +1051,6 @@ export const AdminPage: React.FC = () => {
           setUploadingPromoImg(false);
         }
       },
-      onSkip: async (originalFile) => {
-        setUploadingPromoImg(true);
-        try {
-          const url = await uploadImage(originalFile, 'site');
-          setCmsContent((prev) => ({ ...prev, promoBannerUrl: url }));
-        } catch (err: any) {
-          alert('Upload failed: ' + err.message);
-        } finally {
-          setUploadingPromoImg(false);
-        }
-      },
     }]);
     setCropTotalCount(1);
     setCropCurrentIndex(1);
@@ -1158,17 +1072,6 @@ export const AdminPage: React.FC = () => {
         setUploadingAboutImg(true);
         try {
           const url = await uploadImage(croppedFile, 'site');
-          setCmsContent((prev) => ({ ...prev, aboutImageUrl: url }));
-        } catch (err: any) {
-          alert('Upload failed: ' + err.message);
-        } finally {
-          setUploadingAboutImg(false);
-        }
-      },
-      onSkip: async (originalFile) => {
-        setUploadingAboutImg(true);
-        try {
-          const url = await uploadImage(originalFile, 'site');
           setCmsContent((prev) => ({ ...prev, aboutImageUrl: url }));
         } catch (err: any) {
           alert('Upload failed: ' + err.message);
@@ -3134,83 +3037,149 @@ export const AdminPage: React.FC = () => {
                 </div>
 
                 {/* SUBSECTION A: Active Best Sellers Ordered Queue */}
-                <div className="bg-white p-4 sm:p-5 rounded-xl border border-[#E8E0D5] space-y-3">
-                  <div className="flex items-center justify-between">
+                <div className="bg-white p-4 sm:p-5 rounded-xl border border-[#E8E0D5] space-y-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#EAE3D8] pb-3">
                     <div>
                       <h4 className="text-sm font-semibold text-[#2C2724] flex items-center gap-2">
                         <span>⭐ Active Best Sellers (In Display Order)</span>
-                        <span className="text-xs font-normal text-[#8C827A]">
-                          Use ▲ Move Up and ▼ Move Down to adjust sequence
+                        <span className="px-2 py-0.5 rounded-full bg-[#FAF0ED] text-[#8E5B59] text-[11px] font-bold">
+                          {orderedBestSellerProducts.length} Active
                         </span>
                       </h4>
+                      <p className="text-xs text-[#8C827A] mt-0.5">
+                        Use ← Earlier and Later → to reorder how products appear on the storefront.
+                      </p>
                     </div>
                   </div>
 
                   {orderedBestSellerProducts.length === 0 ? (
-                    <div className="p-6 text-center bg-[#FAF7F2] rounded-xl border border-dashed border-[#DED5C9]">
+                    <div className="p-8 text-center bg-[#FAF7F2] rounded-xl border border-dashed border-[#DED5C9]">
+                      <div className="size-10 rounded-full bg-[#FAF0ED] text-[#8E5B59] flex items-center justify-center mx-auto mb-2 text-base font-bold">
+                        ⭐
+                      </div>
                       <p className="text-xs text-[#786F66] font-medium">
                         No products currently in Best Sellers. Click "+ Add to Best Sellers" from the catalog below to add and arrange products.
                       </p>
                     </div>
                   ) : (
-                    <div className="divide-y divide-[#EAE3D8] border border-[#EAE3D8] rounded-xl overflow-hidden max-h-[360px] overflow-y-auto">
-                      {orderedBestSellerProducts.map((p, idx) => (
-                        <div
-                          key={p.id}
-                          className="flex items-center justify-between p-3 bg-white hover:bg-[#FAF7F2] transition gap-3"
-                        >
-                          {/* Position Badge & Product Info */}
-                          <div className="flex items-center gap-3 min-w-0 flex-1">
-                            <span className="size-7 rounded-lg bg-[#FAF0ED] text-[#8E5B59] font-bold text-xs flex items-center justify-center border border-[#E8C5B8] shrink-0">
-                              #{idx + 1}
+                    <>
+                      {/* Sequence Overview Bar (like Our Collections) */}
+                      <div className="bg-[#FAF7F2] p-3 rounded-xl border border-[#E8E0D5] space-y-1.5">
+                        <div className="text-[11px] font-semibold text-[#8E5B59] uppercase tracking-wider">
+                          Current Homepage Display Sequence (Left to Right):
+                        </div>
+                        <div className="flex flex-wrap items-center gap-1.5 max-h-24 overflow-y-auto pr-1">
+                          {orderedBestSellerProducts.map((p, idx) => (
+                            <span
+                              key={p.id}
+                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white text-[#8E5B59] text-xs font-medium border border-[#E8C5B8] shadow-2xs"
+                            >
+                              <span className="font-bold text-[10px] text-white bg-[#8E5B59] size-4 rounded-full inline-flex items-center justify-center">
+                                {idx + 1}
+                              </span>
+                              <span className="truncate max-w-[130px]" title={p.name}>
+                                {p.name}
+                              </span>
+                              {idx < orderedBestSellerProducts.length - 1 && (
+                                <span className="text-[#A89E94] ml-1">→</span>
+                              )}
                             </span>
-                            <img
-                              src={p.img || p.images?.[0]}
-                              alt={p.name}
-                              className="size-10 rounded-lg object-cover border border-[#E8E0D5] shrink-0"
-                            />
-                            <div className="min-w-0">
-                              <div className="text-xs font-semibold text-[#2C2724] truncate">{p.name}</div>
-                              <div className="text-[11px] text-[#8C827A] flex items-center gap-2">
-                                <span className="text-[#8E5B59] font-medium">₹{p.discountedPrice ?? p.price}</span>
-                                <span>•</span>
-                                <span>{p.category}</span>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Reorderable Best Sellers Cards Grid (like Our Collections) */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 pt-1">
+                        {orderedBestSellerProducts.map((p, idx) => (
+                          <div
+                            key={p.id}
+                            className="bg-white p-3.5 rounded-xl border border-[#E8E0D5] space-y-3 shadow-2xs flex flex-col justify-between hover:shadow-xs transition"
+                          >
+                            <div>
+                              {/* Header with Sequence Badge */}
+                              <div className="flex items-center justify-between gap-1 mb-2">
+                                <span className="inline-flex items-center gap-1 text-xs font-bold text-[#8E5B59] bg-[#FAF0ED] px-2 py-0.5 rounded-md border border-[#E8C5B8]">
+                                  #{idx + 1}
+                                </span>
+                                <span
+                                  className="text-xs font-semibold text-[#2C2724] truncate flex-1 ml-1"
+                                  title={p.name}
+                                >
+                                  {p.name}
+                                </span>
+                              </div>
+
+                              {/* Move Earlier / Later Reorder Controls */}
+                              <div className="grid grid-cols-2 gap-1.5 mb-2.5">
+                                <button
+                                  type="button"
+                                  onClick={() => handleMoveBestSeller(p.id, 'up')}
+                                  disabled={idx === 0}
+                                  className="px-2 py-1 rounded-lg border border-[#DED5C9] bg-white text-[11px] font-semibold text-[#5C534B] hover:bg-[#F3EDE2] disabled:opacity-35 disabled:cursor-not-allowed transition flex items-center justify-center gap-1 cursor-pointer"
+                                  title="Move card earlier (left) in sequence"
+                                >
+                                  <span>← Earlier</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleMoveBestSeller(p.id, 'down')}
+                                  disabled={idx === orderedBestSellerProducts.length - 1}
+                                  className="px-2 py-1 rounded-lg border border-[#DED5C9] bg-white text-[11px] font-semibold text-[#5C534B] hover:bg-[#F3EDE2] disabled:opacity-35 disabled:cursor-not-allowed transition flex items-center justify-center gap-1 cursor-pointer"
+                                  title="Move card later (right) in sequence"
+                                >
+                                  <span>Later →</span>
+                                </button>
+                              </div>
+
+                              {/* Preview Photo */}
+                              <div className="aspect-square w-full rounded-xl overflow-hidden border border-[#E8E0D5] bg-[#FAF5F0] relative">
+                                <img
+                                  src={p.img || p.images?.[0] || '/figma-assets/2416c5a3da640dcea42f85f7a71067eac0c58ca9.png'}
+                                  alt={p.name}
+                                  className="size-full object-cover"
+                                  onError={(e) => {
+                                    (e.currentTarget as HTMLImageElement).src =
+                                      '/figma-assets/2416c5a3da640dcea42f85f7a71067eac0c58ca9.png';
+                                  }}
+                                />
+                                <div className="absolute top-2 left-2 bg-black/60 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-md">
+                                  Card #{idx + 1}
+                                </div>
+                                <div className="absolute top-2 right-2 bg-white/95 text-[#8E5B59] text-[10px] font-bold px-1.5 py-0.5 rounded-md border border-[#E8C5B8] shadow-2xs">
+                                  ₹{p.discountedPrice ?? p.price}
+                                </div>
+                              </div>
+
+                              {/* Price & Category info */}
+                              <div className="flex items-center justify-between text-xs pt-2">
+                                <span className="text-[#8C827A] truncate text-[11px]">{p.category}</span>
+                                <span className="font-medium text-[#8E5B59] text-xs">
+                                  ₹{p.discountedPrice ?? p.price}
+                                  {p.discountedPrice && (
+                                    <span className="line-through text-[#A89E94] text-[10px] ml-1">₹{p.price}</span>
+                                  )}
+                                </span>
                               </div>
                             </div>
-                          </div>
 
-                          {/* Reordering Controls */}
-                          <div className="flex items-center gap-1.5 shrink-0">
-                            <button
-                              type="button"
-                              onClick={() => handleMoveBestSeller(p.id, 'up')}
-                              disabled={idx === 0}
-                              className="px-2 py-1 rounded-lg border border-[#DED5C9] bg-white text-xs font-bold text-[#5C534B] hover:bg-[#FAF0ED] hover:text-[#8E5B59] disabled:opacity-30 disabled:cursor-not-allowed transition cursor-pointer flex items-center gap-1"
-                              title="Move product earlier in best sellers sequence"
-                            >
-                              ▲ Up
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleMoveBestSeller(p.id, 'down')}
-                              disabled={idx === orderedBestSellerProducts.length - 1}
-                              className="px-2 py-1 rounded-lg border border-[#DED5C9] bg-white text-xs font-bold text-[#5C534B] hover:bg-[#FAF0ED] hover:text-[#8E5B59] disabled:opacity-30 disabled:cursor-not-allowed transition cursor-pointer flex items-center gap-1"
-                              title="Move product later in best sellers sequence"
-                            >
-                              ▼ Down
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleRemoveBestSeller(p.id)}
-                              className="px-2 py-1 rounded-lg border border-[#F3DDD6] bg-[#FAF0ED] text-xs font-semibold text-[#9E3E2B] hover:bg-[#F3DDD6] transition cursor-pointer ml-1"
-                              title="Remove from Best Sellers"
-                            >
-                              ✕ Remove
-                            </button>
+                            {/* Remove Action */}
+                            <div className="pt-2 border-t border-[#EAE3D8]">
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveBestSeller(p.id)}
+                                className="w-full px-2.5 py-1.5 rounded-lg border border-[#F3DDD6] bg-[#FAF0ED] text-[11px] font-semibold text-[#9E3E2B] hover:bg-[#F3DDD6] transition flex items-center justify-center gap-1.5 cursor-pointer"
+                                title="Remove from Best Sellers"
+                              >
+                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                                <span>Remove</span>
+                              </button>
+                            </div>
                           </div>
-                        </div>
-                      ))}
-                    </div>
+                        ))}
+                      </div>
+                    </>
                   )}
                 </div>
 
@@ -3228,13 +3197,24 @@ export const AdminPage: React.FC = () => {
 
                     {/* Filter and Search */}
                     <div className="flex items-center gap-2">
-                      <input
-                        type="text"
-                        value={bestsellerSearch}
-                        onChange={(e) => setBestsellerSearch(e.target.value)}
-                        placeholder="Search products..."
-                        className="px-3 py-1.5 rounded-lg border border-[#DED5C9] bg-white text-xs text-[#2C2724] focus:outline-hidden focus:border-[#8E5B59] w-[140px] sm:w-[180px]"
-                      />
+                      <div className="relative">
+                        <input
+                          type="text"
+                          value={bestsellerSearch}
+                          onChange={(e) => setBestsellerSearch(e.target.value)}
+                          placeholder="Search products..."
+                          className="px-3 py-1.5 pr-6 rounded-lg border border-[#DED5C9] bg-white text-xs text-[#2C2724] focus:outline-hidden focus:border-[#8E5B59] w-[140px] sm:w-[180px]"
+                        />
+                        {bestsellerSearch && (
+                          <button
+                            type="button"
+                            onClick={() => setBestsellerSearch('')}
+                            className="absolute right-1.5 top-1/2 -translate-y-1/2 text-xs text-[#A89E94] hover:text-[#2C2724] cursor-pointer"
+                          >
+                            ✕
+                          </button>
+                        )}
+                      </div>
                       <select
                         value={bestsellerCatFilter}
                         onChange={(e) => setBestsellerCatFilter(e.target.value)}
@@ -3257,7 +3237,7 @@ export const AdminPage: React.FC = () => {
                       </p>
                     </div>
                   ) : (
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 pt-1 max-h-[380px] overflow-y-auto p-1">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3.5 pt-1 max-h-[420px] overflow-y-auto p-1">
                       {products
                         .filter((p) => {
                           const matchesCat = bestsellerCatFilter === 'All' || p.category === bestsellerCatFilter;
@@ -3275,33 +3255,49 @@ export const AdminPage: React.FC = () => {
                             <div
                               key={p.id}
                               onClick={() => handleToggleBestSeller(p.id)}
-                              className={`relative p-2.5 rounded-xl border transition-all cursor-pointer select-none flex flex-col justify-between ${
+                              className={`relative p-3 rounded-xl border transition-all cursor-pointer select-none flex flex-col justify-between ${
                                 isFeatured
                                   ? 'bg-[#FFF9F6] border-[#8E5B59] shadow-sm ring-2 ring-[#8E5B59]/25'
                                   : 'bg-white border-[#E8E0D5] hover:border-[#8E5B59]/50 hover:bg-[#FAF7F2]'
                               }`}
                             >
                               <div className="relative aspect-square w-full rounded-lg overflow-hidden bg-[#FAF5F0] border border-[#E8E0D5] mb-2">
-                                <img src={p.img || p.images?.[0]} alt={p.name} className="size-full object-cover" />
-                                {isFeatured && (
-                                  <div className="absolute top-1.5 right-1.5 px-1.5 py-0.5 rounded-full bg-[#8E5B59] text-white flex items-center justify-center text-[10px] font-bold shadow-xs">
+                                <img
+                                  src={p.img || p.images?.[0] || '/figma-assets/2416c5a3da640dcea42f85f7a71067eac0c58ca9.png'}
+                                  alt={p.name}
+                                  className="size-full object-cover"
+                                  onError={(e) => {
+                                    (e.currentTarget as HTMLImageElement).src =
+                                      '/figma-assets/2416c5a3da640dcea42f85f7a71067eac0c58ca9.png';
+                                  }}
+                                />
+                                {isFeatured ? (
+                                  <div className="absolute top-1.5 right-1.5 px-2 py-0.5 rounded-md bg-[#8E5B59] text-white flex items-center justify-center text-[10px] font-bold shadow-xs">
                                     #{positionIdx + 1}
+                                  </div>
+                                ) : (
+                                  <div className="absolute top-1.5 right-1.5 size-5 rounded-full bg-white/90 border border-[#DED5C9] flex items-center justify-center text-[11px] text-[#A89E94] shadow-xs">
+                                    +
                                   </div>
                                 )}
                               </div>
 
                               <div className="space-y-0.5">
-                                <div className="text-xs font-semibold text-[#2C2724] line-clamp-1">{p.name}</div>
+                                <div className="text-xs font-semibold text-[#2C2724] line-clamp-1" title={p.name}>
+                                  {p.name}
+                                </div>
                                 <div className="flex items-center justify-between text-[11px]">
                                   <span className="text-[#8E5B59] font-medium">₹{p.discountedPrice ?? p.price}</span>
-                                  <span className="text-[#8C827A] text-[10px]">{p.category}</span>
+                                  <span className="text-[#8C827A] text-[10px] truncate max-w-[70px]">{p.category}</span>
                                 </div>
                               </div>
 
-                              <div className="mt-2 pt-1.5 border-t border-[#EAE3D8] text-center">
+                              <div className="mt-2.5 pt-1.5 border-t border-[#EAE3D8] text-center">
                                 <span
-                                  className={`text-[10px] font-semibold uppercase tracking-wider ${
-                                    isFeatured ? 'text-[#8E5B59]' : 'text-[#A89E94]'
+                                  className={`block py-1 rounded-md text-[10px] font-semibold uppercase tracking-wider transition ${
+                                    isFeatured
+                                      ? 'bg-[#FAF0ED] text-[#8E5B59] border border-[#E8C5B8]'
+                                      : 'text-[#8C827A] bg-[#FAF7F2] hover:bg-[#FAF0ED] hover:text-[#8E5B59]'
                                   }`}
                                 >
                                   {isFeatured ? `✓ In Best Sellers (#${positionIdx + 1})` : '+ Add to Best Sellers'}
@@ -4497,7 +4493,6 @@ export const AdminPage: React.FC = () => {
                 : undefined
             }
             onCropComplete={handleAdvanceCropQueue}
-            onSkipCrop={handleSkipCurrentCrop}
             onCancel={handleCancelCropQueue}
           />
         )}
