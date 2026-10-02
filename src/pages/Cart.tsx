@@ -21,7 +21,7 @@ const imgMusic = '/figma-assets/76abb4ffe21c8d67bea7f7daf70db2330cc66a88.svg';
 export default function Cart() {
   const navigate = useNavigate();
   const { items, remove, update, total: cartTotal, count, clear } = useCart();
-  const { currentUser, userProfile, loading: authLoading } = useAuth();
+  const { currentUser, userProfile, loading: authLoading, saveAddress } = useAuth();
   const { createOrder, orders, validateCoupon, products } = useContent();
 
   // Dynamic subtotal synchronized with active catalog prices
@@ -122,8 +122,71 @@ export default function Cart() {
       if (!phone && userProfile?.phone) {
         setPhone(userProfile.phone);
       }
+      // Autofill address from saved addresses for future orders if address is empty
+      if (!address) {
+        try {
+          const cached = localStorage.getItem(`petalisse_addresses_${currentUser.uid}`);
+          if (cached) {
+            const list = JSON.parse(cached);
+            if (Array.isArray(list) && list.length > 0) {
+              const def = list.find((a: any) => a.isDefault) || list[0];
+              if (def) {
+                if (def.street) setAddress(def.street);
+                else if (def.address) setAddress(def.address);
+                if (def.city) setCity(def.city);
+                if (def.state) setStateName(def.state);
+                if (def.pinCode) setPinCode(def.pinCode);
+                if (def.phone && !phone) setPhone(def.phone);
+                if (def.fullName && !fullName) setFullName(def.fullName);
+              }
+            }
+          }
+        } catch {}
+      }
     }
   }, [currentUser, userProfile]);
+
+  const saveOrderAddressForFuture = async (
+    custName: string,
+    cleanPh: string,
+    streetAddr: string,
+    cityName: string,
+    stName: string,
+    pincodeStr: string,
+    fullAddr: string
+  ) => {
+    if (!currentUser) return;
+    try {
+      const addrId = `addr_${Date.now()}`;
+      const addrData = {
+        id: addrId,
+        label: 'Order Delivery Address',
+        address: fullAddr,
+        street: streetAddr,
+        city: cityName,
+        state: stName,
+        pinCode: pincodeStr,
+        fullName: custName,
+        phone: cleanPh,
+        isDefault: true,
+      };
+      await saveAddress(addrData as any);
+
+      // Cache locally for instant reflection in Profile & future checkouts
+      try {
+        const cacheKey = `petalisse_addresses_${currentUser.uid}`;
+        const existing = localStorage.getItem(cacheKey);
+        let list = existing ? JSON.parse(existing) : [];
+        if (!Array.isArray(list)) list = [];
+        if (!list.some((a: any) => a.address === fullAddr)) {
+          list = [addrData, ...list];
+          localStorage.setItem(cacheKey, JSON.stringify(list));
+        }
+      } catch {}
+    } catch (err) {
+      console.warn('Could not auto-save address for future orders:', err);
+    }
+  };
 
   // Handle return from payment gateway (hosted on https://waveridrentals.vercel.app/petaliseepayment.html)
   useEffect(() => {
@@ -139,6 +202,17 @@ export default function Cart() {
       if (matched) {
         setPlacedOrderDetails(matched);
         setOrderPlaced(true);
+        if (currentUser && matched.shippingAddress) {
+          saveOrderAddressForFuture(
+            matched.customerName,
+            matched.phone,
+            matched.shippingAddress,
+            matched.city || '',
+            matched.state || '',
+            matched.pinCode || '',
+            matched.shippingAddress
+          );
+        }
       } else {
         // Fallback to cached order in local storage while Firestore sync completes
         try {
@@ -152,6 +226,17 @@ export default function Cart() {
               status: 'confirmed',
             });
             setOrderPlaced(true);
+            if (currentUser && parsed.shippingAddress) {
+              saveOrderAddressForFuture(
+                parsed.customerName,
+                parsed.phone,
+                parsed.shippingAddress,
+                parsed.city || '',
+                parsed.state || '',
+                parsed.pinCode || '',
+                parsed.shippingAddress
+              );
+            }
           }
         } catch {}
       }
@@ -308,6 +393,19 @@ export default function Cart() {
         status: 'pending',
         createdAt: new Date().toISOString(),
       };
+
+      // Save this address for future orders & reflect in Profile
+      if (currentUser) {
+        saveOrderAddressForFuture(
+          fullName.trim(),
+          cleanPhone,
+          address.trim(),
+          city.trim(),
+          stateName.trim(),
+          pinCode.trim(),
+          fullShippingAddress
+        );
+      }
 
       // Cache locally for instant hydration upon return
       try {

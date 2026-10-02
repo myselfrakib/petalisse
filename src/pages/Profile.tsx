@@ -58,6 +58,32 @@ export default function Profile() {
   const [newLabel, setNewLabel] = useState('Home');
   const [newAddressStr, setNewAddressStr] = useState('');
 
+  // Effective addresses combining Firestore addresses, local cache, and past order delivery addresses
+  const effectiveAddresses = useMemo(() => {
+    if (addresses.length > 0) return addresses;
+    try {
+      if (currentUser) {
+        const cached = localStorage.getItem(`petalisse_addresses_${currentUser.uid}`);
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        }
+      }
+    } catch {}
+    const fromOrders: SavedAddress[] = [];
+    myOrders.forEach((o) => {
+      if (o.shippingAddress && !fromOrders.some((a) => a.address === o.shippingAddress)) {
+        fromOrders.push({
+          id: `order_addr_${o.id}`,
+          label: 'Order Delivery Location',
+          address: o.shippingAddress,
+          isDefault: fromOrders.length === 0,
+        });
+      }
+    });
+    return fromOrders;
+  }, [addresses, myOrders, currentUser]);
+
   // Sync profile data when currentUser or userProfile loads
   useEffect(() => {
     if (currentUser) {
@@ -132,6 +158,12 @@ export default function Profile() {
     setAddresses((prev) => prev.filter((a) => a.id !== id));
     if (currentUser) {
       try {
+        const cacheKey = `petalisse_addresses_${currentUser.uid}`;
+        const cached = localStorage.getItem(cacheKey);
+        if (cached) {
+          const list = JSON.parse(cached).filter((a: any) => a.id !== id);
+          localStorage.setItem(cacheKey, JSON.stringify(list));
+        }
         await deleteDoc(doc(db, 'users', currentUser.uid, 'addresses', id));
       } catch (e) {
         console.warn('Error deleting address:', e);
@@ -703,7 +735,7 @@ export default function Profile() {
           )}
 
           {/* Address List */}
-          {addresses.length === 0 && !showAddAddressModal ? (
+          {effectiveAddresses.length === 0 && !showAddAddressModal ? (
             <div className="p-6 text-center bg-[#fdfbf7] rounded-[14px] border border-dashed border-[#DED5C9]">
               <p className="text-xs text-[#786F66] mb-2.5 font-cormorant">
                 No shipping addresses saved yet.
@@ -718,7 +750,7 @@ export default function Profile() {
             </div>
           ) : (
             <div className="space-y-2.5">
-              {addresses.map((addr) => (
+              {effectiveAddresses.map((addr) => (
                 <div
                   key={addr.id}
                   className="p-3 rounded-[14px] bg-[#fdfbf7] border border-[rgba(107,26,42,0.1)] hover:border-[#6b1a2a]/40 transition shadow-2xs flex flex-col justify-between"
@@ -756,58 +788,87 @@ export default function Profile() {
         </div>
 
         {/* ── ORDER HISTORY CARD ── */}
-        <div className="bg-white/85 backdrop-blur-xs rounded-[20px] border border-[rgba(107,26,42,0.1)] p-4 sm:p-5 shadow-xs">
+        <div
+          className="bg-white/85 backdrop-blur-xs rounded-[20px] border border-[rgba(107,26,42,0.1)] p-4 sm:p-5 shadow-xs font-['Inter',sans-serif]"
+          style={{ fontFamily: "'Inter', sans-serif" }}
+        >
           <div className="flex items-center justify-between border-b border-[#6b1a2a]/10 pb-3 mb-3.5">
             <div className="flex items-center gap-2">
-              <h2 className="font-cormorant font-bold text-[#6b1a2a] text-[16px] sm:text-[17px] uppercase tracking-wider">
+              <h2
+                className="font-bold text-[#6b1a2a] text-[16px] sm:text-[17px] uppercase tracking-wider"
+                style={{ fontFamily: "'Inter', sans-serif" }}
+              >
                 Order History
               </h2>
-              <span className="text-[11px] px-2 py-0.5 rounded-full bg-[#f9d5e5] text-[#6b1a2a] font-semibold border border-[#e7bec9]">
+              <span
+                className="text-[11px] px-2 py-0.5 rounded-full bg-[#f9d5e5] text-[#6b1a2a] font-semibold border border-[#e7bec9]"
+                style={{ fontFamily: "'Inter', sans-serif" }}
+              >
                 {myOrders.length}
               </span>
             </div>
 
             <Link
               to="/shop"
-              className="text-xs text-[#6b1a2a] hover:underline font-cormorant font-semibold"
+              className="text-xs text-[#6b1a2a] hover:underline font-semibold"
+              style={{ fontFamily: "'Inter', sans-serif" }}
             >
               Shop &rarr;
             </Link>
           </div>
 
           {myOrders.length === 0 ? (
-            <div className="p-6 text-center bg-[#fdfbf7] rounded-[14px] border border-dashed border-[#DED5C9] space-y-2.5">
+            <div
+              className="p-6 text-center bg-[#fdfbf7] rounded-[14px] border border-dashed border-[#DED5C9] space-y-2.5"
+              style={{ fontFamily: "'Inter', sans-serif" }}
+            >
               <div className="w-10 h-10 rounded-full bg-[#f9d5e5] text-[#6b1a2a] flex items-center justify-center mx-auto text-lg">
                 🛍️
               </div>
               <div>
-                <h4 className="text-xs font-semibold text-[#2C2724]">No Orders Yet</h4>
-                <p className="text-[11px] text-[#786F66] mt-0.5 font-cormorant">
+                <h4
+                  className="text-xs font-semibold text-[#2C2724]"
+                  style={{ fontFamily: "'Inter', sans-serif" }}
+                >
+                  No Orders Yet
+                </h4>
+                <p
+                  className="text-[11px] text-[#786F66] mt-0.5"
+                  style={{ fontFamily: "'Inter', sans-serif" }}
+                >
                   Explore our handcrafted bag charms, hair accessories, and phone charms.
                 </p>
               </div>
               <Link
                 to="/shop"
                 className="inline-block px-4 py-1.5 rounded-[12px] bg-[#6b1a2a] hover:bg-[#50131f] text-white text-xs font-semibold uppercase tracking-wider transition shadow-2xs"
+                style={{ fontFamily: "'Inter', sans-serif" }}
               >
                 Browse Shop
               </Link>
             </div>
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-3" style={{ fontFamily: "'Inter', sans-serif" }}>
               {myOrders.map((ord) => (
                 <div
                   key={ord.id}
                   className="p-3.5 rounded-[14px] bg-[#fdfbf7] border border-[rgba(107,26,42,0.1)] shadow-2xs space-y-2.5 hover:border-[#6b1a2a]/30 transition"
+                  style={{ fontFamily: "'Inter', sans-serif" }}
                 >
                   {/* Top Order Row */}
                   <div className="flex items-center justify-between gap-2 border-b border-[#6b1a2a]/10 pb-2">
                     <div>
                       <div className="flex items-center gap-1.5">
-                        <span className="font-mono font-bold text-xs text-[#6b1a2a]">
+                        <span
+                          className="font-bold text-xs text-[#6b1a2a]"
+                          style={{ fontFamily: "'Inter', sans-serif" }}
+                        >
                           {ord.orderNumber || (ord.id ? `#${ord.id.slice(-6).toUpperCase()}` : '#ORDER')}
                         </span>
-                        <span className="text-[10px] text-[#8C827A]">
+                        <span
+                          className="text-[10px] text-[#8C827A]"
+                          style={{ fontFamily: "'Inter', sans-serif" }}
+                        >
                           {new Date(ord.createdAt).toLocaleDateString('en-US', {
                             month: 'short',
                             day: 'numeric',
@@ -816,7 +877,10 @@ export default function Profile() {
                         </span>
                       </div>
                       {ord.shippingAddress && (
-                        <p className="text-[10px] text-[#8C827A] truncate max-w-[200px] mt-0.5 font-cormorant">
+                        <p
+                          className="text-[10px] text-[#8C827A] truncate max-w-[200px] mt-0.5"
+                          style={{ fontFamily: "'Inter', sans-serif" }}
+                        >
                           To: {ord.customerName}
                         </p>
                       )}
@@ -826,29 +890,52 @@ export default function Profile() {
                       className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider border ${getStatusBadge(
                         ord.status
                       )}`}
+                      style={{ fontFamily: "'Inter', sans-serif" }}
                     >
                       {ord.status}
                     </span>
                   </div>
 
                   {/* Items Purchased */}
-                  <div className="space-y-1 py-0.5">
+                  <div className="space-y-1 py-0.5" style={{ fontFamily: "'Inter', sans-serif" }}>
                     {ord.items.map((it, idx) => (
                       <div
                         key={idx}
                         className="flex items-center justify-between text-xs text-[#2C2724]"
+                        style={{ fontFamily: "'Inter', sans-serif" }}
                       >
-                        <span className="text-[#4A423B] truncate max-w-[220px]">
+                        <span
+                          className="text-[#4A423B] truncate max-w-[220px]"
+                          style={{ fontFamily: "'Inter', sans-serif" }}
+                        >
                           {it.name}{' '}
                           {it.selectedColor && (
-                            <span className="text-[#8C827A]">({it.selectedColor})</span>
+                            <span
+                              className="text-[#8C827A]"
+                              style={{ fontFamily: "'Inter', sans-serif" }}
+                            >
+                              ({it.selectedColor})
+                            </span>
                           )}{' '}
                           {it.selectedVariant && (
-                            <span className="text-[#8C827A]">({it.selectedVariant})</span>
+                            <span
+                              className="text-[#8C827A]"
+                              style={{ fontFamily: "'Inter', sans-serif" }}
+                            >
+                              ({it.selectedVariant})
+                            </span>
                           )}{' '}
-                          <span className="text-[#8C827A]">× {it.quantity}</span>
+                          <span
+                            className="text-[#8C827A]"
+                            style={{ fontFamily: "'Inter', sans-serif" }}
+                          >
+                            × {it.quantity}
+                          </span>
                         </span>
-                        <span className="font-medium text-[#2C2724] shrink-0">
+                        <span
+                          className="font-medium text-[#2C2724] shrink-0"
+                          style={{ fontFamily: "'Inter', sans-serif" }}
+                        >
                           ₹{it.price * it.quantity}
                         </span>
                       </div>
@@ -856,21 +943,40 @@ export default function Profile() {
                   </div>
 
                   {/* Total & Payment Details */}
-                  <div className="pt-2 border-t border-[#6b1a2a]/10 flex items-center justify-between text-xs">
-                    <span className="text-[10px] text-[#786F66] font-cormorant">
+                  <div
+                    className="pt-2 border-t border-[#6b1a2a]/10 flex items-center justify-between text-xs"
+                    style={{ fontFamily: "'Inter', sans-serif" }}
+                  >
+                    <span
+                      className="text-[10px] text-[#786F66]"
+                      style={{ fontFamily: "'Inter', sans-serif" }}
+                    >
                       {ord.paymentMethod === 'partial_cod' ? 'Partial COD' : 'Online Paid'}
                     </span>
 
-                    <span className="text-xs font-sans font-bold text-[#6b1a2a]">
+                    <span
+                      className="text-xs font-bold text-[#6b1a2a]"
+                      style={{ fontFamily: "'Inter', sans-serif" }}
+                    >
                       Total: ₹{ord.total}
                     </span>
                   </div>
 
                   {/* Partial COD breakdown if applicable */}
                   {ord.paymentMethod === 'partial_cod' && (
-                    <div className="p-2 rounded-[10px] bg-[#f9d5e5]/50 border border-[#e7bec9] flex items-center justify-between text-[10px] text-[#6b1a2a]">
-                      <span>Paid: ₹{ord.amountPaid}</span>
-                      <span className="font-semibold">Due on Delivery: ₹{ord.codAmountDue}</span>
+                    <div
+                      className="p-2 rounded-[10px] bg-[#f9d5e5]/50 border border-[#e7bec9] flex items-center justify-between text-[10px] text-[#6b1a2a]"
+                      style={{ fontFamily: "'Inter', sans-serif" }}
+                    >
+                      <span style={{ fontFamily: "'Inter', sans-serif" }}>
+                        Paid: ₹{ord.amountPaid}
+                      </span>
+                      <span
+                        className="font-semibold"
+                        style={{ fontFamily: "'Inter', sans-serif" }}
+                      >
+                        Due on Delivery: ₹{ord.codAmountDue}
+                      </span>
                     </div>
                   )}
                 </div>
