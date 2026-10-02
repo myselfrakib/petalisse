@@ -50,6 +50,14 @@ export default defineConfig(({ mode }) => {
     preview: {
       host: process.env.FIGMA_DEV_SERVER_HOST || '0.0.0.0',
       port: parseInt(process.env.PORT || '8443'),
+      proxy: {
+        '/api/shiprocket': {
+          target: 'https://apiv2.shiprocket.in/v1/external',
+          changeOrigin: true,
+          rewrite: (path) => path.replace(/^\/api\/shiprocket/, ''),
+          secure: false,
+        },
+      },
     },
   }
 })
