@@ -134,18 +134,6 @@ export default function Login() {
           </p>
         </div>
 
-        {/* Intent Info Badge if accessing admin portal */}
-        {isAdminIntent && (
-          <div className="mb-5 p-3.5 rounded-xl bg-[#FAF0ED] border border-[#E8C5B8] flex items-start gap-2.5 text-xs text-[#8E5B59] shadow-xs">
-            <span className="text-base leading-none mt-0.5">🔒</span>
-            <div>
-              <span className="font-semibold block text-[#6B1A2A]">Admin Access Verification</span>
-              <span className="text-[11px] text-[#6B5F55] leading-relaxed">
-                Sign in with your administrator account or register for console access. Administrator authorization (<span className="font-mono font-medium text-[#8E5B59]">isAdmin: true</span>) is strictly verified against the database.
-              </span>
-            </div>
-          </div>
-        )}
 
         {/* Main Card Container */}
         <div className="bg-[#FAF7F2] rounded-2xl border border-[#E8E0D5] p-6 sm:p-8 shadow-xl relative overflow-hidden">
