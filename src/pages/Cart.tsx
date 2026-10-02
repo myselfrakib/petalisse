@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Link } from 'react-router';
+import { Link, useNavigate } from 'react-router';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { useContent } from '../context/ContentContext';
@@ -19,8 +19,9 @@ const imgInstagram = '/figma-assets/61242fa42cf1591147b709b00c26b1201880564e.svg
 const imgMusic = '/figma-assets/76abb4ffe21c8d67bea7f7daf70db2330cc66a88.svg';
 
 export default function Cart() {
+  const navigate = useNavigate();
   const { items, remove, update, total: cartTotal, count, clear } = useCart();
-  const { currentUser, userProfile } = useAuth();
+  const { currentUser, userProfile, loading: authLoading } = useAuth();
   const { createOrder, orders, validateCoupon, products } = useContent();
 
   // Dynamic subtotal synchronized with active catalog prices
@@ -220,6 +221,13 @@ export default function Cart() {
 
     if (items.length === 0) {
       setCheckoutError('Your cart is empty. Please add items to checkout.');
+      return;
+    }
+
+    if (authLoading) return;
+
+    if (!currentUser) {
+      navigate('/login?redirect=/cart');
       return;
     }
 
