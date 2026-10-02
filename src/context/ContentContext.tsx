@@ -201,7 +201,8 @@ interface ContentContextType {
   updateOrderShipment: (
     orderId: string,
     shipment: Partial<OrderShipmentInfo>,
-    newStatus?: Order['status']
+    newStatus?: Order['status'],
+    paymentUpdates?: { paymentMethod: 'online' | 'partial_cod'; codAmountDue: number }
   ) => Promise<void>;
   deleteOrder: (orderId: string) => Promise<void>;
   toggleProductFavorite: (id: string) => Promise<void>;
@@ -876,7 +877,8 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const updateOrderShipment = async (
     orderId: string,
     shipmentData: Partial<OrderShipmentInfo>,
-    newStatus?: Order['status']
+    newStatus?: Order['status'],
+    paymentUpdates?: { paymentMethod: 'online' | 'partial_cod'; codAmountDue: number }
   ): Promise<void> => {
     const updated = orders.map((o) => {
       if (o.id !== orderId) return o;
@@ -889,6 +891,10 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
         ...o,
         status: newStatus || o.status,
         shipment: mergedShipment,
+        ...(paymentUpdates ? {
+          paymentMethod: paymentUpdates.paymentMethod,
+          codAmountDue: paymentUpdates.codAmountDue,
+        } : {}),
       };
     });
     syncOrders(updated);
@@ -907,6 +913,10 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
       };
       if (newStatus) {
         payload.status = newStatus;
+      }
+      if (paymentUpdates) {
+        payload.paymentMethod = paymentUpdates.paymentMethod;
+        payload.codAmountDue = paymentUpdates.codAmountDue;
       }
       await updateDoc(orderRef, payload);
     } catch (e) {

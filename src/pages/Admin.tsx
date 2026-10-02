@@ -4506,9 +4506,9 @@ export const AdminPage: React.FC = () => {
               setIsShipmentModalOpen(false);
               setSelectedShipmentOrder(null);
             }}
-            onSuccess={(shipmentInfo, newStatus) => {
+            onSuccess={(shipmentInfo, newStatus, updatedPayment) => {
               if (selectedShipmentOrder.id) {
-                updateOrderShipment(selectedShipmentOrder.id, shipmentInfo, newStatus);
+                updateOrderShipment(selectedShipmentOrder.id, shipmentInfo, newStatus, updatedPayment);
               }
             }}
           />

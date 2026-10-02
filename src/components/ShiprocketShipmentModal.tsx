@@ -12,7 +12,11 @@ interface ShiprocketShipmentModalProps {
   order: Order;
   isOpen: boolean;
   onClose: () => void;
-  onSuccess: (shipment: OrderShipmentInfo, newStatus: Order['status']) => void;
+  onSuccess: (
+    shipment: OrderShipmentInfo,
+    newStatus: Order['status'],
+    updatedPayment?: { paymentMethod: 'online' | 'partial_cod'; codAmountDue: number }
+  ) => void;
 }
 
 export const ShiprocketShipmentModal: React.FC<ShiprocketShipmentModalProps> = ({
@@ -29,6 +33,17 @@ export const ShiprocketShipmentModal: React.FC<ShiprocketShipmentModalProps> = (
   const [state, setState] = useState(order.state || 'West Bengal');
   const [pinCode, setPinCode] = useState(order.pinCode || '');
   const [email, setEmail] = useState(order.userEmail || '');
+
+  // Payment Selection: Prepaid vs COD & Amount to Collect
+  const [paymentType, setPaymentType] = useState<'prepaid' | 'cod'>(() => {
+    return order.paymentMethod === 'partial_cod' ? 'cod' : 'prepaid';
+  });
+  const [codAmountToCollect, setCodAmountToCollect] = useState<number>(() => {
+    if (order.paymentMethod === 'partial_cod') {
+      return order.codAmountDue || order.total;
+    }
+    return order.total;
+  });
 
   // Package specs
   const [weight, setWeight] = useState<number>(0.2); // kg
@@ -70,6 +85,12 @@ export const ShiprocketShipmentModal: React.FC<ShiprocketShipmentModalProps> = (
       setState(order.state || 'West Bengal');
       setPinCode(order.pinCode || '');
       setEmail(order.userEmail || '');
+      setPaymentType(order.paymentMethod === 'partial_cod' ? 'cod' : 'prepaid');
+      setCodAmountToCollect(
+        order.paymentMethod === 'partial_cod'
+          ? order.codAmountDue || order.total
+          : order.total
+      );
     }
   }, [order]);
 
@@ -88,7 +109,7 @@ export const ShiprocketShipmentModal: React.FC<ShiprocketShipmentModalProps> = (
         }
       })
       .catch((err) => {
-        console.error('Failed to load pickup locations:', err);
+        console.warn('Pickup locations load note:', err);
       })
       .finally(() => {
         if (mounted) setLoadingPickups(false);
@@ -99,8 +120,12 @@ export const ShiprocketShipmentModal: React.FC<ShiprocketShipmentModalProps> = (
     };
   }, [isOpen]);
 
-  // Check courier serviceability whenever delivery pincode or pickup location changes
-  const checkCouriers = async (pincodeToCheck: string, pickupLocName: string) => {
+  // Check courier serviceability whenever delivery pincode, pickup location, weight, or paymentType changes
+  const checkCouriers = async (
+    pincodeToCheck: string,
+    pickupLocName: string,
+    isCodMode: boolean = paymentType === 'cod'
+  ) => {
     if (!pincodeToCheck || pincodeToCheck.trim().length < 6) return;
 
     const loc = pickupLocations.find((p) => p.pickup_location === pickupLocName);
@@ -115,7 +140,7 @@ export const ShiprocketShipmentModal: React.FC<ShiprocketShipmentModalProps> = (
         pickup_postcode: pickupPincode,
         delivery_postcode: pincodeToCheck.trim(),
         weight,
-        cod: order.paymentMethod === 'partial_cod',
+        cod: isCodMode,
       });
 
       setCouriers(list);
@@ -126,8 +151,8 @@ export const ShiprocketShipmentModal: React.FC<ShiprocketShipmentModalProps> = (
         setCourierError('No courier partners found serviceable for this destination PIN code.');
       }
     } catch (err: any) {
-      console.warn('Courier check warning:', err);
-      setCourierError(err?.message || 'Could not fetch live courier serviceability');
+      console.warn('Courier check note:', err);
+      setCourierError(err?.message || 'Could not fetch courier serviceability');
     } finally {
       setLoadingCouriers(false);
     }
@@ -135,14 +160,13 @@ export const ShiprocketShipmentModal: React.FC<ShiprocketShipmentModalProps> = (
 
   useEffect(() => {
     if (isOpen && pinCode && pinCode.length >= 6 && selectedPickup) {
-      checkCouriers(pinCode, selectedPickup);
+      checkCouriers(pinCode, selectedPickup, paymentType === 'cod');
     }
-  }, [isOpen, selectedPickup, pinCode]);
+  }, [isOpen, selectedPickup, pinCode, paymentType, weight]);
 
   if (!isOpen) return null;
 
-  const isCod = order.paymentMethod === 'partial_cod';
-  const codAmount = order.codAmountDue || 0;
+  const totalItemsCount = order.items.reduce((acc, i) => acc + (i.quantity || 1), 0);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -160,6 +184,10 @@ export const ShiprocketShipmentModal: React.FC<ShiprocketShipmentModalProps> = (
     }
     if (!pickupDate) {
       setSubmissionError('Please select a pickup date.');
+      return;
+    }
+    if (paymentType === 'cod' && (!codAmountToCollect || codAmountToCollect <= 0)) {
+      setSubmissionError('Please specify a valid COD amount to collect (must be greater than ₹0).');
       return;
     }
 
@@ -186,8 +214,8 @@ export const ShiprocketShipmentModal: React.FC<ShiprocketShipmentModalProps> = (
         subtotal: order.subtotal,
         shippingFee: order.shippingFee,
         discount: order.discount,
-        paymentMethod: order.paymentMethod,
-        codAmountDue: codAmount,
+        paymentMethod: paymentType === 'cod' ? 'partial_cod' : 'online',
+        codAmountDue: paymentType === 'cod' ? codAmountToCollect : 0,
         courier: selectedCourier,
         pickupDate,
         weight,
@@ -211,12 +239,15 @@ export const ShiprocketShipmentModal: React.FC<ShiprocketShipmentModalProps> = (
       };
 
       // Call parent success handler to save to Firestore & state
-      onSuccess(shipmentInfo, 'shipped');
+      onSuccess(shipmentInfo, 'shipped', {
+        paymentMethod: paymentType === 'cod' ? 'partial_cod' : 'online',
+        codAmountDue: paymentType === 'cod' ? codAmountToCollect : 0,
+      });
       onClose();
     } catch (err: any) {
       console.error('Shipment creation error:', err);
       setSubmissionError(
-        err?.message || 'Failed to create shipment on Shiprocket. Please verify details and try again.'
+        err?.message || 'Failed to create shipment. Please verify details and try again.'
       );
     } finally {
       setIsSubmitting(false);
@@ -244,7 +275,7 @@ export const ShiprocketShipmentModal: React.FC<ShiprocketShipmentModalProps> = (
                 </span>
               </div>
               <p className="text-xs text-[#786F66]">
-                Prefilled delivery address · Live courier rate check · Instant AWB & pickup booking
+                Review items · Choose Prepaid or COD · Live courier rates & instant AWB
               </p>
             </div>
           </div>
@@ -261,7 +292,7 @@ export const ShiprocketShipmentModal: React.FC<ShiprocketShipmentModalProps> = (
         </div>
 
         {/* Modal Scrollable Body */}
-        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-6">
+        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-5">
           {submissionError && (
             <div className="p-3.5 bg-rose-50 border border-rose-200 text-rose-800 rounded-2xl text-xs flex items-start gap-2.5">
               <span className="text-sm">⚠️</span>
@@ -272,13 +303,260 @@ export const ShiprocketShipmentModal: React.FC<ShiprocketShipmentModalProps> = (
             </div>
           )}
 
-          {/* Section 1: Customer Delivery Address (Prefilled) */}
+          {/* ── SECTION 1: ORDER ITEMS DETAILS WITH IMAGE & PRICE ── */}
+          <div className="bg-white p-4 rounded-2xl border border-[#EAE3D8] space-y-3 shadow-2xs">
+            <div className="flex items-center justify-between border-b border-[#F3EDE2] pb-2">
+              <div className="flex items-center gap-2">
+                <span className="text-sm">🛍️</span>
+                <span className="text-xs font-bold text-[#2C2724] uppercase tracking-wider">
+                  Order Items ({order.items.length} {order.items.length === 1 ? 'item' : 'items'} · {totalItemsCount} pcs)
+                </span>
+              </div>
+              <span className="text-xs font-bold text-[#8E5B59] bg-[#FAF0ED] px-2.5 py-0.5 rounded-full border border-[#8E5B59]/20">
+                Total: ₹{order.total}
+              </span>
+            </div>
+
+            {/* Scrollable Items List */}
+            <div className="divide-y divide-[#F3EDE2] max-h-52 overflow-y-auto pr-1">
+              {order.items.map((item, idx) => {
+                const itemTotal = (item.price || 0) * (item.quantity || 1);
+                const imgSrc = item.img || (item as any).image;
+
+                return (
+                  <div key={item.id || idx} className="py-2.5 flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                      {/* Item Thumbnail */}
+                      <div className="size-12 rounded-xl border border-[#EAE3D8] bg-[#FAF7F2] overflow-hidden shrink-0 flex items-center justify-center shadow-2xs">
+                        {imgSrc ? (
+                          <img
+                            src={imgSrc}
+                            alt={item.name}
+                            className="size-full object-cover"
+                            onError={(e) => {
+                              (e.target as HTMLElement).style.display = 'none';
+                            }}
+                          />
+                        ) : (
+                          <span className="text-base">🌸</span>
+                        )}
+                      </div>
+
+                      {/* Item Name & Details */}
+                      <div className="min-w-0">
+                        <div className="font-semibold text-xs text-[#2C2724] truncate leading-tight">
+                          {item.name}
+                        </div>
+                        <div className="flex flex-wrap items-center gap-1.5 mt-1 text-[11px] text-[#786F66]">
+                          {item.selectedColor && (
+                            <span className="bg-[#FAF0ED] text-[#8E5B59] px-1.5 py-0.2 rounded text-[10px] font-medium border border-[#8E5B59]/20">
+                              {item.selectedColor}
+                            </span>
+                          )}
+                          {item.selectedVariant && (
+                            <span className="bg-[#FAF7F2] text-[#6D635B] px-1.5 py-0.2 rounded text-[10px] font-medium border border-[#EAE3D8]">
+                              {item.selectedVariant}
+                            </span>
+                          )}
+                          <span>
+                            Qty: <strong className="text-[#2C2724]">{item.quantity}</strong>
+                          </span>
+                          <span>·</span>
+                          <span>
+                            Unit Price: <strong className="text-[#2C2724]">₹{item.price}</strong>
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Price Calculation */}
+                    <div className="text-right shrink-0">
+                      <div className="text-xs font-bold text-[#2C2724]">
+                        ₹{itemTotal}
+                      </div>
+                      <div className="text-[10px] text-[#8C827A]">
+                        (₹{item.price} × {item.quantity})
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Financial Summary Strip */}
+            <div className="bg-[#FAF7F2] p-2.5 rounded-xl border border-[#F3EDE2] flex flex-wrap items-center justify-between text-xs text-[#6D635B] gap-2">
+              <div>
+                Items Subtotal: <strong className="text-[#2C2724]">₹{order.subtotal}</strong>
+              </div>
+              {order.discount > 0 && (
+                <div className="text-emerald-700">
+                  Discount: <strong>-₹{order.discount}</strong>
+                </div>
+              )}
+              <div>
+                Shipping Fee: <strong className="text-[#2C2724]">₹{order.shippingFee || 0}</strong>
+              </div>
+              <div className="text-xs font-bold text-[#8E5B59]">
+                Order Grand Total: ₹{order.total}
+              </div>
+            </div>
+          </div>
+
+          {/* ── SECTION 2: PAYMENT TYPE (PREPAID VS COD) & COD COLLECTION AMOUNT ── */}
+          <div className="bg-white p-4 rounded-2xl border border-[#EAE3D8] space-y-3 shadow-2xs">
+            <div className="flex items-center justify-between border-b border-[#F3EDE2] pb-2">
+              <div className="flex items-center gap-2">
+                <span className="text-sm">💳</span>
+                <span className="text-xs font-bold text-[#2C2724] uppercase tracking-wider">
+                  Payment Method & Cash on Delivery (COD) Setup *
+                </span>
+              </div>
+              <span className="text-[11px] text-[#786F66]">
+                Order placed as:{' '}
+                <strong className="uppercase text-[#2C2724]">
+                  {order.paymentMethod === 'partial_cod' ? 'COD' : 'Prepaid'}
+                </strong>
+              </span>
+            </div>
+
+            {/* Payment Type Selection Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {/* Option: Prepaid */}
+              <div
+                onClick={() => setPaymentType('prepaid')}
+                className={`p-3 rounded-xl border cursor-pointer transition-all flex items-start gap-3 select-none ${
+                  paymentType === 'prepaid'
+                    ? 'border-emerald-600 bg-emerald-50/60 shadow-xs ring-1 ring-emerald-600'
+                    : 'border-[#EAE3D8] bg-[#FAF7F2] hover:bg-white'
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="paymentType"
+                  checked={paymentType === 'prepaid'}
+                  onChange={() => setPaymentType('prepaid')}
+                  className="mt-0.5 accent-emerald-600 cursor-pointer"
+                />
+                <div className="flex-1">
+                  <div className="text-xs font-bold text-[#2C2724] flex items-center justify-between">
+                    <span>Prepaid Order</span>
+                    <span className="text-[10px] bg-emerald-100 text-emerald-800 font-semibold px-2 py-0.5 rounded-full border border-emerald-300">
+                      ₹0 Due
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-[#786F66] mt-1 leading-snug">
+                    Already paid online. Courier will deliver without collecting cash.
+                  </p>
+                </div>
+              </div>
+
+              {/* Option: Cash on Delivery (COD) */}
+              <div
+                onClick={() => {
+                  setPaymentType('cod');
+                  if (!codAmountToCollect || codAmountToCollect <= 0) {
+                    setCodAmountToCollect(order.codAmountDue || order.total);
+                  }
+                }}
+                className={`p-3 rounded-xl border cursor-pointer transition-all flex items-start gap-3 select-none ${
+                  paymentType === 'cod'
+                    ? 'border-amber-600 bg-amber-50/60 shadow-xs ring-1 ring-amber-600'
+                    : 'border-[#EAE3D8] bg-[#FAF7F2] hover:bg-white'
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="paymentType"
+                  checked={paymentType === 'cod'}
+                  onChange={() => {
+                    setPaymentType('cod');
+                    if (!codAmountToCollect || codAmountToCollect <= 0) {
+                      setCodAmountToCollect(order.codAmountDue || order.total);
+                    }
+                  }}
+                  className="mt-0.5 accent-amber-600 cursor-pointer"
+                />
+                <div className="flex-1">
+                  <div className="text-xs font-bold text-[#2C2724] flex items-center justify-between">
+                    <span>Cash on Delivery (COD)</span>
+                    <span className="text-[10px] bg-amber-100 text-amber-900 font-semibold px-2 py-0.5 rounded-full border border-amber-300">
+                      Collect on Delivery
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-[#786F66] mt-1 leading-snug">
+                    Delivery partner will collect cash amount from customer at handover.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* COD Amount to Collect Input & Presets */}
+            {paymentType === 'cod' && (
+              <div className="mt-2 p-3.5 bg-amber-50/80 border border-amber-200 rounded-xl space-y-2.5 animate-fade-in">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <label className="text-xs font-bold text-amber-950 flex items-center gap-1.5">
+                    <span>💰</span>
+                    <span>Amount to Collect from Customer (₹) *</span>
+                  </label>
+
+                  {/* Preset Shortcuts */}
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => setCodAmountToCollect(order.total)}
+                      className="text-[10px] font-semibold bg-white hover:bg-amber-100 text-amber-900 border border-amber-300 px-2 py-0.8 rounded-md transition cursor-pointer"
+                    >
+                      Full Total (₹{order.total})
+                    </button>
+                    {order.codAmountDue && order.codAmountDue !== order.total ? (
+                      <button
+                        type="button"
+                        onClick={() => setCodAmountToCollect(order.codAmountDue)}
+                        className="text-[10px] font-semibold bg-white hover:bg-amber-100 text-amber-900 border border-amber-300 px-2 py-0.8 rounded-md transition cursor-pointer"
+                      >
+                        Balance Due (₹{order.codAmountDue})
+                      </button>
+                    ) : null}
+                  </div>
+                </div>
+
+                <div className="relative">
+                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 font-bold text-amber-900 text-sm">
+                    ₹
+                  </span>
+                  <input
+                    type="number"
+                    min="1"
+                    step="1"
+                    required
+                    value={codAmountToCollect || ''}
+                    onChange={(e) =>
+                      setCodAmountToCollect(Math.max(0, parseInt(e.target.value) || 0))
+                    }
+                    placeholder="Enter cash amount to collect"
+                    className="w-full pl-8 pr-4 py-2.5 rounded-xl border border-amber-300 bg-white text-sm font-bold text-[#2C2724] focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-600 transition"
+                  />
+                </div>
+
+                <div className="flex items-center justify-between text-[11px] text-amber-900/90">
+                  <span>
+                    The courier delivery agent will collect this exact cash amount before handing over the parcel.
+                  </span>
+                  <span className="font-bold text-amber-950 whitespace-nowrap ml-2">
+                    Collecting: ₹{codAmountToCollect || 0}
+                  </span>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* ── SECTION 3: RECIPIENT DELIVERY ADDRESS (PREFILLED) ── */}
           <div className="bg-white p-4 rounded-2xl border border-[#EAE3D8] space-y-3 shadow-2xs">
             <div className="flex items-center justify-between border-b border-[#F3EDE2] pb-2">
               <div className="flex items-center gap-2">
                 <span className="text-sm">📍</span>
                 <span className="text-xs font-bold text-[#2C2724] uppercase tracking-wider">
-                  Destination & Delivery Address (Prefilled from Order)
+                  Destination Delivery Address (Prefilled from Order)
                 </span>
               </div>
               <span className="text-[11px] text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full font-medium border border-emerald-200">
@@ -380,7 +658,7 @@ export const ShiprocketShipmentModal: React.FC<ShiprocketShipmentModalProps> = (
             </div>
           </div>
 
-          {/* Section 2: Origin Pickup Location & Package Spec */}
+          {/* ── SECTION 4: ORIGIN PICKUP HUB & PACKAGE SPECS ── */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {/* Pickup Location Select */}
             <div className="bg-white p-4 rounded-2xl border border-[#EAE3D8] space-y-2.5 shadow-2xs">
@@ -392,7 +670,7 @@ export const ShiprocketShipmentModal: React.FC<ShiprocketShipmentModalProps> = (
               {loadingPickups ? (
                 <div className="py-3 text-xs text-[#786F66] flex items-center gap-2">
                   <span className="size-3 border-2 border-[#8E5B59] border-t-transparent rounded-full animate-spin" />
-                  Loading pickup locations from Shiprocket...
+                  Loading pickup locations...
                 </div>
               ) : (
                 <select
@@ -415,21 +693,23 @@ export const ShiprocketShipmentModal: React.FC<ShiprocketShipmentModalProps> = (
               )}
             </div>
 
-            {/* Package & Payment Spec */}
+            {/* Package Dimension & Weight Spec */}
             <div className="bg-white p-4 rounded-2xl border border-[#EAE3D8] space-y-2.5 shadow-2xs">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-1.5 text-xs font-bold text-[#2C2724] uppercase tracking-wider">
                   <span>📦</span>
-                  <span>Package & Payment</span>
+                  <span>Package Dimensions</span>
                 </div>
                 <span
                   className={`text-[10px] font-bold px-2 py-0.5 rounded-md uppercase tracking-wider ${
-                    isCod
+                    paymentType === 'cod'
                       ? 'bg-amber-100 text-amber-900 border border-amber-300'
                       : 'bg-emerald-100 text-emerald-900 border border-emerald-300'
                   }`}
                 >
-                  {isCod ? `COD Due: ₹${codAmount}` : 'Prepaid (₹0 Due)'}
+                  {paymentType === 'cod'
+                    ? `COD: ₹${codAmountToCollect} Due`
+                    : 'Prepaid (₹0 Due)'}
                 </span>
               </div>
 
@@ -475,23 +755,23 @@ export const ShiprocketShipmentModal: React.FC<ShiprocketShipmentModalProps> = (
               </div>
 
               <div className="text-[11px] text-[#786F66]">
-                Items: {order.items.reduce((acc, i) => acc + i.quantity, 0)} charms/accessories
+                Package items count: {totalItemsCount} pieces
               </div>
             </div>
           </div>
 
-          {/* Section 3: Available Couriers & Live Rates */}
+          {/* ── SECTION 5: AVAILABLE COURIERS & LIVE RATES ── */}
           <div className="bg-white p-4 rounded-2xl border border-[#EAE3D8] space-y-3 shadow-2xs">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#F3EDE2] pb-2">
               <div className="flex items-center gap-2">
                 <span className="text-sm">🚚</span>
                 <span className="text-xs font-bold text-[#2C2724] uppercase tracking-wider">
-                  Select Courier Partner & View Live Shipping Rates
+                  Select Courier Partner ({paymentType === 'cod' ? 'COD Mode' : 'Prepaid Mode'})
                 </span>
               </div>
               <button
                 type="button"
-                onClick={() => checkCouriers(pinCode, selectedPickup)}
+                onClick={() => checkCouriers(pinCode, selectedPickup, paymentType === 'cod')}
                 disabled={loadingCouriers}
                 className="text-[11px] text-[#8E5B59] hover:underline font-medium inline-flex items-center gap-1 cursor-pointer"
               >
@@ -502,7 +782,7 @@ export const ShiprocketShipmentModal: React.FC<ShiprocketShipmentModalProps> = (
             {loadingCouriers ? (
               <div className="py-8 text-center text-xs text-[#786F66]">
                 <div className="size-6 border-2 border-[#8E5B59] border-t-transparent rounded-full animate-spin mx-auto mb-2" />
-                Querying Shiprocket live courier rates for PIN {pinCode}...
+                Querying courier rates for PIN {pinCode} ({paymentType.toUpperCase()})...
               </div>
             ) : courierError ? (
               <div className="p-3 bg-amber-50 border border-amber-200 text-amber-800 rounded-xl text-xs">
@@ -559,7 +839,7 @@ export const ShiprocketShipmentModal: React.FC<ShiprocketShipmentModalProps> = (
             )}
           </div>
 
-          {/* Section 4: Pickup Date Selection */}
+          {/* ── SECTION 6: PICKUP DATE SELECTION ── */}
           <div className="bg-white p-4 rounded-2xl border border-[#EAE3D8] space-y-3 shadow-2xs">
             <div className="flex items-center gap-2 border-b border-[#F3EDE2] pb-2">
               <span className="text-sm">📅</span>
@@ -616,8 +896,10 @@ export const ShiprocketShipmentModal: React.FC<ShiprocketShipmentModalProps> = (
             {selectedCourier ? (
               <span>
                 Selected: <strong className="text-[#2C2724]">{selectedCourier.courier_name}</strong>{' '}
-                for <strong className="text-[#8E5B59]">₹{selectedCourier.rate.toFixed(2)}</strong> (
-                {selectedCourier.etd})
+                for <strong className="text-[#8E5B59]">₹{selectedCourier.rate.toFixed(2)}</strong> ({selectedCourier.etd}) ·{' '}
+                <strong className={paymentType === 'cod' ? 'text-amber-800' : 'text-emerald-800'}>
+                  {paymentType === 'cod' ? `COD (Collect ₹${codAmountToCollect})` : 'Prepaid (₹0 Due)'}
+                </strong>
               </span>
             ) : (
               <span>Please pick a courier to dispatch</span>
