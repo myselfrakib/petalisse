@@ -622,7 +622,7 @@ export default function Cart() {
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
                 placeholder="Enter your full name"
-                className="bg-white border border-[rgba(107,26,42,0.15)] rounded-xl px-4 py-2.5 font-cormorant text-sm text-[#2C2724] placeholder-[#A89E94] outline-none focus:border-[#6b1a2a] focus:ring-1 focus:ring-[#6b1a2a]/20 transition-all"
+                className="bg-white border border-[rgba(107,26,42,0.15)] rounded-xl px-4 py-2.5 font-inter text-sm text-[#2C2724] placeholder-[#A89E94] outline-none focus:border-[#6b1a2a] focus:ring-1 focus:ring-[#6b1a2a]/20 transition-all"
               />
             </div>
 
@@ -638,7 +638,7 @@ export default function Cart() {
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                   placeholder="Enter 10-digit mobile number"
-                  className="bg-white border border-[rgba(107,26,42,0.15)] rounded-xl px-4 py-2.5 font-cormorant text-sm text-[#2C2724] placeholder-[#A89E94] outline-none focus:border-[#6b1a2a] focus:ring-1 focus:ring-[#6b1a2a]/20 transition-all"
+                  className="bg-white border border-[rgba(107,26,42,0.15)] rounded-xl px-4 py-2.5 font-inter text-sm text-[#2C2724] placeholder-[#A89E94] outline-none focus:border-[#6b1a2a] focus:ring-1 focus:ring-[#6b1a2a]/20 transition-all"
                 />
               </div>
 
@@ -651,7 +651,7 @@ export default function Cart() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="Enter your email address"
-                  className="bg-white border border-[rgba(107,26,42,0.15)] rounded-xl px-4 py-2.5 font-cormorant text-sm text-[#2C2724] placeholder-[#A89E94] outline-none focus:border-[#6b1a2a] focus:ring-1 focus:ring-[#6b1a2a]/20 transition-all"
+                  className="bg-white border border-[rgba(107,26,42,0.15)] rounded-xl px-4 py-2.5 font-inter text-sm text-[#2C2724] placeholder-[#A89E94] outline-none focus:border-[#6b1a2a] focus:ring-1 focus:ring-[#6b1a2a]/20 transition-all"
                 />
               </div>
             </div>
@@ -667,7 +667,7 @@ export default function Cart() {
                 value={address}
                 onChange={(e) => setAddress(e.target.value)}
                 placeholder="House/Flat no., apartment, street, landmark"
-                className="bg-white border border-[rgba(107,26,42,0.15)] rounded-xl px-4 py-2.5 font-cormorant text-sm text-[#2C2724] placeholder-[#A89E94] outline-none focus:border-[#6b1a2a] focus:ring-1 focus:ring-[#6b1a2a]/20 transition-all"
+                className="bg-white border border-[rgba(107,26,42,0.15)] rounded-xl px-4 py-2.5 font-inter text-sm text-[#2C2724] placeholder-[#A89E94] outline-none focus:border-[#6b1a2a] focus:ring-1 focus:ring-[#6b1a2a]/20 transition-all"
               />
             </div>
 
@@ -683,7 +683,7 @@ export default function Cart() {
                   value={city}
                   onChange={(e) => setCity(e.target.value)}
                   placeholder="Enter city"
-                  className="bg-white border border-[rgba(107,26,42,0.15)] rounded-xl px-3 py-2.5 font-cormorant text-sm text-[#2C2724] placeholder-[#A89E94] outline-none focus:border-[#6b1a2a] focus:ring-1 focus:ring-[#6b1a2a]/20 transition-all"
+                  className="bg-white border border-[rgba(107,26,42,0.15)] rounded-xl px-3 py-2.5 font-inter text-sm text-[#2C2724] placeholder-[#A89E94] outline-none focus:border-[#6b1a2a] focus:ring-1 focus:ring-[#6b1a2a]/20 transition-all"
                 />
               </div>
 
@@ -696,7 +696,7 @@ export default function Cart() {
                   value={stateName}
                   onChange={(e) => setStateName(e.target.value)}
                   placeholder="Enter state"
-                  className="bg-white border border-[rgba(107,26,42,0.15)] rounded-xl px-3 py-2.5 font-cormorant text-sm text-[#2C2724] placeholder-[#A89E94] outline-none focus:border-[#6b1a2a] focus:ring-1 focus:ring-[#6b1a2a]/20 transition-all"
+                  className="bg-white border border-[rgba(107,26,42,0.15)] rounded-xl px-3 py-2.5 font-inter text-sm text-[#2C2724] placeholder-[#A89E94] outline-none focus:border-[#6b1a2a] focus:ring-1 focus:ring-[#6b1a2a]/20 transition-all"
                 />
               </div>
 
@@ -711,7 +711,7 @@ export default function Cart() {
                   value={pinCode}
                   onChange={(e) => setPinCode(e.target.value.replace(/[^0-9]/g, ''))}
                   placeholder="6-digit PIN"
-                  className="bg-white border border-[rgba(107,26,42,0.15)] rounded-xl px-3 py-2.5 font-cormorant text-sm text-[#2C2724] placeholder-[#A89E94] outline-none focus:border-[#6b1a2a] focus:ring-1 focus:ring-[#6b1a2a]/20 transition-all"
+                  className="bg-white border border-[rgba(107,26,42,0.15)] rounded-xl px-3 py-2.5 font-inter text-sm text-[#2C2724] placeholder-[#A89E94] outline-none focus:border-[#6b1a2a] focus:ring-1 focus:ring-[#6b1a2a]/20 transition-all"
                 />
               </div>
             </div>
