@@ -43,14 +43,16 @@ export const ShiprocketTrackingModal: React.FC<ShiprocketTrackingModalProps> = (
 
       if (res.isCancelled) {
         // Automatically sync to local state & database!
+        // Reset order status back to processing (or keep active), NOT cancelled
+        const resetStatus: Order['status'] = order.status === 'shipped' ? 'processing' : order.status;
         onUpdateShipment(
           {
             status: 'CANCELED',
             cancelledAt: new Date().toISOString(),
           },
-          'cancelled'
+          resetStatus
         );
-        setStatusMessage('Shipment is cancelled in Shiprocket. Order status synced!');
+        setStatusMessage('Shipment is cancelled in Shiprocket. Order remains active in Processing.');
       } else if (res.status === 'DELIVERED') {
         onUpdateShipment({ status: 'DELIVERED' }, 'delivered');
         setStatusMessage('Status synced: Package has been delivered!');
@@ -81,8 +83,7 @@ export const ShiprocketTrackingModal: React.FC<ShiprocketTrackingModalProps> = (
   const isCancelled =
     shipment.status === 'CANCELED' ||
     shipment.status === 'CANCELLED' ||
-    syncResult?.isCancelled ||
-    order.status === 'cancelled';
+    Boolean(syncResult?.isCancelled);
 
   const handleCancelShipment = async () => {
     const confirm = window.confirm(
@@ -101,14 +102,16 @@ export const ShiprocketTrackingModal: React.FC<ShiprocketTrackingModalProps> = (
       });
 
       if (res.success) {
+        // Reset order status back to processing (or keep active), NOT cancelled
+        const resetStatus: Order['status'] = order.status === 'shipped' ? 'processing' : order.status;
         onUpdateShipment(
           {
             status: 'CANCELED',
             cancelledAt: new Date().toISOString(),
           },
-          'cancelled'
+          resetStatus
         );
-        setStatusMessage('Shipment cancelled successfully in Shiprocket.');
+        setStatusMessage('Shipment cancelled successfully in Shiprocket. Order remains active in Processing.');
         handleSyncStatus();
       } else {
         setStatusMessage(res.message || 'Cancellation request could not be processed.');
@@ -155,7 +158,13 @@ export const ShiprocketTrackingModal: React.FC<ShiprocketTrackingModalProps> = (
                       : 'bg-emerald-100 text-emerald-800 border-emerald-300'
                   }`}
                 >
-                  {isCancelled ? 'Cancelled' : shipment.status || 'Active'}
+                  Shipment: {isCancelled ? 'Cancelled' : shipment.status || 'Active'}
+                </span>
+                <span className="text-xs text-[#786F66]">
+                  · Order Status:{' '}
+                  <strong className="capitalize text-[#2C2724]">
+                    {order.status}
+                  </strong>
                 </span>
               </div>
               <p className="text-xs text-[#786F66]">
@@ -292,8 +301,8 @@ export const ShiprocketTrackingModal: React.FC<ShiprocketTrackingModalProps> = (
                 <span className="text-xl block">🚫</span>
                 <div className="text-xs font-bold text-rose-900">Shipment Cancelled</div>
                 <p className="text-[11px] text-rose-700 max-w-sm mx-auto">
-                  This shipment booking has been cancelled in Shiprocket. No courier will arrive for
-                  pickup. You can recreate a new shipment for this order anytime if needed.
+                  This shipment booking has been cancelled in Shiprocket. The order itself remains active in{' '}
+                  <strong className="capitalize">{order.status}</strong>. You can create a new shipment for this order anytime.
                 </p>
               </div>
             ) : syncResult?.activities && syncResult.activities.length > 0 ? (

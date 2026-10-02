@@ -2629,10 +2629,15 @@ export const AdminPage: React.FC = () => {
                                 </div>
                               </div>
                             </div>
-                          ) : order.shipment && (order.shipment.status === 'CANCELED' || order.status === 'cancelled') ? (
-                            <div className="flex items-center gap-2 text-xs text-rose-700">
+                          ) : order.shipment && order.shipment.status === 'CANCELED' ? (
+                            <div className="flex items-center gap-2 text-xs text-amber-800 bg-amber-50 px-3 py-1.5 rounded-lg border border-amber-200">
+                              <span className="text-base">⚠️</span>
+                              <span>Shiprocket shipment cancelled. Order remains active — you can create a new shipment anytime.</span>
+                            </div>
+                          ) : order.status === 'cancelled' ? (
+                            <div className="flex items-center gap-2 text-xs text-rose-700 bg-rose-50 px-3 py-1.5 rounded-lg border border-rose-200">
                               <span className="text-base">🚫</span>
-                              <span>Shiprocket shipment cancelled. You can create a new shipment anytime.</span>
+                              <span>Order has been cancelled.</span>
                             </div>
                           ) : (
                             <div className="flex items-center gap-2 text-xs text-[#786F66]">
@@ -2665,7 +2670,7 @@ export const AdminPage: React.FC = () => {
                                   className="px-3 py-1.5 rounded-xl border border-rose-200 bg-rose-50 text-xs font-medium text-rose-700 hover:bg-rose-100 transition cursor-pointer flex items-center gap-1"
                                 >
                                   <span>✕</span>
-                                  <span>Cancel</span>
+                                  <span>Cancel Shipment</span>
                                 </button>
                               </>
                             ) : (
