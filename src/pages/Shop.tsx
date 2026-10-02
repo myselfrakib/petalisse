@@ -6,6 +6,7 @@ import { Product } from '../types';
 import { getColorHex } from '../lib/colorUtils';
 import { LazyImage } from '../components/LazyImage';
 import { useWishlist } from '../context/WishlistContext';
+import { WishlistModal } from '../components/WishlistModal';
 
 const imgGinghamBg = '/figma-assets/772e8e7b4c0d39ad6752261452ccca607e718dc3.png';
 const imgChevronLeft = '/figma-assets/de70edd513d91ef52fc2c1fa9af3cbf0656b675a.svg';
@@ -27,8 +28,9 @@ export default function Shop() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { add, count } = useCart();
   const { products } = useContent();
-  const { isWishlisted: checkWishlisted, toggleWishlist } = useWishlist();
+  const { wishlist, isWishlisted: checkWishlisted, toggleWishlist } = useWishlist();
   const [addedId, setAddedId] = useState<string | null>(null);
+  const [isWishlistOpen, setIsWishlistOpen] = useState(false);
 
   const [displayCount, setDisplayCount] = useState<number>(() => {
     try {
@@ -192,20 +194,50 @@ export default function Shop() {
             Petalisse
           </Link>
 
-          <Link
-            to="/cart"
-            className="relative bg-[#f9d5e5] rounded-[12px] p-2 flex items-center justify-center hover:bg-[#f3bed3] active:scale-95 transition-all shadow-xs"
-            data-node-id="2:228"
-            data-name="nav-cart-button"
-            aria-label="View Cart"
-          >
-            <img alt="Cart" className="size-3.5 block" src={imgShoppingCart} />
-            {count > 0 && (
-              <span className="absolute -top-1 -right-1 bg-[#6b1a2a] text-white text-[9px] font-sans font-bold w-4 h-4 rounded-full flex items-center justify-center leading-none">
-                {count > 9 ? '9+' : count}
-              </span>
-            )}
-          </Link>
+          <div className="flex items-center gap-2">
+            {/* Heart Wishlist Icon with Live Counter */}
+            <button
+              type="button"
+              onClick={() => setIsWishlistOpen(true)}
+              className="relative bg-[#f9d5e5] rounded-[12px] p-2 flex items-center justify-center hover:bg-[#f3bed3] active:scale-95 transition-all shadow-xs cursor-pointer"
+              data-name="nav-wishlist-button"
+              aria-label="View Wishlist"
+              title="View Wishlist"
+            >
+              <svg
+                className={`size-3.5 ${wishlist.length > 0 ? 'text-[#6b1a2a] fill-[#6b1a2a]' : 'text-[#6b1a2a]'}`}
+                viewBox="0 0 24 24"
+                fill={wishlist.length > 0 ? '#6b1a2a' : 'none'}
+                stroke="currentColor"
+                strokeWidth="2.2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+              </svg>
+              {wishlist.length > 0 && (
+                <span className="absolute -top-1 -right-1 bg-[#6b1a2a] text-white text-[9px] font-sans font-bold w-4 h-4 rounded-full flex items-center justify-center leading-none shadow-xs">
+                  {wishlist.length > 9 ? '9+' : wishlist.length}
+                </span>
+              )}
+            </button>
+
+            {/* Shopping Cart Button */}
+            <Link
+              to="/cart"
+              className="relative bg-[#f9d5e5] rounded-[12px] p-2 flex items-center justify-center hover:bg-[#f3bed3] active:scale-95 transition-all shadow-xs"
+              data-node-id="2:228"
+              data-name="nav-cart-button"
+              aria-label="View Cart"
+            >
+              <img alt="Cart" className="size-3.5 block" src={imgShoppingCart} />
+              {count > 0 && (
+                <span className="absolute -top-1 -right-1 bg-[#6b1a2a] text-white text-[9px] font-sans font-bold w-4 h-4 rounded-full flex items-center justify-center leading-none shadow-xs">
+                  {count > 9 ? '9+' : count}
+                </span>
+              )}
+            </Link>
+          </div>
         </header>
 
         {/* ── CATEGORY FILTERS (SLIDABLE SINGLE LINE) ── */}
@@ -447,6 +479,12 @@ export default function Shop() {
           </div>
         )}
       </main>
+
+      {/* Wishlist Modal / Drawer */}
+      <WishlistModal
+        isOpen={isWishlistOpen}
+        onClose={() => setIsWishlistOpen(false)}
+      />
     </div>
   );
 }
