@@ -184,16 +184,25 @@ export const AdminPage: React.FC = () => {
 
     setCouponSubmitting(true);
     try {
-      await addCoupon({
+      const payload: any = {
         code: cleanCode,
         discountType: couponDiscountType,
         discountValue: numValue,
-        minOrderValue: couponMinOrder !== '' ? Number(couponMinOrder) : undefined,
-        maxDiscount: couponMaxDiscount !== '' ? Number(couponMaxDiscount) : undefined,
-        description: couponDesc.trim() || undefined,
-        expiresAt: couponExpiresAt || undefined,
         isActive: couponIsActive,
-      });
+      };
+      if (couponMinOrder !== '' && !isNaN(Number(couponMinOrder))) {
+        payload.minOrderValue = Number(couponMinOrder);
+      }
+      if (couponMaxDiscount !== '' && !isNaN(Number(couponMaxDiscount))) {
+        payload.maxDiscount = Number(couponMaxDiscount);
+      }
+      if (couponDesc.trim()) {
+        payload.description = couponDesc.trim();
+      }
+      if (couponExpiresAt) {
+        payload.expiresAt = couponExpiresAt;
+      }
+      await addCoupon(payload);
 
       setCouponSuccess(`Coupon "${cleanCode}" created successfully!`);
       // Reset form

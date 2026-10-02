@@ -784,12 +784,14 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
       throw new Error(`A coupon with code "${formattedCode}" already exists.`);
     }
 
-    const docRef = await addDoc(collection(db, 'coupons'), {
+    const payload = sanitizeForFirestore({
       ...couponData,
       code: formattedCode,
       usageCount: 0,
       createdAt: serverTimestamp(),
     });
+
+    const docRef = await addDoc(collection(db, 'coupons'), payload);
     return docRef.id;
   };
 
@@ -797,7 +799,7 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
     if (updates.code) {
       updates.code = updates.code.trim().toUpperCase();
     }
-    await updateDoc(doc(db, 'coupons', id), updates);
+    await updateDoc(doc(db, 'coupons', id), sanitizeForFirestore(updates));
   };
 
   const deleteCoupon = async (id: string): Promise<void> => {
